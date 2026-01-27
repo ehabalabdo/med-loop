@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MED LOOP Medical System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts: Cairo (Arabic) & Plus Jakarta Sans (English) for a modern tech feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+      // Initialize Theme before load to prevent flash
+      if (localStorage.getItem('medcore_theme') === 'dark' || (!('medcore_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      tailwind.config = {
+        darkMode: 'class', // Enable manual toggling
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'Cairo', 'sans-serif'],
+            },
+            colors: {
+              primary: '#0d9488', // Teal 600 - Slightly brighter
+              secondary: '#0891b2', // Cyan 600
+              dark: '#0f172a', // Slate 900
+              surface: '#ffffff',
+            },
+            boxShadow: {
+              'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+              'glow': '0 0 15px rgba(13, 148, 136, 0.3)',
+              'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+            },
+            animation: {
+              'float': 'float 6s ease-in-out infinite',
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Global Smoothness */
+      body {
+        /* Subtle mesh gradient background */
+        background-color: #f0f4f8;
+        background-image: 
+          radial-gradient(at 0% 0%, rgba(13, 148, 136, 0.08) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, rgba(8, 145, 178, 0.08) 0px, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(13, 148, 136, 0.08) 0px, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(8, 145, 178, 0.08) 0px, transparent 50%);
+        background-attachment: fixed;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      /* Custom scrollbar for cleaner UI */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1; 
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8; 
+      }
+
+      /* Glassmorphism Utilities */
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+      }
+      
+      .glass-sidebar {
+        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+      }
+
+      /* 
+         --- SMART DARK MODE OVERRIDES ---
+         This forces existing white/light components to adapt to dark mode 
+         without rewriting React components.
+      */
+      html.dark body {
+        background-color: #020617; 
+        background-image: 
+          radial-gradient(at 0% 0%, rgba(13, 148, 136, 0.1) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, rgba(8, 145, 178, 0.1) 0px, transparent 50%);
+      }
+      html.dark .bg-white {
+        background-color: #1e293b !important; /* Slate 800 */
+        color: #f1f5f9;
+        border-color: #334155 !important;
+      }
+      html.dark .bg-slate-50, html.dark .bg-gray-50, html.dark .bg-slate-100 {
+        background-color: #0f172a !important; /* Slate 900 */
+        border-color: #1e293b !important;
+      }
+      html.dark .text-slate-900, html.dark .text-slate-800, html.dark .text-gray-900, html.dark .text-gray-800 {
+        color: #f8fafc !important; /* Slate 50 */
+      }
+      html.dark .text-slate-700, html.dark .text-slate-600, html.dark .text-gray-700, html.dark .text-gray-600 {
+        color: #cbd5e1 !important; /* Slate 300 */
+      }
+      html.dark .text-slate-500, html.dark .text-slate-400 {
+        color: #94a3b8 !important; /* Slate 400 */
+      }
+      html.dark .border-slate-100, html.dark .border-gray-100, html.dark .border-slate-200 {
+        border-color: #334155 !important; /* Slate 700 */
+      }
+      /* Inputs */
+      html.dark input, html.dark select, html.dark textarea {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+        color: white !important;
+      }
+      html.dark .shadow-soft {
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+      }
+      html.dark .glass-panel {
+        background: rgba(30, 41, 59, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react-router-dom": "https://esm.sh/react-router-dom@6",
+    "jspdf": "https://esm.sh/jspdf@2.5.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="text-slate-800 antialiased h-screen overflow-hidden font-sans selection:bg-primary/20 selection:text-primary transition-colors duration-300">
+    <div id="root" class="h-full"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
