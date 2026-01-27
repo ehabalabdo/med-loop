@@ -2,14 +2,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { mockDb } from '../services/mockFirebase';
 import { UserRole, User } from '../types';
 
 const DevModeSwitcher: React.FC = () => {
   const { user: currentUser, simulateLogin } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const allUsers = mockDb.getAllUsers();
 
   const handleSwitch = (targetUser: User) => {
     // 1. Perform the login switch
