@@ -90,20 +90,18 @@ export const PatientService = {
       let filtered = allPatients.filter(p => !p.isArchived);
       
       // Filter for Doctors: Only see patients in their clinics
-      if (user.role === UserRole.DOCTOR) {
-        if (!user.clinicIds || user.clinicIds.length === 0) {
-          callback([]); return;
-        }
-        filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
-      } 
-      
-      callback(filtered.sort((a, b) => {
-          if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
-          if (a.currentVisit.priority !== 'urgent' && b.currentVisit.priority === 'urgent') return 1;
-          return a.currentVisit.date - b.currentVisit.date;
-      }));
-    });
-  },
+            if (user.role === UserRole.DOCTOR) {
+                if (!user.clinicIds || user.clinicIds.length === 0) {
+                    callback([]); return;
+                }
+                filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+            }
+            callback(filtered.sort((a, b) => {
+                if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
+                if (a.currentVisit.priority !== 'urgent' && b.currentVisit.priority === 'urgent') return 1;
+                return a.currentVisit.date - b.currentVisit.date;
+            }));
+        },
 
   getAll: async (user: User): Promise<Patient[]> => {
     const activePatients = allPatients.filter(p => !p.isArchived);
