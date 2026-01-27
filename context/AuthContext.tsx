@@ -20,12 +20,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     // POST /auth/login
-    const res = await api.post('/auth/login', { username, password });
+    const res = await api.post('/auth/login', { email, password });
     if (!res.token) throw new Error(res.message || 'Login failed');
     localStorage.setItem('token', res.token);
-    setUser(res.user || { username, role: res.role });
+    setUser(res.user || { email, role: res.role });
     window.location.href = '/dashboard';
   };
 
