@@ -45,4 +45,3 @@ export const api = {
   put: (path, body) => request("PUT", path, body),
   del: (path, body) => request("DELETE", path, body),
 };
-};
