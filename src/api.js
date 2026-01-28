@@ -4,7 +4,8 @@
 
 
 
-const BASE_URL = import.meta.env.VITE_API_URL || "https://medloop-api.onrender.com";
+// امسح السطر القديم وحط هاد عشان نجبره يبعث للسيرفر الشغال
+const BASE_URL = "https://medloop-api.onrender.com";
 
 async function request(method, path, body) {
   const token = localStorage.getItem("token");

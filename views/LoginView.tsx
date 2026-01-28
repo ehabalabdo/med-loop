@@ -32,107 +32,86 @@ const LoginView: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-slate-100 to-secondary/10 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300 relative p-2">
-      {/* خلفية زخرفية */}
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-15%] left-[-10%] w-[40vw] h-[40vw] bg-primary/20 rounded-full blur-[120px] animate-float"></div>
-        <div className="absolute bottom-[-15%] right-[-10%] w-[40vw] h-[40vw] bg-secondary/20 rounded-full blur-[120px] animate-float" style={{animationDelay: '2s'}}></div>
+      {/* زر اللغة والوضع الليلي في الزاوية */}
+      <div className="absolute top-6 right-6 flex flex-col gap-2 z-20">
+        <button
+          onClick={toggleTheme}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-primary text-lg shadow-md hover:scale-110 hover:bg-primary/60 transition-all duration-300 animate-bounce-slow"
+          style={{fontWeight: 'bold'}}
+          aria-label="Toggle dark mode"
+        >
+          <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+        </button>
+        <button
+          onClick={toggleLanguage}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-primary text-lg shadow-md hover:scale-110 hover:bg-secondary/60 transition-all duration-300 animate-bounce-slow"
+          style={{fontWeight: 'bold'}}
+          aria-label="Toggle language"
+        >
+          <i className="fa-solid fa-globe"></i>
+        </button>
       </div>
 
-      <div className="relative z-10 w-full max-w-4xl flex flex-col md:flex-row shadow-2xl rounded-3xl overflow-hidden border border-white/40 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
-        {/* لوحة جانبية: شعار وتبديل الوضع واللغة */}
-        <div className="hidden md:flex flex-col items-center justify-between bg-gradient-to-b from-primary/90 to-secondary/80 dark:from-slate-900 dark:to-slate-800 p-10 w-1/2 relative">
-          <div className="flex flex-col items-center gap-4">
-            <div className="bg-white/20 rounded-2xl p-4 shadow-lg flex items-center justify-center">
-              <i className="fa-solid fa-heart-pulse text-4xl text-primary drop-shadow animate-heartbeat"></i>
-            </div>
-            <h2 className="text-3xl font-bold text-white drop-shadow">Medloop</h2>
+      {/* نموذج مركزي */}
+      <div className="relative z-10 w-full max-w-md mx-auto bg-white/90 dark:bg-slate-900/90 rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700 backdrop-blur-xl p-8 flex flex-col items-center">
+        <div className="flex flex-col items-center mb-8">
+          <div className="h-16 w-16 bg-gradient-to-tr from-primary to-cyan-400 text-white rounded-2xl flex items-center justify-center mb-4 text-3xl shadow-lg">
+            <i className="fa-solid fa-heart-pulse animate-heartbeat"></i>
           </div>
-          <div className="flex flex-col gap-3 w-full mt-10">
-            <button
-              onClick={toggleTheme}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-white text-lg shadow-md hover:scale-110 hover:bg-primary/60 transition-all duration-300 animate-bounce-slow"
-              style={{fontWeight: 'bold'}}
-              aria-label="Toggle dark mode"
-            >
-              <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-            </button>
-            <button
-              onClick={toggleLanguage}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-white text-lg shadow-md hover:scale-110 hover:bg-secondary/60 transition-all duration-300 animate-bounce-slow"
-              style={{fontWeight: 'bold'}}
-              aria-label="Toggle language"
-            >
-              <i className="fa-solid fa-globe"></i>
-            </button>
-          </div>
-
-          <div className="mt-10 text-xs text-white/70 text-center">
-            <span>© 2026 Medloop</span>
-          </div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Medloop</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sign_in_subtitle')}</p>
         </div>
-
-        {/* نموذج تسجيل الدخول */}
-        <div className="flex-1 flex flex-col justify-center p-8 sm:p-12 relative">
-          <div className="flex flex-col items-center mb-8">
-            <div className="h-16 w-16 bg-gradient-to-tr from-primary to-cyan-400 text-white rounded-2xl flex items-center justify-center mb-4 text-3xl shadow-lg">
-              <i className="fa-solid fa-heart-pulse"></i>
+        <form onSubmit={handleSubmit} className="w-full space-y-5">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('email_label')}</label>
+            <div className="relative">
+              <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
+                placeholder="user@medcore.com"
+                required
+              />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t('welcome_back')}</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sign_in_subtitle')}</p>
           </div>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('email_label')}</label>
-              <div className="relative">
-                <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
-                  placeholder="user@medcore.com"
-                  required
-                />
-              </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('password_label')}</label>
+            <div className="relative">
+              <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
+                placeholder="••••••••"
+                required
+              />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('password_label')}</label>
-              <div className="relative">
-                <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-            </div>
-            {error && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-600 dark:text-red-300 text-sm flex items-center gap-2 animate-pulse">
-                <i className="fa-solid fa-circle-exclamation"></i>
-                {error}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-primary/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <i className="fa-solid fa-circle-notch fa-spin"></i> {t('authenticating')}
-                </span>
-              ) : t('sign_in_btn')}
-            </button>
-          </form>
-          <div className="mt-6 text-center text-xs text-slate-400 font-medium">
-            <i className="fa-solid fa-shield-halved mr-1"></i> {t('protected_msg')}
           </div>
-
-
+          {error && (
+            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-600 dark:text-red-300 text-sm flex items-center gap-2 animate-pulse">
+              <i className="fa-solid fa-circle-exclamation"></i>
+              {error}
+            </div>
+          )}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-primary/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <i className="fa-solid fa-circle-notch fa-spin"></i> {t('authenticating')}
+              </span>
+            ) : t('sign_in_btn')}
+          </button>
+        </form>
+        <div className="mt-6 text-center text-xs text-slate-400 font-medium">
+          <i className="fa-solid fa-shield-halved mr-1"></i> {t('protected_msg')}
         </div>
+        <div className="mt-6 text-xs text-slate-400 text-center">© 2026 Medloop</div>
       </div>
       <DevModeSwitcher />
     </div>
