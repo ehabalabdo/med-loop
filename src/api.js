@@ -4,8 +4,7 @@
 
 
 
-// تعديل مؤقت: إضافة / في آخر الرابط
-const BASE_URL = "https://medloop-api.onrender.com/";
+const BASE_URL = "https://medloop-api.onrender.com";
 
 async function request(method, path, body) {
   const token = localStorage.getItem("token");
