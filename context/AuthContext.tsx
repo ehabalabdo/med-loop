@@ -22,7 +22,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     // POST /auth/login
-    const res = await api.post('/auth/login', { email, password });
+    const data = {
+      email: email,
+      username: email, // نرسل الإيميل أيضاً باسم username
+      password: password
+    };
+    const res = await api.post('/auth/login', data);
     if (!res.token) throw new Error(res.message || 'Login failed');
     localStorage.setItem('token', res.token);
     setUser(res.user || { email, role: res.role });
