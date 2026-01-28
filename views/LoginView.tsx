@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -33,82 +34,85 @@ const LoginView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
-      
-      {/* Dynamic Background Elements */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full blur-[120px] animate-float"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-secondary/20 rounded-full blur-[120px] animate-float" style={{animationDelay: '2s'}}></div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-slate-100 to-secondary/10 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300 relative p-2">
+      {/* خلفية زخرفية */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-15%] left-[-10%] w-[40vw] h-[40vw] bg-primary/20 rounded-full blur-[120px] animate-float"></div>
+        <div className="absolute bottom-[-15%] right-[-10%] w-[40vw] h-[40vw] bg-secondary/20 rounded-full blur-[120px] animate-float" style={{animationDelay: '2s'}}></div>
+      </div>
 
-      <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/50 dark:border-slate-700 rounded-3xl shadow-glass w-full max-w-5xl overflow-hidden flex flex-col md:flex-row relative z-10 transition-colors duration-300">
-        
-        {/* Top Controls */}
-        <div className="absolute top-6 right-6 z-20 flex gap-2">
-            <button 
-                onClick={toggleTheme}
-                className="text-xs font-bold text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-yellow-400 bg-white/50 dark:bg-slate-700/50 border border-white dark:border-slate-600 px-3 py-2 rounded-full transition-all hover:shadow-md"
-            >
-                <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+      <div className="relative z-10 w-full max-w-4xl flex flex-col md:flex-row shadow-2xl rounded-3xl overflow-hidden border border-white/40 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl">
+        {/* لوحة جانبية: شعار وتبديل الوضع واللغة */}
+        <div className="hidden md:flex flex-col items-center justify-between bg-gradient-to-b from-primary/90 to-secondary/80 dark:from-slate-900 dark:to-slate-800 p-10 w-1/2 relative">
+          <div className="flex flex-col items-center gap-4">
+            <div className="bg-white/20 rounded-2xl p-4 shadow-lg">
+              <i className="fa-solid fa-heart-pulse text-4xl text-primary drop-shadow"></i>
+            </div>
+            <h2 className="text-3xl font-bold text-white drop-shadow">Medloop</h2>
+          </div>
+          <div className="flex flex-col gap-4 w-full mt-10">
+            <button onClick={toggleTheme} className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-white/20 text-white font-bold hover:bg-white/40 transition">
+              <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
+              {isDarkMode ? t('light_mode') : t('dark_mode')}
             </button>
-            <button 
-                onClick={toggleLanguage}
-                className="text-xs font-bold text-slate-500 dark:text-slate-300 hover:text-primary bg-white/50 dark:bg-slate-700/50 border border-white dark:border-slate-600 px-4 py-2 rounded-full transition-all hover:shadow-md"
-            >
-                <i className="fa-solid fa-globe mr-2"></i>
-                {language === 'en' ? 'العربية' : 'English'}
+            <button onClick={toggleLanguage} className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-white/20 text-white font-bold hover:bg-white/40 transition">
+              <i className="fa-solid fa-globe"></i>
+              {language === 'en' ? 'العربية' : 'English'}
             </button>
+          </div>
+          <div className="mt-10 text-xs text-white/70 text-center">
+            <span>© 2026 Medloop</span>
+          </div>
         </div>
 
-        {/* Left: Login Form */}
-        <div className="p-10 md:p-14 w-full md:w-1/2 order-2 md:order-1 flex flex-col justify-center">
-          <div className="mb-10">
-            <div className="h-14 w-14 bg-gradient-to-tr from-primary to-cyan-400 text-white rounded-2xl flex items-center justify-center mb-6 text-2xl shadow-lg shadow-primary/20">
+        {/* نموذج تسجيل الدخول */}
+        <div className="flex-1 flex flex-col justify-center p-8 sm:p-12 relative">
+          <div className="flex flex-col items-center mb-8">
+            <div className="h-16 w-16 bg-gradient-to-tr from-primary to-cyan-400 text-white rounded-2xl flex items-center justify-center mb-4 text-3xl shadow-lg">
               <i className="fa-solid fa-heart-pulse"></i>
             </div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t('welcome_back')}</h1>
-            <p className="text-slate-500 dark:text-slate-400">{t('sign_in_subtitle')}</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{t('welcome_back')}</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sign_in_subtitle')}</p>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">{t('email_label')}</label>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('email_label')}</label>
               <div className="relative">
-                  <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 rtl:right-4 rtl:left-auto"></i>
-                  <input 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-medium text-slate-800 dark:text-white rtl:pr-11 rtl:pl-4 hover:bg-white dark:hover:bg-slate-900"
-                    placeholder="user@medcore.com"
-                    required
-                  />
+                <i className="fa-regular fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
+                  placeholder="user@medcore.com"
+                  required
+                />
               </div>
             </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider ml-1">{t('password_label')}</label>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('password_label')}</label>
               <div className="relative">
-                  <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 rtl:right-4 rtl:left-auto"></i>
-                  <input 
-                    type="password" 
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-medium text-slate-800 dark:text-white rtl:pr-11 rtl:pl-4 hover:bg-white dark:hover:bg-slate-900"
-                    placeholder="••••••••"
-                    required
-                  />
+                <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
+                  placeholder="••••••••"
+                  required
+                />
               </div>
             </div>
-
             {error && (
-              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-600 dark:text-red-300 text-sm flex items-center gap-3 animate-pulse">
-                <i className="fa-solid fa-circle-exclamation text-lg"></i>
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-600 dark:text-red-300 text-sm flex items-center gap-2 animate-pulse">
+                <i className="fa-solid fa-circle-exclamation"></i>
                 {error}
               </div>
             )}
-
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-slate-900 to-slate-800 hover:from-primary hover:to-secondary text-white font-bold py-4 rounded-xl shadow-lg shadow-slate-900/20 hover:shadow-primary/30 transition-all transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+              className="w-full bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-primary/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -117,84 +121,46 @@ const LoginView: React.FC = () => {
               ) : t('sign_in_btn')}
             </button>
           </form>
+          <div className="mt-6 text-center text-xs text-slate-400 font-medium">
+            <i className="fa-solid fa-shield-halved mr-1"></i> {t('protected_msg')}
+          </div>
 
-          <div className="mt-8 text-center text-xs text-slate-400 font-medium">
-            <p><i className="fa-solid fa-shield-halved mr-1"></i> {t('protected_msg')}</p>
+          {/* بيانات الدخول التجريبية */}
+          <div className="mt-10">
+            <h3 className="text-lg font-bold mb-2 text-slate-700 dark:text-white flex items-center gap-2">
+              <i className="fa-solid fa-user-shield"></i> {t('demo_credentials')}
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button onClick={() => fillCredential('admin@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:dark:bg-primary/20 transition group">
+                <i className="fa-solid fa-shield-halved text-purple-500 group-hover:text-primary"></i>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">{t('admin_role')}</span>
+                <span className="text-xs text-slate-400 font-mono ml-auto">admin@medcore.com</span>
+              </button>
+              <button onClick={() => fillCredential('dentist@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-blue-100 hover:dark:bg-blue-900/20 transition group">
+                <i className="fa-solid fa-user-doctor text-blue-500 group-hover:text-blue-700"></i>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">Dentist</span>
+                <span className="text-xs text-slate-400 font-mono ml-auto">dentist@medcore.com</span>
+              </button>
+              <button onClick={() => fillCredential('lab@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-amber-100 hover:dark:bg-amber-900/20 transition group">
+                <i className="fa-solid fa-tooth text-amber-500 group-hover:text-amber-700"></i>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">{t('lab_tech')}</span>
+                <span className="text-xs text-slate-400 font-mono ml-auto">lab@medcore.com</span>
+              </button>
+              <button onClick={() => fillCredential('implants@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-cyan-100 hover:dark:bg-cyan-900/20 transition group">
+                <i className="fa-solid fa-box-open text-cyan-500 group-hover:text-cyan-700"></i>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">{t('implant_mgr')}</span>
+                <span className="text-xs text-slate-400 font-mono ml-auto">implants@medcore.com</span>
+              </button>
+              <button onClick={() => fillCredential('academy@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-pink-100 hover:dark:bg-pink-900/20 transition group">
+                <i className="fa-solid fa-graduation-cap text-pink-500 group-hover:text-pink-700"></i>
+                <span className="font-bold text-xs text-slate-800 dark:text-white">Academy</span>
+                <span className="text-xs text-slate-400 font-mono ml-auto">academy@medcore.com</span>
+              </button>
+            </div>
+            <div className="text-xs text-slate-400 mt-2">{t('demo_hint')}</div>
           </div>
         </div>
-
-        {/* Right: Info/Demo Section - Modern Dark */}
-        <div className="w-full md:w-1/2 bg-slate-900 text-white p-10 md:p-14 flex flex-col justify-center order-1 md:order-2 relative overflow-hidden">
-           {/* Abstract Pattern */}
-           <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px'}}></div>
-           
-           <div className="relative z-10">
-                <div className="mb-8">
-                    <h3 className="text-2xl font-bold mb-2">{t('demo_credentials')}</h3>
-                    <p className="text-slate-400 text-sm">{t('demo_hint')}</p>
-                </div>
-           
-               <div className="space-y-4">
-                 <button onClick={() => fillCredential('admin@medcore.com')} className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-4 group">
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition shadow-lg shadow-purple-900/20">
-                      <i className="fa-solid fa-shield-halved text-lg"></i>
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-slate-100">{t('admin_role')}</div>
-                      <div className="text-xs text-slate-400 font-mono">admin@medcore.com</div>
-                    </div>
-                    <i className="fa-solid fa-arrow-right ml-auto text-slate-600 group-hover:text-white transition opacity-0 group-hover:opacity-100"></i>
-                 </button>
-
-                 <div className="flex gap-2">
-                    <button onClick={() => fillCredential('dentist@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition shadow-lg shadow-blue-900/20">
-                        <i className="fa-solid fa-user-doctor"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">Dentist</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">dentist@medcore.com</div>
-                        </div>
-                    </button>
-                    <button onClick={() => fillCredential('lab@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition">
-                        <i className="fa-solid fa-tooth"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">{t('lab_tech')}</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">lab@medcore.com</div>
-                        </div>
-                    </button>
-                 </div>
-                 
-                 <div className="flex gap-2">
-                    <button onClick={() => fillCredential('implants@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-white transition shadow-lg shadow-cyan-900/20">
-                        <i className="fa-solid fa-box-open"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">{t('implant_mgr')}</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">implants@medcore.com</div>
-                        </div>
-                    </button>
-                    
-                    {/* Course Manager */}
-                    <button onClick={() => fillCredential('academy@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center group-hover:bg-pink-500 group-hover:text-white transition shadow-lg shadow-pink-900/20">
-                        <i className="fa-solid fa-graduation-cap"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">Academy</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">academy@medcore.com</div>
-                        </div>
-                    </button>
-                 </div>
-
-               </div>
-           </div>
-        </div>
       </div>
-
       <DevModeSwitcher />
     </div>
   );
