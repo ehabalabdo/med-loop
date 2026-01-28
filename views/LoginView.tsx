@@ -65,15 +65,7 @@ const LoginView: React.FC = () => {
               <i className="fa-solid fa-globe"></i>
             </button>
           </div>
-          // أنميشن مخصصة للأزرار الصغيرة
-          // أضف هذا الكلاس في ملف CSS الرئيسي إذا لم يكن موجوداً
-          // .animate-bounce-slow {
-          //   animation: bounce-slow 2.2s infinite;
-          // }
-          // @keyframes bounce-slow {
-          //   0%, 100% { transform: translateY(0); }
-          //   50% { transform: translateY(-8px); }
-          // }
+
           <div className="mt-10 text-xs text-white/70 text-center">
             <span>© 2026 Medloop</span>
           </div>
