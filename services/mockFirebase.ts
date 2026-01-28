@@ -66,11 +66,11 @@ const SEED_CLINICS: Clinic[] = [
 // Updated Users to test STRICT ISOLATION
 const SEED_USERS: User[] = [
   // 1. Admin & Secretary (See ALL)
-  { uid: 'admin_1', email: 'admin@medcore.com', name: 'Dr. Manager (Owner)', role: UserRole.ADMIN, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  // تم حذف المستخدمين التجريبيين
   { uid: 'sec_1', email: 'reception@medcore.com', name: 'Sarah Reception', role: UserRole.SECRETARY, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
   
   // 2. Dentist (Sees Dental + Implants only)
-  { uid: 'doc_dental', email: 'dentist@medcore.com', name: 'Dr. Tooth', role: UserRole.DOCTOR, clinicIds: ['c_dental', 'c_implant'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  //
   
   // 3. GP Doctor (Sees General Medicine only)
   { uid: 'doc_gp', email: 'gp@medcore.com', name: 'Dr. General', role: UserRole.DOCTOR, clinicIds: ['c_gp'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
@@ -79,13 +79,13 @@ const SEED_USERS: User[] = [
   { uid: 'doc_beauty', email: 'beauty@medcore.com', name: 'Dr. Beauty', role: UserRole.DOCTOR, clinicIds: ['c_laser', 'c_cosmetic'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
   
   // 5. Lab Tech (Sees Lab only)
-  { uid: 'tech_lab', email: 'lab@medcore.com', name: 'Lab Technician', role: UserRole.LAB_TECH, clinicIds: ['c_lab'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  //
 
   // 6. Implant Manager (Sees Implant Co only)
-  { uid: 'imp_mgr', email: 'implants@medcore.com', name: 'Implant Manager', role: UserRole.IMPLANT_MANAGER, clinicIds: ['c_implant'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  //
 
   // 7. Course Manager (Sees Courses only) - NEW
-  { uid: 'course_mgr', email: 'academy@medcore.com', name: 'Academy Director', role: UserRole.COURSE_MANAGER, clinicIds: ['c_courses'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  //
 ];
 
 // --- SEED COURSES & STUDENTS ---

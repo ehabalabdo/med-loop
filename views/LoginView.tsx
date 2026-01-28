@@ -28,10 +28,7 @@ const LoginView: React.FC = () => {
     }
   };
 
-  const fillCredential = (roleEmail: string) => {
-    setEmail(roleEmail);
-    setPassword('123456');
-  };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-slate-100 to-secondary/10 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300 relative p-2">
@@ -125,40 +122,7 @@ const LoginView: React.FC = () => {
             <i className="fa-solid fa-shield-halved mr-1"></i> {t('protected_msg')}
           </div>
 
-          {/* بيانات الدخول التجريبية */}
-          <div className="mt-10">
-            <h3 className="text-lg font-bold mb-2 text-slate-700 dark:text-white flex items-center gap-2">
-              <i className="fa-solid fa-user-shield"></i> {t('demo_credentials')}
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button onClick={() => fillCredential('admin@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:dark:bg-primary/20 transition group">
-                <i className="fa-solid fa-shield-halved text-purple-500 group-hover:text-primary"></i>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">{t('admin_role')}</span>
-                <span className="text-xs text-slate-400 font-mono ml-auto">admin@medcore.com</span>
-              </button>
-              <button onClick={() => fillCredential('dentist@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-blue-100 hover:dark:bg-blue-900/20 transition group">
-                <i className="fa-solid fa-user-doctor text-blue-500 group-hover:text-blue-700"></i>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">Dentist</span>
-                <span className="text-xs text-slate-400 font-mono ml-auto">dentist@medcore.com</span>
-              </button>
-              <button onClick={() => fillCredential('lab@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-amber-100 hover:dark:bg-amber-900/20 transition group">
-                <i className="fa-solid fa-tooth text-amber-500 group-hover:text-amber-700"></i>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">{t('lab_tech')}</span>
-                <span className="text-xs text-slate-400 font-mono ml-auto">lab@medcore.com</span>
-              </button>
-              <button onClick={() => fillCredential('implants@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-cyan-100 hover:dark:bg-cyan-900/20 transition group">
-                <i className="fa-solid fa-box-open text-cyan-500 group-hover:text-cyan-700"></i>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">{t('implant_mgr')}</span>
-                <span className="text-xs text-slate-400 font-mono ml-auto">implants@medcore.com</span>
-              </button>
-              <button onClick={() => fillCredential('academy@medcore.com')} className="flex items-center gap-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-pink-100 hover:dark:bg-pink-900/20 transition group">
-                <i className="fa-solid fa-graduation-cap text-pink-500 group-hover:text-pink-700"></i>
-                <span className="font-bold text-xs text-slate-800 dark:text-white">Academy</span>
-                <span className="text-xs text-slate-400 font-mono ml-auto">academy@medcore.com</span>
-              </button>
-            </div>
-            <div className="text-xs text-slate-400 mt-2">{t('demo_hint')}</div>
-          </div>
+
         </div>
       </div>
       <DevModeSwitcher />

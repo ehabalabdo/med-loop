@@ -13,8 +13,7 @@ const translations = {
     sign_in_btn: "Sign In",
     authenticating: "Authenticating...",
     protected_msg: "Protected by Medical Data Compliance",
-    demo_credentials: "Demo Credentials",
-    demo_hint: "Click any role below to auto-fill credentials for testing.",
+
     admin_role: "Administrator",
     sec_role: "Secretary",
     doc_dental: "Doctor (Dental)",
@@ -168,8 +167,7 @@ const translations = {
     sign_in_btn: "تسجيل الدخول",
     authenticating: "جاري التحقق...",
     protected_msg: "محمي بموجب قوانين البيانات الطبية",
-    demo_credentials: "بيانات تجريبية",
-    demo_hint: "اضغط على أي دور أدناه لتعبئة البيانات تلقائياً.",
+
     admin_role: "مدير النظام",
     sec_role: "سكرتارية",
     doc_dental: "طبيب (أسنان)",
