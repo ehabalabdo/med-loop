@@ -42,21 +42,38 @@ const LoginView: React.FC = () => {
         {/* لوحة جانبية: شعار وتبديل الوضع واللغة */}
         <div className="hidden md:flex flex-col items-center justify-between bg-gradient-to-b from-primary/90 to-secondary/80 dark:from-slate-900 dark:to-slate-800 p-10 w-1/2 relative">
           <div className="flex flex-col items-center gap-4">
-            <div className="bg-white/20 rounded-2xl p-4 shadow-lg">
-              <i className="fa-solid fa-heart-pulse text-4xl text-primary drop-shadow"></i>
+            <div className="bg-white/20 rounded-2xl p-4 shadow-lg flex items-center justify-center">
+              <i className="fa-solid fa-heart-pulse text-4xl text-primary drop-shadow animate-heartbeat"></i>
             </div>
             <h2 className="text-3xl font-bold text-white drop-shadow">Medloop</h2>
           </div>
-          <div className="flex flex-col gap-4 w-full mt-10">
-            <button onClick={toggleTheme} className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-white/20 text-white font-bold hover:bg-white/40 transition">
+          <div className="flex flex-col gap-3 w-full mt-10">
+            <button
+              onClick={toggleTheme}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-white text-lg shadow-md hover:scale-110 hover:bg-primary/60 transition-all duration-300 animate-bounce-slow"
+              style={{fontWeight: 'bold'}}
+              aria-label="Toggle dark mode"
+            >
               <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-              {isDarkMode ? t('light_mode') : t('dark_mode')}
             </button>
-            <button onClick={toggleLanguage} className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-white/20 text-white font-bold hover:bg-white/40 transition">
+            <button
+              onClick={toggleLanguage}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-white text-lg shadow-md hover:scale-110 hover:bg-secondary/60 transition-all duration-300 animate-bounce-slow"
+              style={{fontWeight: 'bold'}}
+              aria-label="Toggle language"
+            >
               <i className="fa-solid fa-globe"></i>
-              {language === 'en' ? 'العربية' : 'English'}
             </button>
           </div>
+          // أنميشن مخصصة للأزرار الصغيرة
+          // أضف هذا الكلاس في ملف CSS الرئيسي إذا لم يكن موجوداً
+          // .animate-bounce-slow {
+          //   animation: bounce-slow 2.2s infinite;
+          // }
+          // @keyframes bounce-slow {
+          //   0%, 100% { transform: translateY(0); }
+          //   50% { transform: translateY(-8px); }
+          // }
           <div className="mt-10 text-xs text-white/70 text-center">
             <span>© 2026 Medloop</span>
           </div>

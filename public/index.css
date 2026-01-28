@@ -1,3 +1,25 @@
+/* أنميشن نبض القلب بجانب اسم التطبيق */
+.animate-heartbeat {
+  animation: heartbeat 1.2s infinite;
+  transform-origin: center;
+}
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  10% { transform: scale(1.1); }
+  20% { transform: scale(0.95); }
+  30% { transform: scale(1.15); }
+  40% { transform: scale(0.92); }
+  50% { transform: scale(1.1); }
+  60%, 90% { transform: scale(1); }
+}
+/* أنميشن للأزرار الصغيرة في صفحة تسجيل الدخول */
+.animate-bounce-slow {
+  animation: bounce-slow 2.2s infinite;
+}
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
 body {
   background: #fff;
 }

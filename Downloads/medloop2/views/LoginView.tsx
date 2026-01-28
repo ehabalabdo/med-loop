@@ -27,10 +27,7 @@ const LoginView: React.FC = () => {
     }
   };
 
-  const fillCredential = (roleEmail: string) => {
-    setEmail(roleEmail);
-    setPassword('123456');
-  };
+
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-300">
@@ -123,76 +120,7 @@ const LoginView: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: Info/Demo Section - Modern Dark */}
-        <div className="w-full md:w-1/2 bg-slate-900 text-white p-10 md:p-14 flex flex-col justify-center order-1 md:order-2 relative overflow-hidden">
-           {/* Abstract Pattern */}
-           <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px'}}></div>
-           
-           <div className="relative z-10">
-                <div className="mb-8">
-                    <h3 className="text-2xl font-bold mb-2">{t('demo_credentials')}</h3>
-                    <p className="text-slate-400 text-sm">{t('demo_hint')}</p>
-                </div>
-           
-               <div className="space-y-4">
-                 <button onClick={() => fillCredential('admin@medcore.com')} className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-4 group">
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition shadow-lg shadow-purple-900/20">
-                      <i className="fa-solid fa-shield-halved text-lg"></i>
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-slate-100">{t('admin_role')}</div>
-                      <div className="text-xs text-slate-400 font-mono">admin@medcore.com</div>
-                    </div>
-                    <i className="fa-solid fa-arrow-right ml-auto text-slate-600 group-hover:text-white transition opacity-0 group-hover:opacity-100"></i>
-                 </button>
 
-                 <div className="flex gap-2">
-                    <button onClick={() => fillCredential('dentist@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition shadow-lg shadow-blue-900/20">
-                        <i className="fa-solid fa-user-doctor"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">Dentist</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">dentist@medcore.com</div>
-                        </div>
-                    </button>
-                    <button onClick={() => fillCredential('lab@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition">
-                        <i className="fa-solid fa-tooth"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">{t('lab_tech')}</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">lab@medcore.com</div>
-                        </div>
-                    </button>
-                 </div>
-                 
-                 <div className="flex gap-2">
-                    <button onClick={() => fillCredential('implants@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-white transition shadow-lg shadow-cyan-900/20">
-                        <i className="fa-solid fa-box-open"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">{t('implant_mgr')}</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">implants@medcore.com</div>
-                        </div>
-                    </button>
-                    
-                    {/* Course Manager */}
-                    <button onClick={() => fillCredential('academy@medcore.com')} className="flex-1 text-left p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center group-hover:bg-pink-500 group-hover:text-white transition shadow-lg shadow-pink-900/20">
-                        <i className="fa-solid fa-graduation-cap"></i>
-                        </div>
-                        <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-100 truncate">Academy</div>
-                        <div className="text-[10px] text-slate-400 font-mono truncate">academy@medcore.com</div>
-                        </div>
-                    </button>
-                 </div>
-
-               </div>
-           </div>
-        </div>
       </div>
 
       <DevModeSwitcher />

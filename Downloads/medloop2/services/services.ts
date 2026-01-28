@@ -1,3 +1,16 @@
+// بيانات وهمية لتجربة الخدمات بدون أخطاء
+const allUsers: User[] = [];
+const all: any[] = [];
+const clinics: Clinic[] = [];
+const allPatients: Patient[] = [];
+const apps: Appointment[] = [];
+const patients: Patient[] = [];
+const invoices: Invoice[] = [];
+const arr: SystemSettings[] = [];
+const allCases: LabCase[] = [];
+const items: ImplantItem[] = [];
+const orders: ImplantOrder[] = [];
+const students: CourseStudent[] = [];
 
 import { Clinic, Patient, User, UserRole, AuditMetadata, VisitData, Appointment, Invoice, Notification, PrescriptionItem, Attachment, SystemSettings, ClinicCategory, LabCase, LabCaseStatus, ImplantItem, ImplantOrder, ImplantOrderStatus, Course, CourseStudent, CourseSession, CourseStatus } from '../types';
 
@@ -86,24 +99,21 @@ export const ClinicService = {
 };
 
 export const PatientService = {
-  subscribe: (user: User, callback: (patients: Patient[]) => void) => {
-      let filtered = allPatients.filter(p => !p.isArchived);
-      
-      // Filter for Doctors: Only see patients in their clinics
-      if (user.role === UserRole.DOCTOR) {
-        if (!user.clinicIds || user.clinicIds.length === 0) {
-          callback([]); return;
+    subscribe: (user: User, callback: (patients: Patient[]) => void) => {
+        let filtered = allPatients.filter(p => !p.isArchived);
+        // Filter for Doctors: Only see patients in their clinics
+        if (user.role === UserRole.DOCTOR) {
+            if (!user.clinicIds || user.clinicIds.length === 0) {
+                callback([]); return;
+            }
+            filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
         }
-        filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
-      } 
-      
-      callback(filtered.sort((a, b) => {
-          if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
-          if (a.currentVisit.priority !== 'urgent' && b.currentVisit.priority === 'urgent') return 1;
-          return a.currentVisit.date - b.currentVisit.date;
-      }));
-    });
-  },
+        callback(filtered.sort((a, b) => {
+            if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
+            if (a.currentVisit.priority !== 'urgent' && b.currentVisit.priority === 'urgent') return 1;
+            return a.currentVisit.date - b.currentVisit.date;
+        }));
+    },
 
   getAll: async (user: User): Promise<Patient[]> => {
     const activePatients = allPatients.filter(p => !p.isArchived);
@@ -455,6 +465,7 @@ export const ImplantService = {
 // --- NEW: Course Service (Beauty Academy) ---
 export const CourseService = {
     getAllCourses: async (): Promise<Course[]> => {
+        return [];
     },
 
     createCourse: async (user: User, data: Pick<Course, 'title'|'description'|'duration'|'price'|'instructorName'|'hasCertificate'>) => {
@@ -520,6 +531,7 @@ export const CourseService = {
     },
 
     getSessions: async (user: User): Promise<CourseSession[]> => {
+        return [];
     },
 
     addSession: async (user: User, data: Pick<CourseSession, 'courseId'|'courseName'|'date'|'topic'|'instructor'>) => {
