@@ -60,6 +60,7 @@ export default function Dashboard() {
           case "admin":
             return <AdminView user={user} />;
           case "receptionist":
+          case "secretary":
             return <ReceptionView user={user} />;
           case "doctor":
             return <DoctorView user={user} />;
