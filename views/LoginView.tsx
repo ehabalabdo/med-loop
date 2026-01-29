@@ -28,13 +28,15 @@ const LoginView: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.token) {
-        // 1. تخزين البيانات فوراً لكسر الـ Loop
+        // 1. تخزين التوكن فوراً (أهم خطوة!)
         localStorage.setItem('token', data.token);
-        localStorage.setItem('role', data.user.role);
-        // 2. التحويل القسري لصفحة اللوحة
+        // 2. تخزين بيانات المستخدم (إيميله ورتبته)
+        localStorage.setItem('user', JSON.stringify(data.user));
+        console.log("✅ دخول ناجح، جاري التحويل للوحة التحكم...");
+        // 3. التحويل القسري باستخدام window.location لضمان تحديث حالة التطبيق
         window.location.href = '/dashboard';
       } else {
-        setError(data.message || 'Login failed');
+        setError(data.error || 'فشل تسجيل الدخول');
       }
     } catch (err: any) {
       setError('خطأ في الاتصال بالسيرفر');
