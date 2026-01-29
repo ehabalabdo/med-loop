@@ -466,7 +466,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                                 return (
                                     <div key={p.id} className={`p-5 rounded-3xl border transition-all flex items-center justify-between group hover:shadow-xl ${isUrgent ? 'bg-red-50 border-red-100' : 'bg-white border-slate-100'}`}>
                                         <div className="flex items-center gap-4">
-                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg transform group-hover:scale-110 transition-transform ${isUrgent ? 'bg-red-500' : 'bg-slate-800'}`}>{p.name.charAt(0)}</div>
+                                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg transform group-hover:scale-110 transition-transform ${isUrgent ? 'bg-red-500' : 'bg-slate-800'}`}>{(p?.name || p?.email || "U").charAt(0)}</div>
                                             <div className="min-w-0">
                                                 <div className="font-bold text-slate-800 truncate text-lg">{p.name}</div>
                                                 <div className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">{clinic?.name}</div>

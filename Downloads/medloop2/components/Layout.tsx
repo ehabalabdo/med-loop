@@ -132,7 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         <div className="p-4 m-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 border border-white/10 flex items-center justify-center">
-              <span className="font-bold text-sm text-slate-200">{user?.name.charAt(0)}</span>
+              <span className="font-bold text-sm text-slate-200">{(user?.name || user?.email || "U").charAt(0)}</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate text-slate-100">{user?.name}</p>

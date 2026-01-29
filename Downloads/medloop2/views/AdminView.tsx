@@ -644,7 +644,7 @@ const AdminView: React.FC = () => {
                                         user.role === 'implant_manager' ? 'bg-cyan-100 text-cyan-600 border-cyan-200' :
                                         'bg-emerald-100 text-emerald-600 border-emerald-200'
                                     }`}>
-                                        {user.name.charAt(0)}
+                                        {(user?.name || user?.email || "U").charAt(0)}
                                     </div>
                                     <div>
                                         <div className="font-bold text-slate-800 flex items-center gap-2">
