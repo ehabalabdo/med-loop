@@ -197,8 +197,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             {showClinicalViews && (
               <>
                 {role === UserRole.DOCTOR && <NavItem to="/doctor" icon="fa-solid fa-user-doctor" label="Console" mobile />}
-                <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label="Dates" mobile />}
-                <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label="Registry" mobile />}
+                <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label="Dates" mobile />
+                <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label="Registry" mobile />
               </>
             )}
             {showLabView && <NavItem to="/dental-lab" icon="fa-solid fa-tooth" label="Lab" mobile />}
@@ -261,13 +261,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                  <i className={`fa-solid ${language === 'ar' ? 'fa-arrow-left-from-bracket' : 'fa-arrow-right-from-bracket'}`}></i>
                  {t('logout')}
                </button>
+               {/* <--- التسكيرة لازم تكون هووون في الآخر */}
+               {showClinicalViews && <div className="px-4 pb-2 mt-6 text-xs font-bold uppercase text-slate-600 tracking-wider">Departments</div>}
+               {showImplantView && <NavItem to="/implant-company" icon="fa-solid fa-box-open" label="Implant Co." />}
+               {showAcademyView && <NavItem to="/academy" icon="fa-solid fa-graduation-cap" label="Beauty Academy" />}
              </>
-           )}
-           {/* <--- التسكيرة لازم تكون هووون في الآخر */}
-           {showClinicalViews && <div className="px-4 pb-2 mt-6 text-xs font-bold uppercase text-slate-600 tracking-wider">Departments</div>}
-           {showImplantView && <NavItem to="/implant-company" icon="fa-solid fa-box-open" label="Implant Co." />}
-           {showAcademyView && <NavItem to="/academy" icon="fa-solid fa-graduation-cap" label="Beauty Academy" />}
-               </>
            )}
            
            <div className="my-6 border-t border-white/10 mx-4"></div>
