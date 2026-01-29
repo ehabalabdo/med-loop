@@ -13,7 +13,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
-  const { t, language } = useLanguage();
+  const { t, language, toggleLanguage } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   // RTL/LTR support
