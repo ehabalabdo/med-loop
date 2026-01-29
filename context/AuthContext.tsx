@@ -14,18 +14,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-
-    if (savedUser && token) {
-      setUser(JSON.parse(savedUser));
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('user');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return (parsed.id && parsed.role) ? parsed : null;
+      } catch { return null; }
     }
-    setLoading(false);
-  }, []);
+    return null;
+  });
+  const [loading, setLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
     // POST /auth/login
