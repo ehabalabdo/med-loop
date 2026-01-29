@@ -16,7 +16,7 @@ import AppointmentsView from './views/AppointmentsView';
 import DentalLabView from './views/DentalLabView';
 import ImplantView from './views/ImplantView';
 import CoursesView from './views/CoursesView';
-import DevModeSwitcher from './components/DevModeSwitcher';
+// import DevModeSwitcher from './components/DevModeSwitcher';
 
 // --- Safe Router Strategy ---
 const SafeRouter: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -231,7 +231,7 @@ const App: React.FC = () => {
         <AuthProvider>
           <SafeRouter>
             <AppRoutes />
-            <DevModeSwitcher /> 
+            {/* <DevModeSwitcher /> */}
           </SafeRouter>
         </AuthProvider>
       </ThemeProvider>

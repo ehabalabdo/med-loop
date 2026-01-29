@@ -16,6 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { language, toggleLanguage, t } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
@@ -72,19 +73,34 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
 
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-      {/* Sidebar - Desktop Only */}
-      <aside className="w-72 glass-sidebar text-white flex-shrink-0 hidden md:flex flex-col shadow-2xl relative z-20">
-        <div className="p-8 pb-4">
+      {/* Sidebar - Desktop & Mobile */}
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setSidebarOpen(false)}></div>
+      )}
+      <aside
+        className={`w-72 glass-sidebar text-white flex-shrink-0 flex-col shadow-2xl relative z-50 transition-transform duration-300 md:translate-x-0 md:static md:flex ${sidebarOpen ? 'flex fixed h-full left-0 top-0' : 'hidden'} md:flex`}
+        style={{ zIndex: 50 }}
+      >
+        <div className="p-8 pb-4 flex items-center justify-between">
           <div className="flex items-center gap-3 mb-1">
-             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/20 text-white text-xl">
-               <i className="fa-solid fa-heart-pulse"></i>
-             </div>
-             <div>
-                <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                    {t('system_name')}
-                </h1>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{t('system_sub')}</p>
-             </div>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/20 text-white text-xl">
+              <i className="fa-solid fa-heart-pulse"></i>
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+                {t('system_name')}
+              </h1>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{t('system_sub')}</p>
+            </div>
+            {/* زر إغلاق السلايدر للموبايل */}
+            <button
+              className="md:hidden ml-auto text-2xl text-white/60 hover:text-white transition"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close sidebar"
+            >
+              <i className="fa-solid fa-xmark"></i>
+            </button>
           </div>
         </div>
 
@@ -147,6 +163,15 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           </button>
         </div>
       </aside>
+      {/* زر فتح السلايدر للموبايل */}
+      <button
+        className="fixed top-4 left-4 z-50 md:hidden bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none"
+        onClick={() => setSidebarOpen(true)}
+        aria-label="Open sidebar"
+        style={{ display: sidebarOpen ? 'none' : 'flex' }}
+      >
+        <i className="fa-solid fa-bars"></i>
+      </button>
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 md:bg-transparent dark:bg-slate-900">

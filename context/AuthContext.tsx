@@ -44,8 +44,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
-    window.location.href = '/login';
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 100);
   };
 
   const simulateLogin = (newUser: User) => {

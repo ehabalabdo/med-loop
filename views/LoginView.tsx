@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
-import DevModeSwitcher from '../components/DevModeSwitcher';
+// import DevModeSwitcher from '../components/DevModeSwitcher';
 
 const LoginView: React.FC = () => {
   const { login } = useAuth();
@@ -146,7 +146,7 @@ const LoginView: React.FC = () => {
         </div>
         <div className="mt-6 text-xs text-slate-400 text-center">© 2026 Medloop</div>
       </div>
-      <DevModeSwitcher />
+      {/* <DevModeSwitcher /> */}
     </div>
   );
 };
