@@ -250,16 +250,19 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             {t('logout')}
           </button>
         </div>
+
       </aside>
+
       {/* زر فتح السلايدر للموبايل */}
-      <button
-        className="fixed top-4 left-4 z-50 md:hidden bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none"
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Open sidebar"
-        style={{ display: sidebarOpen ? 'none' : 'flex' }}
-      >
-        <i className="fa-solid fa-bars"></i>
-      </button>
+      {!sidebarOpen && (
+        <button
+          className={`fixed top-4 left-4 z-50 md:hidden bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none`}
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open sidebar"
+        >
+          <i className="fa-solid fa-bars"></i>
+        </button>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full overflow-hidden relative bg-slate-50 md:bg-transparent dark:bg-slate-900">
