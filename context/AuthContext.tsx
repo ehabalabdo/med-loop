@@ -18,25 +18,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. محاولة قراءة البيانات المخزنة فور تحميل التطبيق
-    const savedToken = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
 
-    if (savedToken && savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        // 2. التأكد من اكتمال الهوية (وجود ID و Role)
-        if (parsedUser.id && parsedUser.role) {
-          setUser(parsedUser); // تحديث الـ State ليراه كل البرنامج
-        } else {
-          // إذا البيانات ناقصة، امسح كل شيء
-          localStorage.clear();
-        }
-      } catch (e) {
-        localStorage.clear();
-      }
+    if (savedUser && token) {
+      setUser(JSON.parse(savedUser));
     }
-    setLoading(false); // إنهاء وضع التحميل للسماح للصفحات بالظهور
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
