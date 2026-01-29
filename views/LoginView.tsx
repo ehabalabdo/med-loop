@@ -26,6 +26,7 @@ const LoginView: React.FC = () => {
         body: JSON.stringify({ email, username: email, password })
       });
       const data = await response.json();
+      console.log("[LOGIN RESPONSE]", data);
 
       if (response.ok && data.token) {
         // 1. تخزين التوكن فوراً (أهم خطوة!)
