@@ -8,9 +8,14 @@ import { useLanguage } from '../context/LanguageContext';
 import { Clinic, Patient, Gender, Priority, Appointment, Notification, Invoice } from '../types';
 import { jsPDF } from "jspdf";
 
-const ReceptionView: React.FC = () => {
-  const { user } = useAuth();
-  const { t, language } = useLanguage();
+interface ReceptionViewProps {
+    user?: any;
+}
+
+const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
+    const { user: authUser } = useAuth();
+    const user = propUser || authUser;
+    const { t, language } = useLanguage();
   
   // Data State
   const [patients, setPatients] = useState<Patient[]>([]);
