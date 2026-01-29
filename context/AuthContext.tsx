@@ -13,11 +13,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(false);
+    // 1. محاولة قراءة البيانات المخزنة فور تحميل التطبيق
+    const savedToken = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+
+    if (savedToken && savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        // 2. التأكد من اكتمال الهوية (وجود ID و Role)
+        if (parsedUser.id && parsedUser.role) {
+          setUser(parsedUser); // تحديث الـ State ليراه كل البرنامج
+        } else {
+          // إذا البيانات ناقصة، امسح كل شيء
+          localStorage.clear();
+        }
+      } catch (e) {
+        localStorage.clear();
+      }
+    }
+    setLoading(false); // إنهاء وضع التحميل للسماح للصفحات بالظهور
   }, []);
 
   const login = async (email: string, password: string) => {
