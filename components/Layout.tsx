@@ -158,8 +158,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             <i className={`fa-solid ${isRTL ? 'fa-arrow-left-from-bracket' : 'fa-arrow-right-from-bracket'}`}></i>
             {t('logout')}
           </button>
-        </div>
-      </aside>
+        </aside>
 
       {/* زر فتح السلايدر للموبايل */}
       {!sidebarOpen && (
@@ -207,7 +206,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                {role === UserRole.DOCTOR && <NavItem to="/doctor" icon="fa-solid fa-user-doctor" label={t('doctor_console')} />}
                <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label={t('appointments_nav')} />
                <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label={t('patients_registry')} />
-               {/* لاحظ: زر الخروج لازم يكون جوا القوس، مش تحته */}
                <button onClick={logout} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wide border border-red-500/10">
                  <i className={`fa-solid ${language === 'ar' ? 'fa-arrow-left-from-bracket' : 'fa-arrow-right-from-bracket'}`}></i>
                  {t('logout')}
