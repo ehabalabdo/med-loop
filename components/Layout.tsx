@@ -252,7 +252,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             {t('logout')}
           </button>
         </div>
-      </aside>
+      </div>
+    </aside>
 
       {/* زر فتح السلايدر للموبايل */}
       {!sidebarOpen && (
