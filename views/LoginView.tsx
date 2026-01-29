@@ -20,7 +20,6 @@ const LoginView: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
-      // Surgical: Direct fetch login
       const response = await fetch('https://medloop-api.onrender.com/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,12 +28,13 @@ const LoginView: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.token) {
+        // 1. تخزين البيانات فوراً لكسر الـ Loop
         localStorage.setItem('token', data.token);
         localStorage.setItem('role', data.user.role);
-        console.log("Login Success, Redirecting...");
+        // 2. التحويل القسري لصفحة اللوحة
         window.location.href = '/dashboard';
       } else {
-        setError('بيانات الدخول غير صحيحة');
+        setError(data.message || 'Login failed');
       }
     } catch (err: any) {
       setError('خطأ في الاتصال بالسيرفر');
