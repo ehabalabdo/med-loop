@@ -28,6 +28,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       password: password
     };
     const res = await api.post('/auth/login', data);
+    // Debug: Print the received role from backend
+    console.log("FRONTEND_RECEIVED_ROLE:", res?.user?.role || res?.role);
     if (!res.token) throw new Error(res.message || 'Login failed');
     localStorage.setItem('token', res.token);
     setUser(res.user || { email, role: res.role });
