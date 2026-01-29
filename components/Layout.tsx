@@ -13,11 +13,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
-            <i className={`fa-solid ${isRTL ? 'fa-arrow-left-from-bracket' : 'fa-arrow-right-from-bracket'}`}></i>
-            {t('logout')}
-          </button>
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
-      </div>
   // RTL/LTR support
   const isRTL = language === 'ar';
 
