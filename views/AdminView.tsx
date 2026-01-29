@@ -7,15 +7,21 @@ import { Clinic, User, UserRole, Invoice, SystemSettings, ClinicCategory } from 
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
-const AdminView: React.FC = () => {
-  const { t, language } = useLanguage();
-  const { user: authUser, simulateLogin } = useAuth(); // Use context for simulation
-  const navigate = useNavigate(); // Hook for navigation
+interface AdminViewProps {
+    user?: User;
+}
+
+const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
+    const { t, language } = useLanguage();
+    const { user: authUser, simulateLogin } = useAuth(); // Use context for simulation
+    const navigate = useNavigate(); // Hook for navigation
+    // Prefer propUser if provided, otherwise fallback to context
+    const currentUser = propUser || authUser;
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+    // Remove unused setCurrentUser, use currentUser directly
 
   // Clinic/Dept Form State
   const [isAddingEntity, setIsAddingEntity] = useState(false);
