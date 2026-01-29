@@ -161,14 +161,15 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         </div>
       </aside>
       {/* زر فتح السلايدر للموبايل */}
-      <button
-        className={`fixed top-4 ${isRTL ? 'right-4' : 'left-4'} z-50 md:hidden bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none`}
-        onClick={() => setSidebarOpen(true)}
-        aria-label="Open sidebar"
-        style={{ display: sidebarOpen ? 'none' : 'flex' }}
-      >
-        <i className="fa-solid fa-bars"></i>
-      </button>
+      {!sidebarOpen && (
+        <button
+          className={`fixed top-4 ${isRTL ? 'right-4' : 'left-4'} z-50 md:hidden bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg focus:outline-none`}
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open sidebar"
+        >
+          <i className="fa-solid fa-bars"></i>
+        </button>
+      )}
         <div className="p-8 pb-4 flex items-center justify-between">
           <div className="flex items-center gap-3 mb-1">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-cyan-400 flex items-center justify-center shadow-lg shadow-primary/20 text-white text-xl">
