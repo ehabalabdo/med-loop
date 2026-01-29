@@ -23,18 +23,33 @@ const LoginView: React.FC = () => {
       const response = await fetch('https://medloop-api.onrender.com/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, username: email, password })
+        body: JSON.stringify({ email, password }) // إزالة username إذا لم يكن مطلوبًا
       });
+
+      // فحص نوع الاستجابة
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        setError('استجابة غير صالحة من السيرفر');
+        setIsLoading(false);
+        return;
+      }
+
       const data = await response.json();
       console.log("[LOGIN RESPONSE]", data);
 
+      // فحص صحة البيانات
+      if (!data || typeof data !== 'object') {
+        setError('استجابة غير متوقعة من السيرفر');
+        setIsLoading(false);
+        return;
+      }
+
       if (response.ok && data.token) {
-        // 1. تخزين التوكن فوراً (أهم خطوة!)
         localStorage.setItem('token', data.token);
-        // 2. تخزين بيانات المستخدم (إيميله ورتبته)
-        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
         console.log("✅ دخول ناجح، جاري التحويل للوحة التحكم...");
-        // 3. التحويل القسري باستخدام window.location لضمان تحديث حالة التطبيق
         window.location.href = '/dashboard';
       } else {
         setError(data.error || 'فشل تسجيل الدخول');
