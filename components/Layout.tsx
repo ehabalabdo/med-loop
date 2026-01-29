@@ -155,12 +155,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
             </div>
           </div>
           <button onClick={logout} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wide border border-red-500/10">
-
             <i className={`fa-solid ${isRTL ? 'fa-arrow-left-from-bracket' : 'fa-arrow-right-from-bracket'}`}></i>
             {t('logout')}
           </button>
         </div>
-      </div>
+      </aside>
 
       {/* زر فتح السلايدر للموبايل */}
       {!sidebarOpen && (
@@ -207,17 +206,17 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                {role === UserRole.DOCTOR && <NavItem to="/doctor" icon="fa-solid fa-user-doctor" label={t('doctor_console')} />}
                <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label={t('appointments_nav')} />
                <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label={t('patients_registry')} />
+               {/* زر الخروج لازم يكون قبل التسكيرة */}
+               <button onClick={logout} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wide border border-red-500/10">
+                 <i className={`fa-solid ${language === 'ar' ? 'fa-arrow-left-from-bracket' : 'fa-arrow-right-from-bracket'}`}></i>
+                 {t('logout')}
+               </button>
              </>
-              <button onClick={logout} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wide border border-red-500/10">
-                <i className={`fa-solid ${language === 'ar' ? 'fa-arrow-left-from-bracket' : 'fa-arrow-right-from-bracket'}`}></i>
-                {t('logout')}
-              </button>
-               <>
-                   {showClinicalViews && <div className="px-4 pb-2 mt-6 text-xs font-bold uppercase text-slate-600 tracking-wider">Departments</div>}
-        </div>
-      </div>
-                   {showImplantView && <NavItem to="/implant-company" icon="fa-solid fa-box-open" label="Implant Co." />}
-                   {showAcademyView && <NavItem to="/academy" icon="fa-solid fa-graduation-cap" label="Beauty Academy" />}
+           )}
+           {/* <--- التسكيرة لازم تكون هووووون في الآخر */}
+           {showClinicalViews && <div className="px-4 pb-2 mt-6 text-xs font-bold uppercase text-slate-600 tracking-wider">Departments</div>}
+           {showImplantView && <NavItem to="/implant-company" icon="fa-solid fa-box-open" label="Implant Co." />}
+           {showAcademyView && <NavItem to="/academy" icon="fa-solid fa-graduation-cap" label="Beauty Academy" />}
                </>
            )}
            
