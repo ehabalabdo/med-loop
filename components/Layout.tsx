@@ -253,7 +253,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
           </button>
         </div>
       </div>
-    </aside>
 
       {/* زر فتح السلايدر للموبايل */}
       {!sidebarOpen && (
