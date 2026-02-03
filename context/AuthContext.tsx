@@ -19,7 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return (parsed.id && parsed.role) ? parsed : null;
+        return (parsed.uid && parsed.role) ? parsed : null;
       } catch { return null; }
     }
     return null;
@@ -50,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const simulateLogin = (newUser: User) => {
+    localStorage.setItem('user', JSON.stringify(newUser));
     setUser(newUser);
   }
 
