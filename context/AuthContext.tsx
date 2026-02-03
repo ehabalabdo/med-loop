@@ -38,14 +38,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log("FRONTEND_RECEIVED_ROLE:", res?.user?.role || res?.role);
     if (!res.token) throw new Error(res.message || 'Login failed');
     localStorage.setItem('token', res.token);
-    setUser(res.user || { email, role: res.role });
-    window.location.href = '/dashboard';
+    const loggedUser = res.user || { email, role: res.role };
+    localStorage.setItem('user', JSON.stringify(loggedUser));
+    setUser(loggedUser);
   };
 
   const logout = async () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
-    window.location.href = '/login';
   };
 
   const simulateLogin = (newUser: User) => {

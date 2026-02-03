@@ -4,6 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserRole, User } from '../types';
 
+// Demo users for testing
+const demoUsers: User[] = [
+  { uid: 'demo_admin', name: 'Admin User', email: 'admin@medloop.com', role: UserRole.ADMIN, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  { uid: 'demo_secretary', name: 'Secretary User', email: 'secretary@medloop.com', role: UserRole.SECRETARY, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  { uid: 'demo_doctor', name: 'Dr. Ahmed', email: 'doctor@medloop.com', role: UserRole.DOCTOR, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  { uid: 'demo_lab', name: 'Lab Technician', email: 'lab@medloop.com', role: UserRole.LAB_TECH, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  { uid: 'demo_implant', name: 'Implant Manager', email: 'implant@medloop.com', role: UserRole.IMPLANT_MANAGER, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
+  { uid: 'demo_course', name: 'Course Manager', email: 'academy@medloop.com', role: UserRole.COURSE_MANAGER, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' }
+];
+
 const DevModeSwitcher: React.FC = () => {
   const { user: currentUser, simulateLogin } = useAuth();
   const navigate = useNavigate();
@@ -56,7 +66,7 @@ const DevModeSwitcher: React.FC = () => {
           </div>
           
           <div className="p-2 max-h-[400px] overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-slate-900/50">
-            {allUsers.map(u => {
+            {demoUsers.map(u => {
               const isActive = currentUser?.uid === u.uid;
               return (
                 <button

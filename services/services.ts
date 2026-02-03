@@ -1,5 +1,6 @@
 
 import { Clinic, Patient, User, UserRole, AuditMetadata, VisitData, Appointment, Invoice, Notification, PrescriptionItem, Attachment, SystemSettings, ClinicCategory, LabCase, LabCaseStatus, ImplantItem, ImplantOrder, ImplantOrderStatus, Course, CourseStudent, CourseSession, CourseStatus } from '../types';
+import { mockDb } from './mockFirebase';
 
 /**
  * PRODUCTION READINESS:
@@ -44,9 +45,11 @@ export const AuthService = {
 
   updateUser: async (admin: User, userId: string, data: Partial<User>): Promise<void> => {
     if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
+    const allUsers = mockDb.getAllUsers();
     const user = allUsers.find(u => u.uid === userId);
     if (!user) throw new Error("User not found");
     const updated = { ...user, ...data, ...createMeta(admin, user) };
+    mockDb.update('users', userId, updated);
   },
 
   deleteUser: async (admin: User, userId: string): Promise<void> => {
@@ -58,6 +61,7 @@ export const AuthService = {
 export const ClinicService = {
 
   getActive: async (): Promise<Clinic[]> => {
+    const all = mockDb.getCollection<Clinic>('clinics');
     return all.filter(c => c.active && !c.isArchived);
   },
 
@@ -71,13 +75,16 @@ export const ClinicService = {
       active: true, 
       ...createMeta(user)
     };
+    mockDb.add('clinics', newClinic);
   },
 
   toggleStatus: async (user: User, clinicId: string, status: boolean): Promise<void> => {
     if (user.role !== UserRole.ADMIN) throw new Error("Unauthorized");
+    const clinics = mockDb.getCollection<Clinic>('clinics');
     const clinic = clinics.find(c => c.id === clinicId);
     if (!clinic) throw new Error("Clinic not found");
     const updated = { ...clinic, active: status, ...createMeta(user, clinic) };
+    mockDb.update('clinics', clinicId, updated);
   },
   
   delete: async (user: User, clinicId: string): Promise<void> => {
@@ -87,6 +94,7 @@ export const ClinicService = {
 
 export const PatientService = {
   subscribe: (user: User, callback: (patients: Patient[]) => void) => {
+      const allPatients = mockDb.getCollection<Patient>('patients');
       let filtered = allPatients.filter(p => !p.isArchived);
       
       // Filter for Doctors: Only see patients in their clinics
@@ -104,6 +112,7 @@ export const PatientService = {
         },
 
   getAll: async (user: User): Promise<Patient[]> => {
+    const allPatients = mockDb.getCollection<Patient>('patients');
     const activePatients = allPatients.filter(p => !p.isArchived);
     if (user.role === UserRole.DOCTOR) {
         if (!user.clinicIds || user.clinicIds.length === 0) return [];
