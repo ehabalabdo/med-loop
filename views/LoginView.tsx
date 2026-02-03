@@ -20,41 +20,12 @@ const LoginView: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
-      const response = await fetch('https://medloop-api.onrender.com/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }) // إزالة username إذا لم يكن مطلوبًا
-      });
-
-      // فحص نوع الاستجابة
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        setError('استجابة غير صالحة من السيرفر');
-        setIsLoading(false);
-        return;
-      }
-
-      const data = await response.json();
-      console.log("[LOGIN RESPONSE]", data);
-
-      // فحص صحة البيانات
-      if (!data || typeof data !== 'object') {
-        setError('استجابة غير متوقعة من السيرفر');
-        setIsLoading(false);
-        return;
-      }
-
-      if (response.ok && data.token) {
-        localStorage.setItem('token', data.token);
-        const userToSave = data.user || { email, role: data.role };
-        localStorage.setItem('user', JSON.stringify(userToSave));
-        console.log("✅ دخول ناجح، جاري إعادة تحميل التطبيق...");
-        window.location.reload();
-      } else {
-        setError(data.error || 'فشل تسجيل الدخول');
-      }
+      await login(email, password);
+      // Login successful - AuthContext will update user state
+      // App.tsx will automatically redirect based on role
+      window.location.reload();
     } catch (err: any) {
-      setError('خطأ في الاتصال بالسيرفر');
+      setError(err.message || 'خطأ في تسجيل الدخول');
     } finally {
       setIsLoading(false);
     }

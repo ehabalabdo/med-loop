@@ -20,6 +20,7 @@ const QueueDisplayView: React.FC = () => {
   
   // Track previous patients to detect changes for TTS
   const prevPatientsRef = useRef<Patient[]>([]);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
 
   // Clock
   useEffect(() => {
@@ -90,18 +91,19 @@ const QueueDisplayView: React.FC = () => {
        return subscription;
     };
 
-    let unsubscribe: () => void;
-    fetchData().then(unsub => unsubscribe = unsub);
+    fetchData().then(unsub => {
+      unsubscribeRef.current = unsub;
+    });
 
     const poller = setInterval(() => {
        fetchData().then(unsub => {
-          if(unsubscribe) unsubscribe();
-          unsubscribe = unsub;
+          if(unsubscribeRef.current) unsubscribeRef.current();
+          unsubscribeRef.current = unsub;
        });
     }, 3000);
 
     return () => {
-        if(unsubscribe) unsubscribe();
+        if(unsubscribeRef.current) unsubscribeRef.current();
         clearInterval(poller);
     };
   }, [user, clinics, soundEnabled]); // Added dependencies
