@@ -46,11 +46,10 @@ const LoginView: React.FC = () => {
 
       if (response.ok && data.token) {
         localStorage.setItem('token', data.token);
-        if (data.user) {
-          localStorage.setItem('user', JSON.stringify(data.user));
-        }
-        console.log("✅ دخول ناجح، جاري التحويل للوحة التحكم...");
-        window.location.href = '/dashboard';
+        const userToSave = data.user || { email, role: data.role };
+        localStorage.setItem('user', JSON.stringify(userToSave));
+        console.log("✅ دخول ناجح، جاري إعادة تحميل التطبيق...");
+        window.location.reload();
       } else {
         setError(data.error || 'فشل تسجيل الدخول');
       }
