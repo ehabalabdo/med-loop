@@ -61,11 +61,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // If not found in staff, try patient login (search by username OR name OR email)
     const allPatients = await pgPatients.getAll();
-    const foundPatient = allPatients.find(
-      p => (p.username === identifier || p.name === identifier || p.email === identifier) && 
-           p.password === password && 
-           p.hasAccess === true
-    );
+    
+    // DEBUG: Log all patients data to see what we're getting
+    console.log('🔍 All Patients:', allPatients);
+    console.log('🔍 Looking for identifier:', identifier);
+    console.log('🔍 Looking for password:', password);
+    
+    const foundPatient = allPatients.find(p => {
+      console.log('🔍 Checking patient:', {
+        username: p.username,
+        name: p.name,
+        email: p.email,
+        password: p.password,
+        hasAccess: p.hasAccess,
+        hasAccessType: typeof p.hasAccess
+      });
+      
+      const usernameMatch = p.username === identifier;
+      const nameMatch = p.name === identifier;
+      const emailMatch = p.email === identifier;
+      const passwordMatch = p.password === password;
+      const hasAccess = p.hasAccess === true || p.hasAccess === 'true' || p.hasAccess === 1;
+      
+      console.log('🔍 Matches:', { usernameMatch, nameMatch, emailMatch, passwordMatch, hasAccess });
+      
+      return (usernameMatch || nameMatch || emailMatch) && passwordMatch && hasAccess;
+    });
+    
+    console.log('🔍 Found Patient:', foundPatient);
     
     if (foundPatient) {
       // Save patient to localStorage
