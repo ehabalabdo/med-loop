@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ClinicService, AuthService } from '../services/services';
+import { pgUsers } from '../services/pgServices';
 import { api } from '../src/api';
 import { Clinic, User, UserRole, Invoice, SystemSettings, ClinicCategory } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -53,12 +54,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
         try {
             const [c, allUsers] = await Promise.all([
                 ClinicService.getActive(),
-                api.get('/users')
+                pgUsers.getAll()
             ]);
             setClinics(c);
             setUsers(allUsers);
         } catch (err) {
-            // Optionally handle error
+            console.error('Error fetching data:', err);
         } finally {
             setLoading(false);
         }

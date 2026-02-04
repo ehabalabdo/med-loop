@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types';
 import { api } from '../src/api';
+import { pgUsers } from '../services/pgServices';
 
 interface AuthContextType {
   user: User | null;
@@ -27,20 +28,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
-    // POST /auth/login
-    const data = {
-      email: email,
-      username: email, // نرسل الإيميل أيضاً باسم username
-      password: password
-    };
-    const res = await api.post('/auth/login', data);
-    // Debug: Print the received role from backend
-    console.log("FRONTEND_RECEIVED_ROLE:", res?.user?.role || res?.role);
-    if (!res.token) throw new Error(res.message || 'Login failed');
-    localStorage.setItem('token', res.token);
-    const loggedUser = res.user || { email, role: res.role };
-    localStorage.setItem('user', JSON.stringify(loggedUser));
-    setUser(loggedUser);
+    // Use PostgreSQL directly instead of Render backend
+    const allUsers = await pgUsers.getAll();
+    const foundUser = allUsers.find(u => u.email === email && u.password === password);
+    
+    if (!foundUser) {
+      throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+    }
+    
+    if (!foundUser.isActive) {
+      throw new Error('هذا الحساب غير مفعل');
+    }
+    
+    // Save user to localStorage
+    localStorage.setItem('user', JSON.stringify(foundUser));
+    setUser(foundUser);
   };
 
   const logout = async () => {

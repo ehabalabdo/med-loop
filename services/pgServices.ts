@@ -1,5 +1,5 @@
 import sql from './db';
-import { User, Patient, Clinic, Appointment } from '../types';
+import { User, Patient, Clinic, Appointment, ClinicCategory } from '../types';
 
 /**
  * PostgreSQL Services - Direct connection to Neon Database
@@ -70,8 +70,8 @@ export const pgClinics = {
       id: String(row.id),
       name: row.name,
       type: row.type || 'General',
-      category: 'clinic' as const,
-      active: true,
+      category: (row.category || 'clinic') as ClinicCategory,
+      active: row.active !== false,
       createdAt: new Date(row.created_at || Date.now()).getTime(),
       createdBy: 'system',
       updatedAt: new Date(row.created_at || Date.now()).getTime(),
@@ -82,14 +82,14 @@ export const pgClinics = {
 
   create: async (clinic: Omit<Clinic, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
     const result = await sql`
-      INSERT INTO clinics (name, type, created_at) 
-      VALUES (${clinic.name}, ${clinic.type}, NOW()) 
+      INSERT INTO clinics (name, type, category, active, created_at) 
+      VALUES (${clinic.name}, ${clinic.type}, ${clinic.category || 'clinic'}, ${clinic.active !== false}, NOW()) 
       RETURNING id
     `;
     return String(result[0].id);
   },
 
-  update: async (id: string, data: Partial<Pick<Clinic, 'name' | 'type' | 'active'>>): Promise<void> => {
+  update: async (id: string, data: Partial<Pick<Clinic, 'name' | 'type' | 'category' | 'active'>>): Promise<void> => {
     const clinicId = parseInt(id);
     const updates: string[] = [];
     const values: any[] = [];
@@ -101,6 +101,10 @@ export const pgClinics = {
     if (data.type !== undefined) {
       updates.push(`type = $${updates.length + 1}`);
       values.push(data.type);
+    }
+    if (data.category !== undefined) {
+      updates.push(`category = $${updates.length + 1}`);
+      values.push(data.category);
     }
     if (data.active !== undefined) {
       updates.push(`active = $${updates.length + 1}`);
