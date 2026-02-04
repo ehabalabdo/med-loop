@@ -161,9 +161,15 @@ export const PatientService = {
         // Filter for Doctors: Only see patients in their clinics
         if (user.role === UserRole.DOCTOR) {
           if (!user.clinicIds || user.clinicIds.length === 0) {
+            console.warn('[PatientService.subscribe] Doctor has no clinicIds:', user.name);
             callback([]); return;
           }
-          filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+          const beforeCount = filtered.length;
+          filtered = filtered.filter(p => {
+            const hasClinic = p.currentVisit && p.currentVisit.clinicId;
+            return hasClinic && user.clinicIds.includes(p.currentVisit.clinicId);
+          });
+          console.log(`[PatientService.subscribe] Doctor ${user.name}: ${filtered.length}/${beforeCount} patients visible`);
         }
         callback(filtered.sort((a, b) => {
           if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
@@ -197,8 +203,20 @@ export const PatientService = {
       const allPatients = await pgPatients.getAll();
       const activePatients = allPatients.filter(p => !p.isArchived);
       if (user.role === UserRole.DOCTOR) {
-        if (!user.clinicIds || user.clinicIds.length === 0) return [];
-        return activePatients.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+        if (!user.clinicIds || user.clinicIds.length === 0) {
+          console.warn('[PatientService.getAll] Doctor has no clinicIds:', user.name);
+          return [];
+        }
+        const filtered = activePatients.filter(p => {
+          const hasClinic = p.currentVisit && p.currentVisit.clinicId;
+          const isMatch = hasClinic && user.clinicIds.includes(p.currentVisit.clinicId);
+          if (!isMatch && hasClinic) {
+            console.log(`[Filter] Patient ${p.name} in clinic ${p.currentVisit.clinicId}, doctor has: ${user.clinicIds.join(', ')}`);
+          }
+          return isMatch;
+        });
+        console.log(`[PatientService.getAll] Doctor ${user.name}: ${filtered.length}/${activePatients.length} patients`);
+        return filtered;
       }
       return activePatients;
     } else {
