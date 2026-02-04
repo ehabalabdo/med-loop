@@ -37,6 +37,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
   const [userFormData, setUserFormData] = useState({
       name: '',
       email: '',
+      password: '',
       role: UserRole.DOCTOR,
       clinicIds: [] as string[]
   });
@@ -115,12 +116,13 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
           setUserFormData({
               name: user.name,
               email: user.email,
+              password: user.password || '',
               role: user.role,
               clinicIds: [...user.clinicIds]
           });
       } else {
           setEditingUserId(null);
-          setUserFormData({ name: '', email: '', role: UserRole.DOCTOR, clinicIds: [] });
+          setUserFormData({ name: '', email: '', password: '', role: UserRole.DOCTOR, clinicIds: [] });
       }
       setIsStaffFormOpen(true);
   };
@@ -136,7 +138,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
           }
           setIsStaffFormOpen(false);
           setEditingUserId(null);
-          setUserFormData({ name: '', email: '', role: UserRole.DOCTOR, clinicIds: [] });
+          setUserFormData({ name: '', email: '', password: '', role: UserRole.DOCTOR, clinicIds: [] });
           fetchData();
       } catch (err: any) {
           alert(err.message);
@@ -591,6 +593,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email (Username)</label>
                                     <input type="email" className="w-full px-4 py-2.5 rounded-xl border border-purple-100 outline-none focus:ring-4 focus:ring-purple-100" placeholder="staff@clinic.com" value={userFormData.email} onChange={e => setUserFormData({...userFormData, email: e.target.value})} required />
                                 </div>
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
+                                <input type="password" className="w-full px-4 py-2.5 rounded-xl border border-purple-100 outline-none focus:ring-4 focus:ring-purple-100" placeholder="Enter password" value={userFormData.password} onChange={e => setUserFormData({...userFormData, password: e.target.value})} required={!editingUserId} />
+                                {editingUserId && <p className="text-xs text-slate-400 mt-1 ml-1">Leave blank to keep current password</p>}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

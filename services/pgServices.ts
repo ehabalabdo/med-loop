@@ -37,12 +37,13 @@ export const pgUsers = {
     return String(result[0].id);
   },
 
-  update: async (uid: string, data: Partial<Pick<User, 'name' | 'email' | 'role' | 'clinicIds' | 'isActive'>>): Promise<void> => {
+  update: async (uid: string, data: Partial<Pick<User, 'name' | 'email' | 'password' | 'role' | 'clinicIds' | 'isActive'>>): Promise<void> => {
     const userId = parseInt(uid);
     const updates: any = {};
     
     if (data.name !== undefined) updates.full_name = data.name;
     if (data.email !== undefined) updates.email = data.email;
+    if (data.password !== undefined && data.password !== '') updates.password = data.password;
     if (data.role !== undefined) updates.role = data.role;
     if (data.clinicIds !== undefined && data.clinicIds.length > 0) {
       updates.clinic_id = parseInt(data.clinicIds[0]);

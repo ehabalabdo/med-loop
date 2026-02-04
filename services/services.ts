@@ -38,13 +38,13 @@ const DEFAULT_SETTINGS: SystemSettings = {
 
 export const AuthService = {
   
-  createUser: async (admin: User, data: Pick<User, 'name'|'email'|'role'|'clinicIds'>): Promise<void> => {
+  createUser: async (admin: User, data: Pick<User, 'name'|'email'|'password'|'role'|'clinicIds'>): Promise<void> => {
     if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
     
     if (USE_POSTGRES) {
       await pgUsers.create({
         ...data,
-        password: 'password123',
+        password: data.password || 'password123',
         isActive: true,
         isArchived: false
       });
@@ -52,7 +52,7 @@ export const AuthService = {
       const newUser: User = {
         uid: generateId('user'),
         ...data,
-        password: 'password123',
+        password: data.password || 'password123',
         isActive: true,
         ...createMeta(admin)
       };
@@ -64,7 +64,12 @@ export const AuthService = {
     if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
     
     if (USE_POSTGRES) {
-      await pgUsers.update(userId, data);
+      // Remove password from update if it's empty (keep existing password)
+      const updateData = { ...data };
+      if (!updateData.password) {
+        delete updateData.password;
+      }
+      await pgUsers.update(userId, updateData);
     } else {
       const allUsers = mockDb.getAllUsers();
       const user = allUsers.find(u => u.uid === userId);
