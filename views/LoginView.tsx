@@ -10,7 +10,7 @@ const LoginView: React.FC = () => {
   const { login } = useAuth();
   const { t, toggleLanguage, language } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
-  const [identifier, setIdentifier] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +20,7 @@ const LoginView: React.FC = () => {
     setIsLoading(true);
     setError('');
     try {
-      await login(identifier, password);
+      await login(name, password);
       // Login successful - AuthContext will update user state
       // App.tsx will automatically redirect based on role
       window.location.reload();
@@ -66,15 +66,15 @@ const LoginView: React.FC = () => {
         </div>
         <form onSubmit={handleSubmit} className="w-full space-y-5">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">البريد الإلكتروني أو اسم المستخدم</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الاسم</label>
             <div className="relative">
               <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
               <input
                 type="text"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
-                placeholder="user@medcore.com or username"
+                placeholder="أدخل اسمك"
                 required
               />
             </div>

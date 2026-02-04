@@ -41,11 +41,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [loading, setLoading] = useState(false);
 
-  const login = async (usernameOrEmail: string, password: string) => {
-    // Try staff login first
+  const login = async (nameOrUsername: string, password: string) => {
+    // Try staff login first (search by name)
     const allUsers = await pgUsers.getAll();
     const foundUser = allUsers.find(
-      u => (u.email === usernameOrEmail || u.name === usernameOrEmail) && u.password === password
+      u => u.name === nameOrUsername && u.password === password
     );
     
     if (foundUser) {
@@ -59,10 +59,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // If not found in staff, try patient login
+    // If not found in staff, try patient login (search by name)
     const allPatients = await pgPatients.getAll();
     const foundPatient = allPatients.find(
-      p => (p.username === usernameOrEmail || p.email === usernameOrEmail) && 
+      p => p.name === nameOrUsername && 
            p.password === password && 
            p.hasAccess === true
     );
@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     // Not found in either table
-    throw new Error('البريد الإلكتروني/اسم المستخدم أو كلمة المرور غير صحيحة');
+    throw new Error('الاسم أو كلمة المرور غير صحيحة');
   };
 
   const patientLogin = async (username: string, password: string) => {
