@@ -247,7 +247,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
             });
             setFormData(prev => ({ ...prev, name: '', age: '', phone: '', email: '', password: '', reasonForVisit: '' }));
             setIsFormOpen(false);
-            await fetchPatients();
+            // No need to manually fetch - PatientService.subscribe will auto-update
             alert('تمت إضافة المريض بنجاح');
         } catch (e: any) {
             alert("Error: " + (e.message || 'فشل إضافة المريض'));
