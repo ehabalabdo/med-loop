@@ -338,10 +338,23 @@ export const PatientService = {
            items: billableItems
        });
        
-       // Move current visit to history
+       // Move current visit to history and reset currentVisit
        const newHistory = [...(patient.history || []), updatedVisit];
+       const resetVisit = {
+         visitId: '',
+         clinicId: '',
+         date: 0,
+         status: 'waiting' as const,
+         priority: 'normal' as const,
+         reasonForVisit: '',
+         source: 'walk-in' as const
+       };
+       
        if (USE_POSTGRES) {
-         await pgPatients.update(patient.id, { history: newHistory });
+         await pgPatients.update(patient.id, { 
+           history: newHistory,
+           currentVisit: resetVisit
+         });
        }
     }
   },
