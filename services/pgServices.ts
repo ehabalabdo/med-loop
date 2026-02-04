@@ -278,10 +278,10 @@ export const pgPatients = {
     // For real-time updates, call once immediately
     pgPatients.getAll().then(callback);
     
-    // Could implement polling here
+    // Poll frequently for near real-time updates
     const interval = setInterval(() => {
       pgPatients.getAll().then(callback);
-    }, 5000); // Poll every 5 seconds
+    }, 1000); // Poll every 1 second for faster UI updates
     
     // Return unsubscribe function
     return () => clearInterval(interval);
