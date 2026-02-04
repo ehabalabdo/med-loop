@@ -127,6 +127,12 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
       setIsStaffFormOpen(true);
   };
 
+  const closeStaffForm = () => {
+      setIsStaffFormOpen(false);
+      setEditingUserId(null);
+      setUserFormData({ name: '', email: '', password: '', role: UserRole.DOCTOR, clinicIds: [] });
+  };
+
   const handleStaffSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!currentUser) return;
@@ -136,9 +142,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
           } else {
               await AuthService.createUser(currentUser, userFormData);
           }
-          setIsStaffFormOpen(false);
-          setEditingUserId(null);
-          setUserFormData({ name: '', email: '', password: '', role: UserRole.DOCTOR, clinicIds: [] });
+          closeStaffForm();
           fetchData();
       } catch (err: any) {
           alert(err.message);
@@ -571,7 +575,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
                         <h2 className="font-extrabold text-slate-800 tracking-tight">Staff & Roles</h2>
                     </div>
                     <button 
-                        onClick={() => openStaffForm()}
+                        onClick={() => isStaffFormOpen ? closeStaffForm() : openStaffForm()}
                         className={`text-xs font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${
                             isStaffFormOpen ? 'bg-red-50 text-red-600' : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-900/10'
                         }`}
