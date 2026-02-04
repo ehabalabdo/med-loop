@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { ClinicService, AuthService } from '../services/services';
 import { api } from '../src/api';
 import { Clinic, User, UserRole, Invoice, SystemSettings, ClinicCategory } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -51,7 +52,7 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
         setLoading(true);
         try {
             const [c, allUsers] = await Promise.all([
-                api.get('/clinics'),
+                ClinicService.getActive(),
                 api.get('/users')
             ]);
             setClinics(c);
@@ -78,12 +79,17 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
   const handleAddEntity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !newEntityName) return;
-    // Use targetCategory set by the specific button
-    await ClinicService.add(currentUser, newEntityName, newEntityType || 'General', targetCategory);
-    setNewEntityName('');
-    setNewEntityType('');
-    setIsAddingEntity(false);
-    fetchData();
+    try {
+      // Use targetCategory set by the specific button
+      await ClinicService.add(currentUser, newEntityName, newEntityType || 'General', targetCategory);
+      setNewEntityName('');
+      setNewEntityType('');
+      setIsAddingEntity(false);
+      await fetchData();
+      alert('تمت الإضافة بنجاح');
+    } catch (e: any) {
+      alert('Error: ' + (e.message || 'فشلت الإضافة'));
+    }
   };
 
   const toggleClinic = async (id: string, currentStatus: boolean) => {

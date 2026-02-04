@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { ClinicService, AppointmentService, NotificationService, BillingService, SettingsService, CourseService } from '../services/services';
+import { ClinicService, PatientService, AppointmentService, NotificationService, BillingService, SettingsService, CourseService } from '../services/services';
 import { api } from '../src/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -98,8 +98,9 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
     // تحميل المرضى من السيرفر
     const fetchPatients = async () => {
+        if (!user) return;
         try {
-            const data = await api.get('/patients');
+            const data = await PatientService.getAll(user);
             setPatients(data);
         } catch (e) { setPatients([]); }
     };
@@ -110,12 +111,23 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name || !formData.clinicId) return;
+        if (!formData.name || !formData.clinicId || !user) return;
         try {
-            await api.post('/patients', {
-                full_name: formData.name,
+            await PatientService.add(user, {
+                name: formData.name,
+                age: parseInt(formData.age) || 0,
                 phone: formData.phone,
-                notes: formData.reasonForVisit
+                gender: formData.gender,
+                medicalProfile: {},
+                currentVisit: {
+                    visitId: '',
+                    clinicId: formData.clinicId,
+                    date: Date.now(),
+                    status: 'waiting',
+                    priority: formData.priority,
+                    reasonForVisit: formData.reasonForVisit,
+                    source: 'walk-in'
+                }
             });
             setFormData(prev => ({ ...prev, name: '', age: '', phone: '', reasonForVisit: '' }));
             setIsFormOpen(false);
