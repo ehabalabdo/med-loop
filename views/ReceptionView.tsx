@@ -352,7 +352,10 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
       try { const fullUrl = window.location.href.split('#')[0] + '#/queue-display'; window.open(fullUrl, 'MedCoreQueue', 'width=1000,height=800'); } catch (e) { alert("Cannot open window."); }
   };
 
-  const activeQueue = patients.filter(p => p.currentVisit.status !== 'completed');
+  // Filter out completed patients from UI display (using both status AND completedPatientIds Set)
+  const activeQueue = patients.filter(p => 
+    p.currentVisit.status !== 'completed' && !completedPatientIds.has(p.id)
+  );
 
   // Time formatting for the fancy clock
   const hh = currentTime.getHours().toString().padStart(2, '0');
