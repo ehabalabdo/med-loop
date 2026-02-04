@@ -134,7 +134,7 @@ export const pgClinics = {
 export const pgPatients = {
   getAll: async (): Promise<Patient[]> => {
     const result = await sql`SELECT * FROM patients ORDER BY id DESC`;
-    return result.map((row: any) => {
+    const patients = result.map((row: any) => {
       // Parse JSON columns
       let medicalProfile = row.medical_profile;
       if (typeof medicalProfile === 'string') {
@@ -184,6 +184,17 @@ export const pgPatients = {
         isArchived: false
       };
     });
+    
+    // DEBUG: Log what we're getting from database
+    console.log('[pgPatients.getAll] Raw DB data:', patients.map(p => ({
+      id: p.id,
+      name: p.name,
+      visitId: p.currentVisit?.visitId,
+      visitIdLength: p.currentVisit?.visitId?.length,
+      visitIdType: typeof p.currentVisit?.visitId
+    })));
+    
+    return patients;
   },
 
   create: async (patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
