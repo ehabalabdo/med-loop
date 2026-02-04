@@ -23,6 +23,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   const [todaysAppointments, setTodaysAppointments] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(new Set());
   
   // UI State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -98,6 +99,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
     // Play notification sound when new patient arrives
     const prevPatientCountRef = React.useRef<number>(0);
+    const prevPatientsRef = React.useRef<Patient[]>([]);
+    
     const playNotificationSound = () => {
         try {
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -128,16 +131,33 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         if (!user) return;
         
         const unsubscribe = PatientService.subscribe(user, (data) => {
+            // Detect patients who got completed (disappeared from data but were in previous list)
+            if (prevPatientsRef.current.length > 0) {
+                prevPatientsRef.current.forEach(prevPatient => {
+                    const stillExists = data.find(p => p.id === prevPatient.id);
+                    // If patient was waiting/in-progress and now disappeared, mark as completed
+                    if (!stillExists && prevPatient.currentVisit?.visitId) {
+                        setCompletedPatientIds(prev => new Set(prev).add(prevPatient.id));
+                    }
+                });
+            }
+            
+            // Store current patients for next comparison
+            prevPatientsRef.current = data;
+            
+            // Filter out completed patients
+            const filteredData = data.filter(p => !completedPatientIds.has(p.id));
+            
             // Check if new patient arrived (count increased)
-            if (prevPatientCountRef.current > 0 && data.length > prevPatientCountRef.current) {
+            if (prevPatientCountRef.current > 0 && filteredData.length > prevPatientCountRef.current) {
                 playNotificationSound();
             }
-            prevPatientCountRef.current = data.length;
-            setPatients(data);
+            prevPatientCountRef.current = filteredData.length;
+            setPatients(filteredData);
         });
         
         return () => unsubscribe();
-    }, [user]);
+    }, [user, completedPatientIds]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
