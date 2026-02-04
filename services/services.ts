@@ -259,6 +259,23 @@ export const PatientService = {
     }
   },
 
+  update: async (user: User, patientId: string, data: Partial<Pick<Patient, 'name'|'age'|'phone'|'gender'|'username'|'email'|'password'|'hasAccess'>>): Promise<void> => {
+    if (USE_POSTGRES) {
+      // Remove password from update if it's empty (keep existing password)
+      const updateData = { ...data };
+      if (!updateData.password) {
+        delete updateData.password;
+      }
+      await pgPatients.update(patientId, updateData);
+    } else {
+      const allPatients = mockDb.getCollection<Patient>('patients');
+      const patient = allPatients.find(p => p.id === patientId);
+      if (!patient) throw new Error("Patient not found");
+      const updated = { ...patient, ...data, ...createMeta(user, patient) };
+      await mockDb.writeDocument('patients', updated);
+    }
+  },
+
   updateVisitData: async (user: User, patient: Patient, data: Partial<VisitData>) => {
     const updated: Patient = { 
         ...patient,

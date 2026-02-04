@@ -16,6 +16,8 @@ import AppointmentsView from './views/AppointmentsView';
 import DentalLabView from './views/DentalLabView';
 import ImplantView from './views/ImplantView';
 import CoursesView from './views/CoursesView';
+import PatientLoginView from './views/PatientLoginView';
+import PatientDashboardView from './views/PatientDashboardView';
 import DevModeSwitcher from './components/DevModeSwitcher';
 
 // --- Safe Router Strategy ---
@@ -105,11 +107,22 @@ const getHomeRoute = (user: User): string => {
 
 // --- App Router ---
 const AppRoutes: React.FC = () => {
-  const { user } = useAuth();
+  const { user, patientUser } = useAuth();
 
   return (
     <Routes>
+      {/* Staff Login */}
       <Route path="/login" element={user ? <RedirectHandler to={getHomeRoute(user)} /> : <LoginView />} />
+
+      {/* Patient Portal Routes */}
+      <Route 
+        path="/patient/login" 
+        element={patientUser ? <RedirectHandler to="/patient/dashboard" /> : <PatientLoginView />} 
+      />
+      <Route 
+        path="/patient/dashboard" 
+        element={patientUser ? <PatientDashboardView /> : <RedirectHandler to="/patient/login" />} 
+      />
 
       {/* Admin Routes */}
       <Route 

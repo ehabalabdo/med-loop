@@ -188,6 +188,26 @@ export const pgPatients = {
     return String(result[0].id);
   },
 
+  update: async (id: string, data: Partial<Pick<Patient, 'name' | 'age' | 'gender' | 'phone' | 'username' | 'email' | 'password' | 'hasAccess'>>): Promise<void> => {
+    const patientId = parseInt(id);
+    const updates: any = {};
+    
+    if (data.name !== undefined) updates.full_name = data.name;
+    if (data.age !== undefined) updates.age = data.age;
+    if (data.gender !== undefined) updates.gender = data.gender;
+    if (data.phone !== undefined) updates.phone = data.phone;
+    if (data.username !== undefined) updates.username = data.username || null;
+    if (data.email !== undefined) updates.email = data.email || null;
+    if (data.password !== undefined && data.password !== '') updates.password = data.password;
+    if (data.hasAccess !== undefined) updates.has_access = data.hasAccess;
+    
+    if (Object.keys(updates).length > 0) {
+      const setClause = Object.keys(updates).map((key, i) => `${key} = $${i + 1}`).join(', ');
+      const values = Object.values(updates);
+      await sql`UPDATE patients SET ${sql.unsafe(setClause)} WHERE id = ${patientId}`;
+    }
+  },
+
   subscribe: (callback: (patients: Patient[]) => void): (() => void) => {
     // For real-time updates, call once immediately
     pgPatients.getAll().then(callback);

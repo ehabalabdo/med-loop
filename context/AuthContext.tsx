@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '../types';
+import { User, Patient } from '../types';
 import { api } from '../src/api';
-import { pgUsers } from '../services/pgServices';
+import { pgUsers, pgPatients } from '../services/pgServices';
 
 interface AuthContextType {
   user: User | null;
+  patientUser: Patient | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  patientLogin: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   simulateLogin: (user: User) => void;
 }
@@ -25,6 +27,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     return null;
   });
+  
+  const [patientUser, setPatientUser] = useState<Patient | null>(() => {
+    const saved = localStorage.getItem('patientUser');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return (parsed.id && parsed.username) ? parsed : null;
+      } catch { return null; }
+    }
+    return null;
+  });
+  
   const [loading, setLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
@@ -45,10 +59,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(foundUser);
   };
 
+  const patientLogin = async (username: string, password: string) => {
+    // Get all patients from PostgreSQL
+    const allPatients = await pgPatients.getAll();
+    const foundPatient = allPatients.find(
+      p => p.username === username && p.password === password && p.hasAccess === true
+    );
+    
+    if (!foundPatient) {
+      throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+    }
+    
+    // Save patient to localStorage
+    localStorage.setItem('patientUser', JSON.stringify(foundPatient));
+    setPatientUser(foundPatient);
+  };
+
   const logout = async () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('patientUser');
     setUser(null);
+    setPatientUser(null);
   };
 
   const simulateLogin = (newUser: User) => {
@@ -57,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, simulateLogin }}>
+    <AuthContext.Provider value={{ user, patientUser, loading, login, patientLogin, logout, simulateLogin }}>
       {children}
     </AuthContext.Provider>
   );

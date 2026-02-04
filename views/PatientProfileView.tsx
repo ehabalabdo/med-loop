@@ -24,6 +24,16 @@ const PatientProfileView: React.FC = () => {
   const [diagnosis, setDiagnosis] = useState('');
   const [treatment, setTreatment] = useState('');
 
+  // Edit State for Basic Tab (Patient Portal Access)
+  const [isEditingBasic, setIsEditingBasic] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAge, setEditAge] = useState(0);
+  const [editPhone, setEditPhone] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editHasAccess, setEditHasAccess] = useState(false);
+
     useEffect(() => {
         const fetchData = async () => {
             if (!user) return;
@@ -51,6 +61,48 @@ const PatientProfileView: React.FC = () => {
      } catch (e: any) {
          alert(e.message);
      }
+  };
+
+  const handleEditBasic = () => {
+    if (!patient) return;
+    setEditName(patient.name);
+    setEditAge(patient.age);
+    setEditPhone(patient.phone);
+    setEditUsername(patient.username || '');
+    setEditEmail(patient.email || '');
+    setEditPassword('');
+    setEditHasAccess(patient.hasAccess || false);
+    setIsEditingBasic(true);
+  };
+
+  const handleCancelBasicEdit = () => {
+    setIsEditingBasic(false);
+    setEditPassword('');
+  };
+
+  const handleSaveBasic = async () => {
+    if (!patient || !user) return;
+    try {
+      await PatientService.update(user, patient.id, {
+        name: editName,
+        age: editAge,
+        phone: editPhone,
+        username: editUsername || undefined,
+        email: editEmail || undefined,
+        password: editPassword || undefined,
+        hasAccess: editHasAccess
+      });
+      
+      // Reload patient data
+      const updated = await PatientService.getById(user, patient.id);
+      if (updated) setPatient(updated);
+      
+      setIsEditingBasic(false);
+      setEditPassword('');
+      alert(t('saved_successfully'));
+    } catch (e: any) {
+      alert(e.message);
+    }
   };
 
   const getClinicName = (id: string) => clinics.find(c => c.id === id)?.name || id;
@@ -150,25 +202,136 @@ const PatientProfileView: React.FC = () => {
            {activeTab === 'basic' && (
                <div className="animate-fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
                    <div>
-                       <h3 className="text-sm font-bold uppercase text-slate-400 mb-4">{t('personal_info')}</h3>
-                       <div className="space-y-4">
-                           <div className="flex justify-between border-b border-gray-50 pb-2">
-                               <span className="text-slate-500">{t('full_name')}</span>
-                               <span className="font-medium">{patient.name}</span>
-                           </div>
-                           <div className="flex justify-between border-b border-gray-50 pb-2">
-                               <span className="text-slate-500">{t('gender')}</span>
-                               <span className="font-medium capitalize">{patient.gender}</span>
-                           </div>
-                           <div className="flex justify-between border-b border-gray-50 pb-2">
-                               <span className="text-slate-500">{t('age')}</span>
-                               <span className="font-medium">{patient.age}</span>
-                           </div>
-                           <div className="flex justify-between border-b border-gray-50 pb-2">
-                               <span className="text-slate-500">{t('phone')}</span>
-                               <span className="font-medium font-mono">{patient.phone}</span>
-                           </div>
+                       <div className="flex items-center justify-between mb-4">
+                           <h3 className="text-sm font-bold uppercase text-slate-400">{t('personal_info')}</h3>
+                           {user?.role === UserRole.ADMIN && !isEditingBasic && (
+                               <button
+                                   onClick={handleEditBasic}
+                                   className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg flex items-center gap-1"
+                               >
+                                   <i className="fa-solid fa-pen"></i> تعديل
+                               </button>
+                           )}
                        </div>
+                       
+                       {!isEditingBasic ? (
+                           <div className="space-y-4">
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">{t('full_name')}</span>
+                                   <span className="font-medium">{patient.name}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">{t('gender')}</span>
+                                   <span className="font-medium capitalize">{patient.gender}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">{t('age')}</span>
+                                   <span className="font-medium">{patient.age}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">{t('phone')}</span>
+                                   <span className="font-medium font-mono">{patient.phone}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">اسم المستخدم</span>
+                                   <span className="font-medium">{patient.username || '—'}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">البريد الإلكتروني</span>
+                                   <span className="font-medium">{patient.email || '—'}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">الدخول للبوابة</span>
+                                   <span className={`font-bold ${patient.hasAccess ? 'text-green-600' : 'text-red-600'}`}>
+                                       {patient.hasAccess ? '✓ مفعل' : '✗ معطل'}
+                                   </span>
+                               </div>
+                           </div>
+                       ) : (
+                           <div className="space-y-4">
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">{t('full_name')}</label>
+                                   <input
+                                       type="text"
+                                       value={editName}
+                                       onChange={e => setEditName(e.target.value)}
+                                       className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">{t('age')}</label>
+                                   <input
+                                       type="number"
+                                       value={editAge}
+                                       onChange={e => setEditAge(parseInt(e.target.value))}
+                                       className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">{t('phone')}</label>
+                                   <input
+                                       type="text"
+                                       value={editPhone}
+                                       onChange={e => setEditPhone(e.target.value)}
+                                       className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">اسم المستخدم (للبوابة)</label>
+                                   <input
+                                       type="text"
+                                       value={editUsername}
+                                       onChange={e => setEditUsername(e.target.value)}
+                                       className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                                       placeholder="username"
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">البريد الإلكتروني</label>
+                                   <input
+                                       type="email"
+                                       value={editEmail}
+                                       onChange={e => setEditEmail(e.target.value)}
+                                       className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                                       placeholder="email@example.com"
+                                   />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">كلمة المرور (اتركها فارغة للإبقاء على القديمة)</label>
+                                   <input
+                                       type="password"
+                                       value={editPassword}
+                                       onChange={e => setEditPassword(e.target.value)}
+                                       className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                                       placeholder="••••••••"
+                                   />
+                               </div>
+                               <div className="flex items-center gap-2">
+                                   <input
+                                       type="checkbox"
+                                       id="hasAccess"
+                                       checked={editHasAccess}
+                                       onChange={e => setEditHasAccess(e.target.checked)}
+                                       className="w-4 h-4"
+                                   />
+                                   <label htmlFor="hasAccess" className="text-sm font-medium text-slate-700">تفعيل الدخول لبوابة المريض</label>
+                               </div>
+                               <div className="flex gap-2 pt-2">
+                                   <button
+                                       onClick={handleSaveBasic}
+                                       className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm"
+                                   >
+                                       <i className="fa-solid fa-check"></i> حفظ
+                                   </button>
+                                   <button
+                                       onClick={handleCancelBasicEdit}
+                                       className="flex-1 bg-gray-300 hover:bg-gray-400 text-slate-700 px-4 py-2 rounded-lg font-bold text-sm"
+                                   >
+                                       <i className="fa-solid fa-times"></i> إلغاء
+                                   </button>
+                               </div>
+                           </div>
+                       )}
                    </div>
 
                    <div>
