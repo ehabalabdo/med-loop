@@ -282,16 +282,27 @@ export const PatientService = {
         currentVisit: { ...patient.currentVisit, ...data },
         ...createMeta(user, patient) 
     };
-    await mockDb.writeDocument('patients', updated);
+    
+    if (USE_POSTGRES) {
+      await pgPatients.update(patient.id, { currentVisit: updated.currentVisit });
+    } else {
+      await mockDb.writeDocument('patients', updated);
+    }
   },
 
   updateStatus: async (user: User, patient: Patient, status: VisitData['status'], doctorData?: Partial<VisitData>) => {
+    const updatedVisit = { ...patient.currentVisit, status, ...(doctorData || {}) };
     const updated: Patient = { 
       ...patient,
-      currentVisit: { ...patient.currentVisit, status, ...(doctorData || {}) },
+      currentVisit: updatedVisit,
       ...createMeta(user, patient) 
     };
-    await mockDb.writeDocument('patients', updated);
+    
+    if (USE_POSTGRES) {
+      await pgPatients.update(patient.id, { currentVisit: updatedVisit });
+    } else {
+      await mockDb.writeDocument('patients', updated);
+    }
     
     if (status === 'completed') {
        const billableItems = doctorData?.invoiceItems || [];
@@ -304,16 +315,27 @@ export const PatientService = {
            patientName: patient.name,
            items: billableItems
        });
+       
+       // Move current visit to history
+       const newHistory = [...(patient.history || []), updatedVisit];
+       if (USE_POSTGRES) {
+         await pgPatients.update(patient.id, { history: newHistory });
+       }
     }
   },
 
   archive: async (user: User, patientId: string) => {
-      if (user.role !== UserRole.ADMIN) throw new Error("Unauthorized");
+    if (user.role !== UserRole.ADMIN) throw new Error("Unauthorized");
+    
+    if (USE_POSTGRES) {
+      await pgPatients.update(patientId, { isArchived: true });
+    } else {
       const allPatients = mockDb.getCollection<Patient>('patients');
       const patient = allPatients.find(p => p.id === patientId);
       if (!patient) throw new Error("Patient not found");
       const updated = { ...patient, isArchived: true, ...createMeta(user, patient) };
       await mockDb.writeDocument('patients', updated);
+    }
   }
 };
 

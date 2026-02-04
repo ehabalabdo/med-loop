@@ -134,43 +134,68 @@ export const pgClinics = {
 export const pgPatients = {
   getAll: async (): Promise<Patient[]> => {
     const result = await sql`SELECT * FROM patients ORDER BY id DESC`;
-    return result.map((row: any) => ({
-      id: String(row.id),
-      name: row.full_name,
-      age: row.age || 0,
-      gender: (row.gender || 'male') as 'male' | 'female',
-      phone: row.phone || '',
-      username: row.username || undefined,
-      email: row.email || undefined,
-      password: row.password || undefined,
-      hasAccess: row.has_access || false,
-      medicalProfile: {
-        allergies: { exists: false, details: '' },
-        chronicConditions: { exists: false, details: '' },
-        currentMedications: { exists: false, details: '' },
-        isPregnant: false,
-        notes: row.notes || ''
-      },
-      currentVisit: {
-        visitId: `v_${row.id}_${Date.now()}`,
-        clinicId: '',
-        date: Date.now(),
-        status: 'waiting' as const,
-        priority: 'normal' as const,
-        reasonForVisit: row.notes || ''
-      },
-      history: [],
-      createdAt: new Date(row.created_at || Date.now()).getTime(),
-      createdBy: 'system',
-      updatedAt: new Date(row.created_at || Date.now()).getTime(),
-      updatedBy: 'system',
-      isArchived: false
-    }));
+    return result.map((row: any) => {
+      // Parse JSON columns
+      let medicalProfile = row.medical_profile;
+      if (typeof medicalProfile === 'string') {
+        try { medicalProfile = JSON.parse(medicalProfile); } catch { medicalProfile = {}; }
+      }
+      
+      let currentVisit = row.current_visit;
+      if (typeof currentVisit === 'string') {
+        try { currentVisit = JSON.parse(currentVisit); } catch { currentVisit = null; }
+      }
+      
+      let history = row.history;
+      if (typeof history === 'string') {
+        try { history = JSON.parse(history); } catch { history = []; }
+      }
+      
+      return {
+        id: String(row.id),
+        name: row.full_name,
+        age: row.age || 0,
+        gender: (row.gender || 'male') as 'male' | 'female',
+        phone: row.phone || '',
+        username: row.username || undefined,
+        email: row.email || undefined,
+        password: row.password || undefined,
+        hasAccess: row.has_access || false,
+        medicalProfile: medicalProfile && Object.keys(medicalProfile).length > 0 ? medicalProfile : {
+          allergies: { exists: false, details: '' },
+          chronicConditions: { exists: false, details: '' },
+          currentMedications: { exists: false, details: '' },
+          isPregnant: false,
+          notes: row.notes || ''
+        },
+        currentVisit: currentVisit && Object.keys(currentVisit).length > 0 ? currentVisit : {
+          visitId: `v_${row.id}_${Date.now()}`,
+          clinicId: '',
+          date: Date.now(),
+          status: 'waiting' as const,
+          priority: 'normal' as const,
+          reasonForVisit: row.notes || ''
+        },
+        history: Array.isArray(history) ? history : [],
+        createdAt: new Date(row.created_at || Date.now()).getTime(),
+        createdBy: 'system',
+        updatedAt: new Date(row.created_at || Date.now()).getTime(),
+        updatedBy: 'system',
+        isArchived: false
+      };
+    });
   },
 
   create: async (patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
+    const medicalProfileJson = JSON.stringify(patient.medicalProfile || {});
+    const currentVisitJson = JSON.stringify(patient.currentVisit || {});
+    const historyJson = JSON.stringify(patient.history || []);
+    
     const result = await sql`
-      INSERT INTO patients (full_name, age, gender, phone, username, email, password, has_access, notes, created_at) 
+      INSERT INTO patients (
+        full_name, age, gender, phone, username, email, password, has_access, 
+        notes, medical_profile, current_visit, history, created_at
+      ) 
       VALUES (
         ${patient.name}, 
         ${patient.age || 0}, 
@@ -181,6 +206,9 @@ export const pgPatients = {
         ${patient.password || null}, 
         ${patient.hasAccess || false}, 
         ${patient.medicalProfile?.notes || ''}, 
+        ${medicalProfileJson}::jsonb,
+        ${currentVisitJson}::jsonb,
+        ${historyJson}::jsonb,
         NOW()
       )
       RETURNING id
@@ -188,23 +216,61 @@ export const pgPatients = {
     return String(result[0].id);
   },
 
-  update: async (id: string, data: Partial<Pick<Patient, 'name' | 'age' | 'gender' | 'phone' | 'username' | 'email' | 'password' | 'hasAccess'>>): Promise<void> => {
+  update: async (id: string, data: Partial<Patient>): Promise<void> => {
     const patientId = parseInt(id);
-    const updates: any = {};
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramCounter = 1;
     
-    if (data.name !== undefined) updates.full_name = data.name;
-    if (data.age !== undefined) updates.age = data.age;
-    if (data.gender !== undefined) updates.gender = data.gender;
-    if (data.phone !== undefined) updates.phone = data.phone;
-    if (data.username !== undefined) updates.username = data.username || null;
-    if (data.email !== undefined) updates.email = data.email || null;
-    if (data.password !== undefined && data.password !== '') updates.password = data.password;
-    if (data.hasAccess !== undefined) updates.has_access = data.hasAccess;
+    if (data.name !== undefined) {
+      updates.push(`full_name = $${paramCounter++}`);
+      values.push(data.name);
+    }
+    if (data.age !== undefined) {
+      updates.push(`age = $${paramCounter++}`);
+      values.push(data.age);
+    }
+    if (data.gender !== undefined) {
+      updates.push(`gender = $${paramCounter++}`);
+      values.push(data.gender);
+    }
+    if (data.phone !== undefined) {
+      updates.push(`phone = $${paramCounter++}`);
+      values.push(data.phone);
+    }
+    if (data.username !== undefined) {
+      updates.push(`username = $${paramCounter++}`);
+      values.push(data.username || null);
+    }
+    if (data.email !== undefined) {
+      updates.push(`email = $${paramCounter++}`);
+      values.push(data.email || null);
+    }
+    if (data.password !== undefined && data.password !== '') {
+      updates.push(`password = $${paramCounter++}`);
+      values.push(data.password);
+    }
+    if (data.hasAccess !== undefined) {
+      updates.push(`has_access = $${paramCounter++}`);
+      values.push(data.hasAccess);
+    }
+    if (data.medicalProfile !== undefined) {
+      updates.push(`medical_profile = $${paramCounter++}::jsonb`);
+      values.push(JSON.stringify(data.medicalProfile));
+    }
+    if (data.currentVisit !== undefined) {
+      updates.push(`current_visit = $${paramCounter++}::jsonb`);
+      values.push(JSON.stringify(data.currentVisit));
+    }
+    if (data.history !== undefined) {
+      updates.push(`history = $${paramCounter++}::jsonb`);
+      values.push(JSON.stringify(data.history));
+    }
     
-    if (Object.keys(updates).length > 0) {
-      const setClause = Object.keys(updates).map((key, i) => `${key} = $${i + 1}`).join(', ');
-      const values = Object.values(updates);
-      await sql`UPDATE patients SET ${sql.unsafe(setClause)} WHERE id = ${patientId}`;
+    if (updates.length > 0) {
+      const query = `UPDATE patients SET ${updates.join(', ')} WHERE id = $${paramCounter}`;
+      values.push(patientId);
+      await sql.unsafe(query, values);
     }
   },
 
