@@ -1,6 +1,11 @@
 
 import { Clinic, Patient, User, UserRole, AuditMetadata, VisitData, Appointment, Invoice, Notification, PrescriptionItem, Attachment, SystemSettings, ClinicCategory, LabCase, LabCaseStatus, ImplantItem, ImplantOrder, ImplantOrderStatus, Course, CourseStudent, CourseSession, CourseStatus } from '../types';
 import { mockDb } from './mockFirebase';
+import { pgUsers, pgClinics, pgPatients, pgAppointments } from './pgServices';
+
+// Check if we should use PostgreSQL (production) or mockDb (development)
+// For now, always use PostgreSQL since we have Neon set up
+const USE_POSTGRES = true;
 
 /**
  * PRODUCTION READINESS:
