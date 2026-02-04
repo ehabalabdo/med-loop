@@ -156,13 +156,40 @@ export const PatientService = {
     if (USE_POSTGRES) {
       // Use PostgreSQL with polling for real-time updates
       return pgPatients.subscribe((allPatients) => {
+        console.log('[PatientService.subscribe] BEFORE FILTER - All patients from DB:', allPatients.map(p => ({
+          id: p.id,
+          name: p.name,
+          visitId: p.currentVisit?.visitId,
+          visitIdIsEmpty: p.currentVisit?.visitId === '',
+          visitIdLength: p.currentVisit?.visitId?.length,
+          clinicId: p.currentVisit?.clinicId
+        })));
+        
         // Filter: only active patients with current visit (visitId must be non-empty string)
         let filtered = allPatients.filter(p => {
-          return !p.isArchived && 
+          const shouldShow = !p.isArchived && 
                  p.currentVisit && 
                  p.currentVisit.visitId && 
                  p.currentVisit.visitId.trim() !== '';
+          
+          if (!shouldShow) {
+            console.log('[PatientService.subscribe] FILTERING OUT patient:', {
+              id: p.id,
+              name: p.name,
+              isArchived: p.isArchived,
+              hasCurrentVisit: !!p.currentVisit,
+              visitId: p.currentVisit?.visitId,
+              visitIdTrimmed: p.currentVisit?.visitId?.trim(),
+              reason: !p.currentVisit ? 'no currentVisit' : 
+                      !p.currentVisit.visitId ? 'no visitId' :
+                      p.currentVisit.visitId.trim() === '' ? 'empty visitId' : 'unknown'
+            });
+          }
+          
+          return shouldShow;
         });
+        
+        console.log('[PatientService.subscribe] AFTER FILTER - Filtered count:', filtered.length);
         
         // Filter for Doctors: Only see patients in their clinics
         if (user.role === UserRole.DOCTOR) {
@@ -340,6 +367,13 @@ export const PatientService = {
     const updatedVisit = { ...patient.currentVisit, status, ...(doctorData || {}) };
     
     if (status === 'completed') {
+       console.log('[PatientService.updateStatus] COMPLETING patient:', {
+         patientId: patient.id,
+         patientName: patient.name,
+         currentVisitId: patient.currentVisit.visitId,
+         willResetTo: ''
+       });
+       
        // Create invoice first
        const billableItems = doctorData?.invoiceItems || [];
        if (billableItems.length === 0) {
@@ -364,11 +398,19 @@ export const PatientService = {
          source: 'walk-in' as const
        };
        
+       console.log('[PatientService.updateStatus] About to save to DB:', {
+         patientId: patient.id,
+         resetVisit: resetVisit,
+         resetVisitStringified: JSON.stringify(resetVisit)
+       });
+       
        if (USE_POSTGRES) {
          await pgPatients.update(patient.id, { 
            history: newHistory,
            currentVisit: resetVisit
          });
+         
+         console.log('[PatientService.updateStatus] SAVED to PostgreSQL successfully');
        } else {
          const updated: Patient = { 
            ...patient,
