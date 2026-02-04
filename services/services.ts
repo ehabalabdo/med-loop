@@ -127,23 +127,43 @@ export const ClinicService = {
 
 export const PatientService = {
   subscribe: (user: User, callback: (patients: Patient[]) => void): (() => void) => {
+    if (USE_POSTGRES) {
+      // Use PostgreSQL with polling for real-time updates
+      return pgPatients.subscribe((allPatients) => {
+        let filtered = allPatients.filter(p => !p.isArchived);
+        
+        // Filter for Doctors: Only see patients in their clinics
+        if (user.role === UserRole.DOCTOR) {
+          if (!user.clinicIds || user.clinicIds.length === 0) {
+            callback([]); return;
+          }
+          filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+        }
+        callback(filtered.sort((a, b) => {
+          if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
+          if (a.currentVisit.priority !== 'urgent' && b.currentVisit.priority === 'urgent') return 1;
+          return a.currentVisit.date - b.currentVisit.date;
+        }));
+      });
+    } else {
       // Use mockDb.subscribeToPatients for real-time updates
       return mockDb.subscribeToPatients((allPatients) => {
         let filtered = allPatients.filter(p => !p.isArchived);
       
-      // Filter for Doctors: Only see patients in their clinics
-            if (user.role === UserRole.DOCTOR) {
-                if (!user.clinicIds || user.clinicIds.length === 0) {
-                    callback([]); return;
-                }
-                filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
-            }
-            callback(filtered.sort((a, b) => {
-                if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
-                if (a.currentVisit.priority !== 'urgent' && b.currentVisit.priority === 'urgent') return 1;
-                return a.currentVisit.date - b.currentVisit.date;
-            }));
-        });
+        // Filter for Doctors: Only see patients in their clinics
+        if (user.role === UserRole.DOCTOR) {
+          if (!user.clinicIds || user.clinicIds.length === 0) {
+            callback([]); return;
+          }
+          filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+        }
+        callback(filtered.sort((a, b) => {
+          if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
+          if (a.currentVisit.priority !== 'urgent' && b.currentVisit.priority === 'urgent') return 1;
+          return a.currentVisit.date - b.currentVisit.date;
+        }));
+      });
+    }
   },
 
   getAll: async (user: User): Promise<Patient[]> => {
@@ -167,14 +187,25 @@ export const PatientService = {
   },
 
   getById: async (user: User, id: string): Promise<Patient | null> => {
-    const allPatients = mockDb.getCollection<Patient>('patients');
-    const patient = allPatients.find(p => p.id === id);
-    if (!patient || patient.isArchived) return null;
-    if (user.role === UserRole.DOCTOR) {
+    if (USE_POSTGRES) {
+      const allPatients = await pgPatients.getAll();
+      const patient = allPatients.find(p => p.id === id);
+      if (!patient || patient.isArchived) return null;
+      if (user.role === UserRole.DOCTOR) {
         const isAssigned = user.clinicIds.includes(patient.currentVisit.clinicId);
         if (!isAssigned) throw new Error("Access Denied");
+      }
+      return patient;
+    } else {
+      const allPatients = mockDb.getCollection<Patient>('patients');
+      const patient = allPatients.find(p => p.id === id);
+      if (!patient || patient.isArchived) return null;
+      if (user.role === UserRole.DOCTOR) {
+        const isAssigned = user.clinicIds.includes(patient.currentVisit.clinicId);
+        if (!isAssigned) throw new Error("Access Denied");
+      }
+      return patient;
     }
-    return patient;
   },
 
   add: async (user: User, data: Pick<Patient, 'name'|'age'|'phone'|'gender'|'medicalProfile'|'currentVisit'|'email'|'password'>): Promise<string> => {

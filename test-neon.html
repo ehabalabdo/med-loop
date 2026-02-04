@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار Neon Database</title>
+    <style>
+        * { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #1a1a2e; color: #eee; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #4ecca3; text-align: center; }
+        .test-box { background: #16213e; padding: 20px; border-radius: 10px; margin: 20px 0; border-left: 4px solid #4ecca3; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #2ecc71; color: white; }
+        .error { background: #e74c3c; color: white; }
+        .loading { background: #f39c12; color: white; }
+        button { background: #4ecca3; color: white; border: none; padding: 15px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 10px; }
+        button:hover { background: #3da88a; }
+        pre { background: #0f0f0f; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .result { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 اختبار اتصال Neon PostgreSQL</h1>
+        
+        <div class="test-box">
+            <h2>الاختبارات المتاحة:</h2>
+            <button onclick="testUsers()">1️⃣ اختبار المستخدمين</button>
+            <button onclick="testClinics()">2️⃣ اختبار العيادات</button>
+            <button onclick="testPatients()">3️⃣ اختبار المرضى</button>
+            <button onclick="addTestClinic()">➕ إضافة عيادة تجريبية</button>
+            <button onclick="addTestPatient()">➕ إضافة مريض تجريبي</button>
+        </div>
+
+        <div id="status" class="status loading" style="display:none;">جاري التحميل...</div>
+        <div id="result" class="result"></div>
+    </div>
+
+    <script type="module">
+        import { pgUsers, pgClinics, pgPatients } from './services/pgServices.ts';
+
+        window.testUsers = async function() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '🔄 جاري جلب المستخدمين من Neon...';
+            
+            try {
+                const users = await pgUsers.getAll();
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ تم جلب ${users.length} مستخدم بنجاح!`;
+                
+                resultDiv.innerHTML = '<h3>📋 المستخدمين:</h3><pre>' + 
+                    JSON.stringify(users, null, 2) + '</pre>';
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ فشل الاتصال: ' + error.message;
+                resultDiv.innerHTML = '<pre>' + error.stack + '</pre>';
+            }
+        };
+
+        window.testClinics = async function() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '🔄 جاري جلب العيادات من Neon...';
+            
+            try {
+                const clinics = await pgClinics.getAll();
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ تم جلب ${clinics.length} عيادة بنجاح!`;
+                
+                resultDiv.innerHTML = '<h3>🏥 العيادات:</h3><pre>' + 
+                    JSON.stringify(clinics, null, 2) + '</pre>';
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ فشل الاتصال: ' + error.message;
+                resultDiv.innerHTML = '<pre>' + error.stack + '</pre>';
+            }
+        };
+
+        window.testPatients = async function() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '🔄 جاري جلب المرضى من Neon...';
+            
+            try {
+                const patients = await pgPatients.getAll();
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ تم جلب ${patients.length} مريض بنجاح!`;
+                
+                resultDiv.innerHTML = '<h3>👥 المرضى:</h3><pre>' + 
+                    JSON.stringify(patients, null, 2) + '</pre>';
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ فشل الاتصال: ' + error.message;
+                resultDiv.innerHTML = '<pre>' + error.stack + '</pre>';
+            }
+        };
+
+        window.addTestClinic = async function() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '🔄 جاري إضافة عيادة تجريبية...';
+            
+            try {
+                const id = await pgClinics.create({
+                    name: 'عيادة تجريبية ' + new Date().getTime(),
+                    type: 'Test Clinic',
+                    category: 'clinic',
+                    active: true,
+                    isArchived: false
+                });
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ تمت إضافة العيادة بنجاح! ID: ${id}`;
+                
+                // Refresh clinics
+                const clinics = await pgClinics.getAll();
+                resultDiv.innerHTML = '<h3>🏥 العيادات بعد الإضافة:</h3><pre>' + 
+                    JSON.stringify(clinics, null, 2) + '</pre>';
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ فشلت الإضافة: ' + error.message;
+                resultDiv.innerHTML = '<pre>' + error.stack + '</pre>';
+            }
+        };
+
+        window.addTestPatient = async function() {
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('result');
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status loading';
+            statusDiv.textContent = '🔄 جاري إضافة مريض تجريبي...';
+            
+            try {
+                const id = await pgPatients.create({
+                    name: 'مريض تجريبي ' + new Date().getTime(),
+                    phone: '0799999999',
+                    email: 'test@test.com',
+                    password: 'test123',
+                    medicalProfile: {},
+                    currentVisit: {
+                        visitId: '',
+                        clinicId: '',
+                        date: Date.now(),
+                        status: 'waiting',
+                        priority: 'normal',
+                        reasonForVisit: 'اختبار النظام'
+                    },
+                    history: [],
+                    isArchived: false
+                });
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✅ تمت إضافة المريض بنجاح! ID: ${id}`;
+                
+                // Refresh patients
+                const patients = await pgPatients.getAll();
+                resultDiv.innerHTML = '<h3>👥 المرضى بعد الإضافة:</h3><pre>' + 
+                    JSON.stringify(patients, null, 2) + '</pre>';
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = '❌ فشلت الإضافة: ' + error.message;
+                resultDiv.innerHTML = '<pre>' + error.stack + '</pre>';
+            }
+        };
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            console.log('🚀 صفحة الاختبار جاهزة!');
+            console.log('DATABASE_URL:', import.meta.env.DATABASE_URL || 'Using default from db.ts');
+        });
+    </script>
+</body>
+</html>
