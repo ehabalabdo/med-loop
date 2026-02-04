@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اختبار العيادات والدكاترة</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            border-right: 4px solid #3498db;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            border-right-color: #27ae60;
+        }
+        .error {
+            border-right-color: #e74c3c;
+            color: #e74c3c;
+        }
+        .loading {
+            border-right-color: #f39c12;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            direction: ltr;
+            text-align: left;
+        }
+        .clinic-card, .user-card {
+            background: #ecf0f1;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-right: 4px solid #3498db;
+        }
+        .clinic-card h3, .user-card h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #3498db;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+            margin: 0 5px;
+        }
+        .badge.doctor { background: #27ae60; }
+        .badge.admin { background: #e74c3c; }
+        .badge.secretary { background: #f39c12; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 اختبار العيادات والدكاترة</h1>
+        
+        <div class="test-section">
+            <h2>📋 اختبار قراءة البيانات</h2>
+            <button onclick="testClinics()">عرض جميع العيادات</button>
+            <button onclick="testUsers()">عرض جميع المستخدمين</button>
+            <button onclick="testDoctorsByClinics()">عرض الدكاترة حسب العيادة</button>
+            <div id="readResult" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>➕ اختبار إضافة بيانات</h2>
+            <button onclick="addClinic()">إضافة عيادة أسنان جديدة</button>
+            <button onclick="addDoctor()">إضافة دكتور عيون</button>
+            <div id="addResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { pgUsers, pgClinics } from './services/pgServices.ts';
+        
+        window.testClinics = async function() {
+            const resultDiv = document.getElementById('readResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '⏳ جاري تحميل العيادات...';
+            
+            try {
+                const clinics = await pgClinics.getAll();
+                
+                let html = `<h3>✅ تم تحميل ${clinics.length} عيادة:</h3>`;
+                clinics.forEach(clinic => {
+                    html += `
+                        <div class="clinic-card">
+                            <h3>🏥 ${clinic.name}</h3>
+                            <p><strong>النوع:</strong> ${clinic.type}</p>
+                            <p><strong>الحالة:</strong> ${clinic.active ? '✅ نشطة' : '❌ غير نشطة'}</p>
+                            <p><strong>الفئة:</strong> <span class="badge">${clinic.category}</span></p>
+                        </div>
+                    `;
+                });
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ خطأ: ${error.message}<br><pre>${error.stack}</pre>`;
+            }
+        };
+        
+        window.testUsers = async function() {
+            const resultDiv = document.getElementById('readResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '⏳ جاري تحميل المستخدمين...';
+            
+            try {
+                const users = await pgUsers.getAll();
+                
+                let html = `<h3>✅ تم تحميل ${users.length} مستخدم:</h3>`;
+                users.forEach(user => {
+                    const roleBadge = user.role === 'doctor' ? 'doctor' : 
+                                     user.role === 'admin' ? 'admin' : 'secretary';
+                    html += `
+                        <div class="user-card">
+                            <h3>👤 ${user.name} <span class="badge ${roleBadge}">${user.role}</span></h3>
+                            <p><strong>البريد:</strong> ${user.email}</p>
+                            <p><strong>العيادة:</strong> ${user.clinicIds.join(', ') || 'غير محدد'}</p>
+                            <p><strong>الحالة:</strong> ${user.isActive ? '✅ نشط' : '❌ غير نشط'}</p>
+                        </div>
+                    `;
+                });
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ خطأ: ${error.message}<br><pre>${error.stack}</pre>`;
+            }
+        };
+        
+        window.testDoctorsByClinics = async function() {
+            const resultDiv = document.getElementById('readResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '⏳ جاري تحميل البيانات...';
+            
+            try {
+                const [clinics, users] = await Promise.all([
+                    pgClinics.getAll(),
+                    pgUsers.getAll()
+                ]);
+                
+                const doctors = users.filter(u => u.role === 'doctor');
+                
+                let html = '<h3>🏥 العيادات والدكاترة:</h3>';
+                
+                clinics.forEach(clinic => {
+                    const clinicDoctors = doctors.filter(d => d.clinicIds.includes(clinic.id));
+                    html += `
+                        <div class="clinic-card">
+                            <h3>🏥 ${clinic.name}</h3>
+                            <p><strong>النوع:</strong> ${clinic.type}</p>
+                            <p><strong>عدد الدكاترة:</strong> ${clinicDoctors.length}</p>
+                            ${clinicDoctors.length > 0 ? `
+                                <ul>
+                                    ${clinicDoctors.map(doc => `
+                                        <li>👨‍⚕️ ${doc.name} (${doc.email})</li>
+                                    `).join('')}
+                                </ul>
+                            ` : '<p style="color: #95a5a6;">لا يوجد دكاترة</p>'}
+                        </div>
+                    `;
+                });
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = html;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ خطأ: ${error.message}<br><pre>${error.stack}</pre>`;
+            }
+        };
+        
+        window.addClinic = async function() {
+            const resultDiv = document.getElementById('addResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '⏳ جاري إضافة العيادة...';
+            
+            try {
+                const clinicId = await pgClinics.create({
+                    name: 'عيادة الأسنان المتقدمة',
+                    type: 'Advanced Dental',
+                    category: 'clinic',
+                    active: true,
+                    isArchived: false
+                });
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <h3>✅ تم إضافة العيادة بنجاح!</h3>
+                    <p><strong>رقم العيادة:</strong> ${clinicId}</p>
+                    <p><strong>الاسم:</strong> عيادة الأسنان المتقدمة</p>
+                    <button onclick="testClinics()">عرض جميع العيادات</button>
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ خطأ: ${error.message}<br><pre>${error.stack}</pre>`;
+            }
+        };
+        
+        window.addDoctor = async function() {
+            const resultDiv = document.getElementById('addResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result loading';
+            resultDiv.innerHTML = '⏳ جاري إضافة الدكتور...';
+            
+            try {
+                const userId = await pgUsers.create({
+                    name: 'د. سارة عبدالله',
+                    email: 'sara@medloop.com',
+                    password: 'doctor123',
+                    role: 'doctor',
+                    clinicIds: ['2'], // Dental Clinic
+                    isActive: true,
+                    isArchived: false
+                });
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <h3>✅ تم إضافة الدكتور بنجاح!</h3>
+                    <p><strong>رقم المستخدم:</strong> ${userId}</p>
+                    <p><strong>الاسم:</strong> د. سارة عبدالله</p>
+                    <p><strong>البريد:</strong> sara@medloop.com</p>
+                    <button onclick="testUsers()">عرض جميع المستخدمين</button>
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ خطأ: ${error.message}<br><pre>${error.stack}</pre>`;
+            }
+        };
+    </script>
+</body>
+</html>
