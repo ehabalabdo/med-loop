@@ -34,7 +34,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const [formData, setFormData] = useState({
-    name: '', age: '', phone: '', gender: 'male' as Gender,
+    name: '', age: '', phone: '', email: '', password: '', gender: 'male' as Gender,
     allergiesExists: false, allergiesDetail: '',
     chronicExists: false, chronicDetail: '',
     medsExists: false, medsDetail: '',
@@ -117,6 +117,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                 name: formData.name,
                 age: parseInt(formData.age) || 0,
                 phone: formData.phone,
+                email: formData.email || undefined,
+                password: formData.password || 'patient123',
                 gender: formData.gender,
                 medicalProfile: {},
                 currentVisit: {
@@ -129,7 +131,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                     source: 'walk-in'
                 }
             });
-            setFormData(prev => ({ ...prev, name: '', age: '', phone: '', reasonForVisit: '' }));
+            setFormData(prev => ({ ...prev, name: '', age: '', phone: '', email: '', password: '', reasonForVisit: '' }));
             setIsFormOpen(false);
             await fetchPatients();
             alert('تمت إضافة المريض بنجاح');
@@ -428,6 +430,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                                  <select className="input-modern" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as Gender})}><option value="male">{t('male')}</option><option value="female">{t('female')}</option></select>
                             </div>
                             <input type="tel" placeholder={t('phone')} className="input-modern" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required />
+                            <input type="email" placeholder="البريد الإلكتروني (للحساب)" className="input-modern" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                            <input type="password" placeholder="كلمة المرور (للحساب)" className="input-modern" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
                          </div>
                          <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                              <select className="input-modern" value={formData.clinicId} onChange={e => setFormData({...formData, clinicId: e.target.value})}>{clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>

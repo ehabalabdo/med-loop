@@ -38,9 +38,12 @@ export const AuthService = {
     const newUser: User = {
       uid: generateId('user'),
       ...data,
+      password: 'password123', // Default password - doctor should change it
       isActive: true,
       ...createMeta(admin)
     };
+    // Save the user to mockDb
+    mockDb.saveUser(newUser);
   },
 
   updateUser: async (admin: User, userId: string, data: Partial<User>): Promise<void> => {
@@ -55,6 +58,7 @@ export const AuthService = {
   deleteUser: async (admin: User, userId: string): Promise<void> => {
     if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
     if (admin.uid === userId) throw new Error("Cannot delete your own account");
+    await mockDb.deleteDocument('users', userId);
   }
 };
 

@@ -212,6 +212,17 @@ class MockAdapter {
   getAllUsers(): User[] {
     return load<User[]>('medcore_users', []);
   }
+
+  saveUser(user: User): void {
+    const users = this.getAllUsers();
+    const idx = users.findIndex(u => u.uid === user.uid);
+    if (idx >= 0) {
+      users[idx] = user;
+    } else {
+      users.push(user);
+    }
+    save('medcore_users', users);
+  }
 }
 
 export const mockDb = new MockAdapter();

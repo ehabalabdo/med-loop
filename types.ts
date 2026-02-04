@@ -31,6 +31,7 @@ export interface Clinic extends AuditMetadata {
 export interface User extends AuditMetadata {
   uid: string;
   email: string;
+  password?: string; // NEW - for login authentication
   name: string;
   role: UserRole;
   clinicIds: string[]; 
@@ -104,6 +105,10 @@ export interface Patient extends AuditMetadata {
   age: number; // Or DOB in full system
   gender: Gender;
   phone: string;
+  
+  // Authentication (NEW - for patient portal access)
+  email?: string;
+  password?: string; // In real system, would be hashed
   
   // Medical Profile (Sticky data)
   medicalProfile: MedicalIntake;
