@@ -62,17 +62,27 @@ export const AuthService = {
 
   updateUser: async (admin: User, userId: string, data: Partial<User>): Promise<void> => {
     if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
-    const allUsers = mockDb.getAllUsers();
-    const user = allUsers.find(u => u.uid === userId);
-    if (!user) throw new Error("User not found");
-    const updated = { ...user, ...data, ...createMeta(admin, user) };
-    mockDb.update('users', userId, updated);
+    
+    if (USE_POSTGRES) {
+      await pgUsers.update(userId, data);
+    } else {
+      const allUsers = mockDb.getAllUsers();
+      const user = allUsers.find(u => u.uid === userId);
+      if (!user) throw new Error("User not found");
+      const updated = { ...user, ...data, ...createMeta(admin, user) };
+      mockDb.update('users', userId, updated);
+    }
   },
 
   deleteUser: async (admin: User, userId: string): Promise<void> => {
     if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
     if (admin.uid === userId) throw new Error("Cannot delete your own account");
-    await mockDb.deleteDocument('users', userId);
+    
+    if (USE_POSTGRES) {
+      await pgUsers.delete(userId);
+    } else {
+      await mockDb.deleteDocument('users', userId);
+    }
   }
 };
 
@@ -113,15 +123,26 @@ export const ClinicService = {
 
   toggleStatus: async (user: User, clinicId: string, status: boolean): Promise<void> => {
     if (user.role !== UserRole.ADMIN) throw new Error("Unauthorized");
-    const clinics = mockDb.getCollection<Clinic>('clinics');
-    const clinic = clinics.find(c => c.id === clinicId);
-    if (!clinic) throw new Error("Clinic not found");
-    const updated = { ...clinic, active: status, ...createMeta(user, clinic) };
-    mockDb.update('clinics', clinicId, updated);
+    
+    if (USE_POSTGRES) {
+      await pgClinics.toggleStatus(clinicId, status);
+    } else {
+      const clinics = mockDb.getCollection<Clinic>('clinics');
+      const clinic = clinics.find(c => c.id === clinicId);
+      if (!clinic) throw new Error("Clinic not found");
+      const updated = { ...clinic, active: status, ...createMeta(user, clinic) };
+      mockDb.update('clinics', clinicId, updated);
+    }
   },
   
   delete: async (user: User, clinicId: string): Promise<void> => {
     if (user.role !== UserRole.ADMIN) throw new Error("Unauthorized");
+    
+    if (USE_POSTGRES) {
+      await pgClinics.delete(clinicId);
+    } else {
+      await mockDb.deleteDocument('clinics', clinicId);
+    }
   }
 };
 

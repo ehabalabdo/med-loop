@@ -35,6 +35,29 @@ export const pgUsers = {
       RETURNING id
     `;
     return String(result[0].id);
+  },
+
+  update: async (uid: string, data: Partial<Pick<User, 'name' | 'email' | 'role' | 'clinicIds' | 'isActive'>>): Promise<void> => {
+    const userId = parseInt(uid);
+    const updates: any = {};
+    
+    if (data.name !== undefined) updates.full_name = data.name;
+    if (data.email !== undefined) updates.email = data.email;
+    if (data.role !== undefined) updates.role = data.role;
+    if (data.clinicIds !== undefined && data.clinicIds.length > 0) {
+      updates.clinic_id = parseInt(data.clinicIds[0]);
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      const setClause = Object.keys(updates).map((key, i) => `${key} = $${i + 1}`).join(', ');
+      const values = Object.values(updates);
+      await sql`UPDATE users SET ${sql.unsafe(setClause)} WHERE id = ${userId}`;
+    }
+  },
+
+  delete: async (uid: string): Promise<void> => {
+    const userId = parseInt(uid);
+    await sql`DELETE FROM users WHERE id = ${userId}`;
   }
 };
 
@@ -64,6 +87,40 @@ export const pgClinics = {
       RETURNING id
     `;
     return String(result[0].id);
+  },
+
+  update: async (id: string, data: Partial<Pick<Clinic, 'name' | 'type' | 'active'>>): Promise<void> => {
+    const clinicId = parseInt(id);
+    const updates: string[] = [];
+    const values: any[] = [];
+    
+    if (data.name !== undefined) {
+      updates.push(`name = $${updates.length + 1}`);
+      values.push(data.name);
+    }
+    if (data.type !== undefined) {
+      updates.push(`type = $${updates.length + 1}`);
+      values.push(data.type);
+    }
+    if (data.active !== undefined) {
+      updates.push(`active = $${updates.length + 1}`);
+      values.push(data.active);
+    }
+    
+    if (updates.length > 0) {
+      values.push(clinicId);
+      await sql`UPDATE clinics SET ${sql.unsafe(updates.join(', '))} WHERE id = ${clinicId}`;
+    }
+  },
+
+  toggleStatus: async (id: string, active: boolean): Promise<void> => {
+    const clinicId = parseInt(id);
+    await sql`UPDATE clinics SET active = ${active} WHERE id = ${clinicId}`;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    const clinicId = parseInt(id);
+    await sql`DELETE FROM clinics WHERE id = ${clinicId}`;
   }
 };
 
