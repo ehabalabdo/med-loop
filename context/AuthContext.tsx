@@ -42,18 +42,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(false);
 
   const login = async (usernameOrEmail: string, password: string) => {
-    // Try staff login first (check if input is email format)
-    const isEmail = usernameOrEmail.includes('@');
+    // Try staff login first
+    const allUsers = await pgUsers.getAll();
+    const foundUser = allUsers.find(
+      u => (u.email === usernameOrEmail || u.name === usernameOrEmail) && u.password === password
+    );
     
-    if (isEmail) {
-      // Staff login with email
-      const allUsers = await pgUsers.getAll();
-      const foundUser = allUsers.find(u => u.email === usernameOrEmail && u.password === password);
-      
-      if (!foundUser) {
-        throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-      }
-      
+    if (foundUser) {
       if (!foundUser.isActive) {
         throw new Error('هذا الحساب غير مفعل');
       }
@@ -61,21 +56,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Save user to localStorage
       localStorage.setItem('user', JSON.stringify(foundUser));
       setUser(foundUser);
-    } else {
-      // Patient login with username
-      const allPatients = await pgPatients.getAll();
-      const foundPatient = allPatients.find(
-        p => p.username === usernameOrEmail && p.password === password && p.hasAccess === true
-      );
-      
-      if (!foundPatient) {
-        throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
-      }
-      
+      return;
+    }
+    
+    // If not found in staff, try patient login
+    const allPatients = await pgPatients.getAll();
+    const foundPatient = allPatients.find(
+      p => (p.username === usernameOrEmail || p.email === usernameOrEmail) && 
+           p.password === password && 
+           p.hasAccess === true
+    );
+    
+    if (foundPatient) {
       // Save patient to localStorage
       localStorage.setItem('patientUser', JSON.stringify(foundPatient));
       setPatientUser(foundPatient);
+      return;
     }
+    
+    // Not found in either table
+    throw new Error('البريد الإلكتروني/اسم المستخدم أو كلمة المرور غير صحيحة');
   };
 
   const patientLogin = async (username: string, password: string) => {
