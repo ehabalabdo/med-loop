@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
-import { ClinicService, PatientService, SettingsService } from '../services/services';
+import { ClinicService, PatientService, AppointmentService, SettingsService } from '../services/services';
 import { api } from '../src/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -57,7 +57,7 @@ const DoctorView: React.FC = () => {
     });
         const loadData = async () => {
             try {
-                const apps = await api.get('/appointments/doctor');
+                const apps = await AppointmentService.getAll(user);
                 setAppointments(apps.filter(a => a.status === 'scheduled').sort((a,b) => a.date - b.date));
             } catch {
                 setAppointments([]);

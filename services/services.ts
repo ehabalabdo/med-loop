@@ -164,12 +164,10 @@ export const PatientService = {
             console.warn('[PatientService.subscribe] Doctor has no clinicIds:', user.name);
             callback([]); return;
           }
-          const beforeCount = filtered.length;
           filtered = filtered.filter(p => {
             const hasClinic = p.currentVisit && p.currentVisit.clinicId;
             return hasClinic && user.clinicIds.includes(p.currentVisit.clinicId);
           });
-          console.log(`[PatientService.subscribe] Doctor ${user.name}: ${filtered.length}/${beforeCount} patients visible`);
         }
         callback(filtered.sort((a, b) => {
           if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
@@ -207,16 +205,10 @@ export const PatientService = {
           console.warn('[PatientService.getAll] Doctor has no clinicIds:', user.name);
           return [];
         }
-        const filtered = activePatients.filter(p => {
+        return activePatients.filter(p => {
           const hasClinic = p.currentVisit && p.currentVisit.clinicId;
-          const isMatch = hasClinic && user.clinicIds.includes(p.currentVisit.clinicId);
-          if (!isMatch && hasClinic) {
-            console.log(`[Filter] Patient ${p.name} in clinic ${p.currentVisit.clinicId}, doctor has: ${user.clinicIds.join(', ')}`);
-          }
-          return isMatch;
+          return hasClinic && user.clinicIds.includes(p.currentVisit.clinicId);
         });
-        console.log(`[PatientService.getAll] Doctor ${user.name}: ${filtered.length}/${activePatients.length} patients`);
-        return filtered;
       }
       return activePatients;
     } else {
