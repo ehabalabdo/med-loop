@@ -41,22 +41,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const [loading, setLoading] = useState(false);
 
-  const login = async (email: string, password: string) => {
-    // Use PostgreSQL directly instead of Render backend
-    const allUsers = await pgUsers.getAll();
-    const foundUser = allUsers.find(u => u.email === email && u.password === password);
+  const login = async (usernameOrEmail: string, password: string) => {
+    // Try staff login first (check if input is email format)
+    const isEmail = usernameOrEmail.includes('@');
     
-    if (!foundUser) {
-      throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+    if (isEmail) {
+      // Staff login with email
+      const allUsers = await pgUsers.getAll();
+      const foundUser = allUsers.find(u => u.email === usernameOrEmail && u.password === password);
+      
+      if (!foundUser) {
+        throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة');
+      }
+      
+      if (!foundUser.isActive) {
+        throw new Error('هذا الحساب غير مفعل');
+      }
+      
+      // Save user to localStorage
+      localStorage.setItem('user', JSON.stringify(foundUser));
+      setUser(foundUser);
+    } else {
+      // Patient login with username
+      const allPatients = await pgPatients.getAll();
+      const foundPatient = allPatients.find(
+        p => p.username === usernameOrEmail && p.password === password && p.hasAccess === true
+      );
+      
+      if (!foundPatient) {
+        throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
+      }
+      
+      // Save patient to localStorage
+      localStorage.setItem('patientUser', JSON.stringify(foundPatient));
+      setPatientUser(foundPatient);
     }
-    
-    if (!foundUser.isActive) {
-      throw new Error('هذا الحساب غير مفعل');
-    }
-    
-    // Save user to localStorage
-    localStorage.setItem('user', JSON.stringify(foundUser));
-    setUser(foundUser);
   };
 
   const patientLogin = async (username: string, password: string) => {
