@@ -106,6 +106,8 @@ const DoctorView: React.FC = () => {
         });
         
         if(status === 'completed') {
+            // Optimistic UI update: Remove patient from queue immediately
+            setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
             // Clear screen
             setSelectedPatient(null);
             setMobileTab('queue');
