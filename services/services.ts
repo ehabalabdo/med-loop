@@ -274,11 +274,19 @@ export const PatientService = {
 
 export const AppointmentService = {
     getAll: async (user: User): Promise<Appointment[]> => {
-        const apps = mockDb.getCollection<Appointment>('appointments');
-        if (user.role === UserRole.DOCTOR) {
-             return apps.filter(a => (a.doctorId === user.uid) || (!a.doctorId && user.clinicIds.includes(a.clinicId)));
+        if (USE_POSTGRES) {
+            const allApps = await pgAppointments.getAll();
+            if (user.role === UserRole.DOCTOR) {
+                return allApps.filter(a => (a.doctorId === user.uid) || (!a.doctorId && user.clinicIds.includes(a.clinicId)));
+            }
+            return allApps;
+        } else {
+            const apps = mockDb.getCollection<Appointment>('appointments');
+            if (user.role === UserRole.DOCTOR) {
+                return apps.filter(a => (a.doctorId === user.uid) || (!a.doctorId && user.clinicIds.includes(a.clinicId)));
+            }
+            return apps;
         }
-        return apps;
     },
 
     create: async (user: User, data: Pick<Appointment, 'patientId'|'patientName'|'clinicId'|'doctorId'|'date'|'reason'>) => {

@@ -75,14 +75,20 @@ export const pgPatients = {
     return result.map((row: any) => ({
       id: String(row.id),
       name: row.full_name,
-      age: row.age || undefined,
-      gender: row.gender as 'male' | 'female' | undefined,
+      age: row.age || 0,
+      gender: (row.gender || 'male') as 'male' | 'female',
       phone: row.phone || '',
       email: row.email || undefined,
       password: row.password || undefined,
-      medicalProfile: {},
+      medicalProfile: {
+        allergies: { exists: false, details: '' },
+        chronicConditions: { exists: false, details: '' },
+        currentMedications: { exists: false, details: '' },
+        isPregnant: false,
+        notes: row.notes || ''
+      },
       currentVisit: {
-        visitId: '',
+        visitId: `v_${row.id}_${Date.now()}`,
         clinicId: '',
         date: Date.now(),
         status: 'waiting' as const,
@@ -100,8 +106,17 @@ export const pgPatients = {
 
   create: async (patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
     const result = await sql`
-      INSERT INTO patients (full_name, phone, email, password, notes, created_at) 
-      VALUES (${patient.name}, ${patient.phone || ''}, ${patient.email || null}, ${patient.password || 'patient123'}, ${patient.currentVisit?.reasonForVisit || ''}, NOW()) 
+      INSERT INTO patients (full_name, age, gender, phone, email, password, notes, created_at) 
+      VALUES (
+        ${patient.name}, 
+        ${patient.age || 0}, 
+        ${patient.gender || 'male'}, 
+        ${patient.phone || ''}, 
+        ${patient.email || null}, 
+        ${patient.password || 'patient123'}, 
+        ${patient.currentVisit?.reasonForVisit || ''}, 
+        NOW()
+      ) 
       RETURNING id
     `;
     return String(result[0].id);
@@ -125,20 +140,22 @@ export const pgPatients = {
 
 export const pgAppointments = {
   getAll: async (): Promise<Appointment[]> => {
-    const result = await sql`SELECT * FROM appointments ORDER BY scheduled_time DESC`;
+    const result = await sql`SELECT * FROM appointments ORDER BY start_time DESC`;
     return result.map((row: any) => ({
       id: String(row.id),
       patientId: String(row.patient_id),
+      patientName: row.patient_name || 'Unknown',
       clinicId: String(row.clinic_id),
       doctorId: row.doctor_id ? String(row.doctor_id) : undefined,
-      scheduledTime: new Date(row.scheduled_time).getTime(),
+      date: new Date(row.start_time).getTime(),
       status: row.status || 'scheduled',
-      notes: row.notes || '',
+      reason: row.reason || '',
+      notes: '',
       createdAt: new Date(row.created_at || Date.now()).getTime(),
       createdBy: 'system',
       updatedAt: new Date(row.created_at || Date.now()).getTime(),
       updatedBy: 'system',
-      isArchived: false
+      isArchived: row.is_archived || false
     }));
   }
 };
