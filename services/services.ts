@@ -234,10 +234,11 @@ export const PatientService = {
     }
   },
 
-  add: async (user: User, data: Pick<Patient, 'name'|'age'|'phone'|'gender'|'medicalProfile'|'currentVisit'|'email'|'password'>): Promise<string> => {
+  add: async (user: User, data: Pick<Patient, 'name'|'age'|'phone'|'gender'|'medicalProfile'|'currentVisit'|'username'|'email'|'password'>): Promise<string> => {
     if (USE_POSTGRES) {
       const patientId = await pgPatients.create({
         ...data,
+        hasAccess: !!(data.username && data.password), // Enable access if username and password provided
         currentVisit: { ...data.currentVisit, visitId: generateId('v') },
         history: [],
         isArchived: false
@@ -248,6 +249,7 @@ export const PatientService = {
       const newPatient: Patient = {
         id: patientId,
         ...data,
+        hasAccess: !!(data.username && data.password),
         currentVisit: { ...data.currentVisit, visitId: generateId('v') },
         history: [],
         ...createMeta(user)

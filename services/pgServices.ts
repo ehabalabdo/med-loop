@@ -140,8 +140,10 @@ export const pgPatients = {
       age: row.age || 0,
       gender: (row.gender || 'male') as 'male' | 'female',
       phone: row.phone || '',
+      username: row.username || undefined,
       email: row.email || undefined,
       password: row.password || undefined,
+      hasAccess: row.has_access || false,
       medicalProfile: {
         allergies: { exists: false, details: '' },
         chronicConditions: { exists: false, details: '' },
@@ -168,17 +170,19 @@ export const pgPatients = {
 
   create: async (patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
     const result = await sql`
-      INSERT INTO patients (full_name, age, gender, phone, email, password, notes, created_at) 
+      INSERT INTO patients (full_name, age, gender, phone, username, email, password, has_access, notes, created_at) 
       VALUES (
         ${patient.name}, 
         ${patient.age || 0}, 
         ${patient.gender || 'male'}, 
         ${patient.phone || ''}, 
+        ${patient.username || null}, 
         ${patient.email || null}, 
-        ${patient.password || 'patient123'}, 
-        ${patient.currentVisit?.reasonForVisit || ''}, 
+        ${patient.password || null}, 
+        ${patient.hasAccess || false}, 
+        ${patient.medicalProfile?.notes || ''}, 
         NOW()
-      ) 
+      )
       RETURNING id
     `;
     return String(result[0].id);

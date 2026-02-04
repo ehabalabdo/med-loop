@@ -107,8 +107,10 @@ export interface Patient extends AuditMetadata {
   phone: string;
   
   // Authentication (NEW - for patient portal access)
+  username?: string; // Username for patient login
   email?: string;
   password?: string; // In real system, would be hashed
+  hasAccess?: boolean; // Whether patient has portal access
   
   // Medical Profile (Sticky data)
   medicalProfile: MedicalIntake;
