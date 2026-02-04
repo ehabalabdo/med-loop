@@ -17,6 +17,7 @@ const DoctorView: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(new Set());
 
   // EMR Form State
   const [diagnosis, setDiagnosis] = useState('');
@@ -55,7 +56,9 @@ const DoctorView: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     const unsubscribeQueue = PatientService.subscribe(user, (data) => {
-      setPatients(data);
+      // Filter out patients that we've marked as completed locally
+      const filteredData = data.filter(p => !completedPatientIds.has(p.id));
+      setPatients(filteredData);
       // Real-time update for selected patient if their status changes externally
       if (selectedPatient) {
         const updated = data.find(p => p.id === selectedPatient.id);
@@ -106,6 +109,8 @@ const DoctorView: React.FC = () => {
         });
         
         if(status === 'completed') {
+            // Mark patient as completed to prevent re-appearing from polling
+            setCompletedPatientIds(prev => new Set(prev).add(selectedPatient.id));
             // Optimistic UI update: Remove patient from queue immediately
             setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
             // Clear screen
