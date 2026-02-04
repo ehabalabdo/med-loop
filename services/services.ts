@@ -40,15 +40,24 @@ export const AuthService = {
   
   createUser: async (admin: User, data: Pick<User, 'name'|'email'|'role'|'clinicIds'>): Promise<void> => {
     if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
-    const newUser: User = {
-      uid: generateId('user'),
-      ...data,
-      password: 'password123', // Default password - doctor should change it
-      isActive: true,
-      ...createMeta(admin)
-    };
-    // Save the user to mockDb
-    mockDb.saveUser(newUser);
+    
+    if (USE_POSTGRES) {
+      await pgUsers.create({
+        ...data,
+        password: 'password123',
+        isActive: true,
+        isArchived: false
+      });
+    } else {
+      const newUser: User = {
+        uid: generateId('user'),
+        ...data,
+        password: 'password123',
+        isActive: true,
+        ...createMeta(admin)
+      };
+      mockDb.saveUser(newUser);
+    }
   },
 
   updateUser: async (admin: User, userId: string, data: Partial<User>): Promise<void> => {
@@ -70,21 +79,36 @@ export const AuthService = {
 export const ClinicService = {
 
   getActive: async (): Promise<Clinic[]> => {
-    const all = mockDb.getCollection<Clinic>('clinics');
-    return all.filter(c => c.active && !c.isArchived);
+    if (USE_POSTGRES) {
+      return await pgClinics.getAll();
+    } else {
+      const all = mockDb.getCollection<Clinic>('clinics');
+      return all.filter(c => c.active && !c.isArchived);
+    }
   },
 
   add: async (user: User, name: string, type: string, category: ClinicCategory): Promise<void> => {
     if (user.role !== UserRole.ADMIN) throw new Error("Unauthorized: Admins only");
-    const newClinic: Clinic = {
-      id: generateId(category === 'clinic' ? 'c' : 'dept'),
-      name, 
-      type, 
-      category,
-      active: true, 
-      ...createMeta(user)
-    };
-    mockDb.add('clinics', newClinic);
+    
+    if (USE_POSTGRES) {
+      await pgClinics.create({
+        name,
+        type,
+        category,
+        active: true,
+        isArchived: false
+      });
+    } else {
+      const newClinic: Clinic = {
+        id: generateId(category === 'clinic' ? 'c' : 'dept'),
+        name, 
+        type, 
+        category,
+        active: true, 
+        ...createMeta(user)
+      };
+      mockDb.add('clinics', newClinic);
+    }
   },
 
   toggleStatus: async (user: User, clinicId: string, status: boolean): Promise<void> => {
@@ -123,13 +147,23 @@ export const PatientService = {
   },
 
   getAll: async (user: User): Promise<Patient[]> => {
-    const allPatients = mockDb.getCollection<Patient>('patients');
-    const activePatients = allPatients.filter(p => !p.isArchived);
-    if (user.role === UserRole.DOCTOR) {
+    if (USE_POSTGRES) {
+      const allPatients = await pgPatients.getAll();
+      const activePatients = allPatients.filter(p => !p.isArchived);
+      if (user.role === UserRole.DOCTOR) {
         if (!user.clinicIds || user.clinicIds.length === 0) return [];
         return activePatients.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+      }
+      return activePatients;
+    } else {
+      const allPatients = mockDb.getCollection<Patient>('patients');
+      const activePatients = allPatients.filter(p => !p.isArchived);
+      if (user.role === UserRole.DOCTOR) {
+        if (!user.clinicIds || user.clinicIds.length === 0) return [];
+        return activePatients.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+      }
+      return activePatients;
     }
-    return activePatients;
   },
 
   getById: async (user: User, id: string): Promise<Patient | null> => {
@@ -143,17 +177,27 @@ export const PatientService = {
     return patient;
   },
 
-  add: async (user: User, data: Pick<Patient, 'name'|'age'|'phone'|'gender'|'medicalProfile'|'currentVisit'>): Promise<string> => {
-    const patientId = generateId('p');
-    const newPatient: Patient = {
-      id: patientId,
-      ...data,
-      currentVisit: { ...data.currentVisit, visitId: generateId('v') },
-      history: [],
-      ...createMeta(user)
-    };
-    await mockDb.writeDocument('patients', newPatient);
-    return patientId;
+  add: async (user: User, data: Pick<Patient, 'name'|'age'|'phone'|'gender'|'medicalProfile'|'currentVisit'|'email'|'password'>): Promise<string> => {
+    if (USE_POSTGRES) {
+      const patientId = await pgPatients.create({
+        ...data,
+        currentVisit: { ...data.currentVisit, visitId: generateId('v') },
+        history: [],
+        isArchived: false
+      });
+      return patientId;
+    } else {
+      const patientId = generateId('p');
+      const newPatient: Patient = {
+        id: patientId,
+        ...data,
+        currentVisit: { ...data.currentVisit, visitId: generateId('v') },
+        history: [],
+        ...createMeta(user)
+      };
+      await mockDb.writeDocument('patients', newPatient);
+      return patientId;
+    }
   },
 
   updateVisitData: async (user: User, patient: Patient, data: Partial<VisitData>) => {
