@@ -23,7 +23,33 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   const [todaysAppointments, setTodaysAppointments] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(new Set());
+  
+  // Load completed patient IDs from localStorage on mount
+  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(() => {
+    try {
+      // Check if it's a new day - clear completed IDs from previous days
+      const today = new Date().toDateString();
+      const lastClearDate = localStorage.getItem('receptionCompletedPatientIds_lastClear');
+      
+      if (lastClearDate !== today) {
+        // New day - clear old completed IDs
+        console.log('[ReceptionView] New day detected - clearing old completed IDs');
+        localStorage.removeItem('receptionCompletedPatientIds');
+        localStorage.setItem('receptionCompletedPatientIds_lastClear', today);
+        return new Set();
+      }
+      
+      const stored = localStorage.getItem('receptionCompletedPatientIds');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('[ReceptionView] Loaded completed IDs from localStorage:', parsed);
+        return new Set(parsed);
+      }
+    } catch (e) {
+      console.error('[ReceptionView] Failed to load completed IDs from localStorage:', e);
+    }
+    return new Set();
+  });
   
   // UI State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -90,6 +116,17 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     const interval = setInterval(loadData, 30000); // Polling for notifs
     return () => clearInterval(interval);
   }, [user]);
+
+  // Save completed patient IDs to localStorage whenever they change
+  useEffect(() => {
+    try {
+      const idsArray = Array.from(completedPatientIds);
+      localStorage.setItem('receptionCompletedPatientIds', JSON.stringify(idsArray));
+      console.log('[ReceptionView] Saved completed IDs to localStorage:', idsArray);
+    } catch (e) {
+      console.error('[ReceptionView] Failed to save completed IDs to localStorage:', e);
+    }
+  }, [completedPatientIds]);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);

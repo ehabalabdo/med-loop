@@ -17,7 +17,33 @@ const DoctorView: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(new Set());
+  
+  // Load completed patient IDs from localStorage on mount
+  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(() => {
+    try {
+      // Check if it's a new day - clear completed IDs from previous days
+      const today = new Date().toDateString();
+      const lastClearDate = localStorage.getItem('completedPatientIds_lastClear');
+      
+      if (lastClearDate !== today) {
+        // New day - clear old completed IDs
+        console.log('[DoctorView] New day detected - clearing old completed IDs');
+        localStorage.removeItem('completedPatientIds');
+        localStorage.setItem('completedPatientIds_lastClear', today);
+        return new Set();
+      }
+      
+      const stored = localStorage.getItem('completedPatientIds');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        console.log('[DoctorView] Loaded completed IDs from localStorage:', parsed);
+        return new Set(parsed);
+      }
+    } catch (e) {
+      console.error('[DoctorView] Failed to load completed IDs from localStorage:', e);
+    }
+    return new Set();
+  });
 
   // EMR Form State
   const [diagnosis, setDiagnosis] = useState('');
@@ -52,6 +78,17 @@ const DoctorView: React.FC = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Save completed patient IDs to localStorage whenever they change
+  useEffect(() => {
+    try {
+      const idsArray = Array.from(completedPatientIds);
+      localStorage.setItem('completedPatientIds', JSON.stringify(idsArray));
+      console.log('[DoctorView] Saved completed IDs to localStorage:', idsArray);
+    } catch (e) {
+      console.error('[DoctorView] Failed to save completed IDs to localStorage:', e);
+    }
+  }, [completedPatientIds]);
 
   useEffect(() => {
     if (!user) return;
