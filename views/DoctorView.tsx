@@ -18,6 +18,8 @@ const DoctorView: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(new Set());
+  const prevPatientCountRef = useRef<number>(0);
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // EMR Form State
   const [diagnosis, setDiagnosis] = useState('');
@@ -36,15 +38,68 @@ const DoctorView: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'queue' | 'emr'>('queue');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Play notification sound when new patient arrives
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Pleasant notification tone
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+      oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.4);
+    } catch (e) {
+      console.log('Audio notification not supported');
+    }
+  };
+
   const handleSelectPatient = async (p: Patient) => {
     setSelectedPatient(p);
     // Auto-update status to "in-progress" when doctor starts consultation
     if (p.currentVisit.status === 'waiting' && user) {
       try {
         await PatientService.updateStatus(user, p, 'in-progress');
+        // Play calling sound (different from notification)
+        playCallingSound();
       } catch (e) {
         console.error('Failed to update patient status:', e);
       }
+    }
+  };
+
+  // Play calling sound when doctor calls patient
+  const playCallingSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Calling tone - more urgent
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.15);
+      
+      gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (e) {
+      console.log('Audio calling not supported');
     }
   };
 
@@ -58,6 +113,13 @@ const DoctorView: React.FC = () => {
     const unsubscribeQueue = PatientService.subscribe(user, (data) => {
       // Filter out patients that we've marked as completed locally
       const filteredData = data.filter(p => !completedPatientIds.has(p.id));
+      
+      // Check if new patient arrived (count increased)
+      if (prevPatientCountRef.current > 0 && filteredData.length > prevPatientCountRef.current) {
+        playNotificationSound();
+      }
+      prevPatientCountRef.current = filteredData.length;
+      
       setPatients(filteredData);
       // Real-time update for selected patient if their status changes externally
       if (selectedPatient) {

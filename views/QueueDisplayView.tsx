@@ -73,11 +73,12 @@ const QueueDisplayView: React.FC = () => {
           // Filter out completed to keep screen clean
           const active = data.filter(p => p.currentVisit.status !== 'completed');
           
-          // Check for new "in-progress" status
+          // Check for new "in-progress" status (patient called by doctor)
           active.forEach(p => {
               const prev = prevPatientsRef.current.find(old => old.id === p.id);
               if (p.currentVisit.status === 'in-progress' && prev?.currentVisit.status !== 'in-progress') {
                   const clinicName = clinics[p.currentVisit.clinicId] || 'Clinic';
+                  // Announce patient name
                   const text = language === 'ar' 
                     ? `المريض ${p.name}, يرجى التوجه إلى ${clinicName}`
                     : `Patient ${p.name}, please proceed to ${clinicName}`;
