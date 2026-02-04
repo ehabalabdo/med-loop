@@ -25,21 +25,22 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   
   // Load completed patient IDs from localStorage on mount
+  // IMPORTANT: Use same key as DoctorView to share completed patient list
   const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(() => {
     try {
       // Check if it's a new day - clear completed IDs from previous days
       const today = new Date().toDateString();
-      const lastClearDate = localStorage.getItem('receptionCompletedPatientIds_lastClear');
+      const lastClearDate = localStorage.getItem('completedPatientIds_lastClear');
       
       if (lastClearDate !== today) {
         // New day - clear old completed IDs
         console.log('[ReceptionView] New day detected - clearing old completed IDs');
-        localStorage.removeItem('receptionCompletedPatientIds');
-        localStorage.setItem('receptionCompletedPatientIds_lastClear', today);
+        localStorage.removeItem('completedPatientIds');
+        localStorage.setItem('completedPatientIds_lastClear', today);
         return new Set();
       }
       
-      const stored = localStorage.getItem('receptionCompletedPatientIds');
+      const stored = localStorage.getItem('completedPatientIds');
       if (stored) {
         const parsed = JSON.parse(stored);
         console.log('[ReceptionView] Loaded completed IDs from localStorage:', parsed);
@@ -117,11 +118,37 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Poll localStorage for completed patient IDs updates from DoctorView
+  useEffect(() => {
+    const pollCompletedIds = () => {
+      try {
+        const stored = localStorage.getItem('completedPatientIds');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          const newSet = new Set(parsed);
+          
+          // Only update if there are differences
+          const currentIds = Array.from(completedPatientIds);
+          if (JSON.stringify(currentIds.sort()) !== JSON.stringify(parsed.sort())) {
+            console.log('[ReceptionView] Detected completed IDs update from localStorage:', parsed);
+            setCompletedPatientIds(newSet);
+          }
+        }
+      } catch (e) {
+        console.error('[ReceptionView] Failed to poll completed IDs:', e);
+      }
+    };
+    
+    const interval = setInterval(pollCompletedIds, 2000); // Poll every 2 seconds
+    return () => clearInterval(interval);
+  }, [completedPatientIds]);
+
   // Save completed patient IDs to localStorage whenever they change
+  // IMPORTANT: Use same key as DoctorView to share completed patient list
   useEffect(() => {
     try {
       const idsArray = Array.from(completedPatientIds);
-      localStorage.setItem('receptionCompletedPatientIds', JSON.stringify(idsArray));
+      localStorage.setItem('completedPatientIds', JSON.stringify(idsArray));
       console.log('[ReceptionView] Saved completed IDs to localStorage:', idsArray);
     } catch (e) {
       console.error('[ReceptionView] Failed to save completed IDs to localStorage:', e);
