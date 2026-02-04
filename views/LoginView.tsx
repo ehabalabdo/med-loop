@@ -1,6 +1,7 @@
 
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
@@ -10,6 +11,7 @@ const LoginView: React.FC = () => {
   const { login } = useAuth();
   const { t, toggleLanguage, language } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
+  const navigate = useNavigate();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,9 +23,20 @@ const LoginView: React.FC = () => {
     setError('');
     try {
       await login(identifier, password);
-      // Login successful - AuthContext will update user state
-      // App.tsx will automatically redirect based on role
-      window.location.reload();
+      // Login successful - redirect to appropriate dashboard
+      // Give AuthContext a moment to update state
+      setTimeout(() => {
+        const savedUser = localStorage.getItem('user');
+        const savedPatient = localStorage.getItem('patientUser');
+        
+        if (savedPatient) {
+          // Patient login - redirect to patient dashboard
+          navigate('/patient/dashboard', { replace: true });
+        } else if (savedUser) {
+          // Staff login - reload to trigger App.tsx routing
+          window.location.reload();
+        }
+      }, 100);
     } catch (err: any) {
       setError(err.message || 'خطأ في تسجيل الدخول');
     } finally {
