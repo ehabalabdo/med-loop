@@ -123,7 +123,8 @@ class MockAdapter {
 
   // --- Synchronous IO disguised as Async ---
   
-  async getCollection<T>(collection: string): Promise<T[]> {
+  // Synchronous version for all services to use
+  getCollection<T>(collection: string): T[] {
     return load<T[]>(`medcore_${collection}`, []);
   }
 
@@ -142,6 +143,24 @@ class MockAdapter {
     save(`medcore_${collection}`, list);
     
     if (collection === 'patients') this.notifyPatients();
+  }
+
+  // Additional methods required by services.ts
+  add<T extends { id?: string; uid?: string }>(collection: string, data: T): void {
+    const list = load<T[]>(`medcore_${collection}`, []);
+    list.unshift(data);
+    save(`medcore_${collection}`, list);
+    if (collection === 'patients') this.notifyPatients();
+  }
+
+  update<T extends { id?: string; uid?: string }>(collection: string, id: string, data: T): void {
+    const list = load<T[]>(`medcore_${collection}`, []);
+    const idx = list.findIndex((i: any) => (i.id === id || i.uid === id));
+    if (idx >= 0) {
+      list[idx] = data;
+      save(`medcore_${collection}`, list);
+      if (collection === 'patients') this.notifyPatients();
+    }
   }
 
   async deleteDocument(collection: string, id: string): Promise<void> {

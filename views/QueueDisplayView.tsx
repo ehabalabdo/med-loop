@@ -60,7 +60,7 @@ const QueueDisplayView: React.FC = () => {
     if (!user) return;
 
     // 1. Get Clinic Names
-    ClinicService.getAll().then(all => {
+    ClinicService.getActive().then(all => {
       const map: Record<string, string> = {};
       all.forEach(c => map[c.id] = c.name);
       setClinics(map);
