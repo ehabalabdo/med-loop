@@ -309,6 +309,60 @@ export const pgAppointments = {
       updatedBy: 'system',
       isArchived: row.is_archived || false
     }));
+  },
+
+  create: async (data: Pick<Appointment, 'id'|'patientId'|'patientName'|'clinicId'|'doctorId'|'date'|'reason'|'status'>): Promise<void> => {
+    await sql`
+      INSERT INTO appointments (id, patient_id, patient_name, clinic_id, doctor_id, start_time, status, reason)
+      VALUES (
+        ${data.id},
+        ${data.patientId},
+        ${data.patientName},
+        ${data.clinicId},
+        ${data.doctorId || null},
+        ${new Date(data.date).toISOString()},
+        ${data.status},
+        ${data.reason}
+      )
+    `;
+  },
+
+  update: async (id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'|'status'>>): Promise<void> => {
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramCounter = 1;
+
+    if (data.clinicId !== undefined) {
+      updates.push(`clinic_id = $${paramCounter++}`);
+      values.push(data.clinicId);
+    }
+    if (data.doctorId !== undefined) {
+      updates.push(`doctor_id = $${paramCounter++}`);
+      values.push(data.doctorId || null);
+    }
+    if (data.date !== undefined) {
+      updates.push(`start_time = $${paramCounter++}`);
+      values.push(new Date(data.date).toISOString());
+    }
+    if (data.reason !== undefined) {
+      updates.push(`reason = $${paramCounter++}`);
+      values.push(data.reason);
+    }
+    if (data.status !== undefined) {
+      updates.push(`status = $${paramCounter++}`);
+      values.push(data.status);
+    }
+
+    if (updates.length === 0) return;
+
+    values.push(id);
+    const query = `UPDATE appointments SET ${updates.join(', ')} WHERE id = $${paramCounter}`;
+    await sql.unsafe(query, values);
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await sql`DELETE FROM appointments WHERE id = ${id}`;
   }
 };
+
 

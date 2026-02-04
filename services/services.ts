@@ -276,6 +276,18 @@ export const PatientService = {
     }
   },
 
+  updateMedicalProfile: async (user: User, patientId: string, medicalProfile: Patient['medicalProfile']): Promise<void> => {
+    if (USE_POSTGRES) {
+      await pgPatients.update(patientId, { medicalProfile });
+    } else {
+      const allPatients = mockDb.getCollection<Patient>('patients');
+      const patient = allPatients.find(p => p.id === patientId);
+      if (!patient) throw new Error("Patient not found");
+      const updated = { ...patient, medicalProfile, ...createMeta(user, patient) };
+      await mockDb.writeDocument('patients', updated);
+    }
+  },
+
   updateVisitData: async (user: User, patient: Patient, data: Partial<VisitData>) => {
     const updated: Patient = { 
         ...patient,
@@ -363,7 +375,13 @@ export const AppointmentService = {
             status: 'scheduled',
             ...createMeta(user)
         };
-        await mockDb.writeDocument('appointments', newApp);
+        
+        if (USE_POSTGRES) {
+          await pgAppointments.create(newApp);
+        } else {
+          await mockDb.writeDocument('appointments', newApp);
+        }
+        
         await NotificationService.create(user, {
             type: 'reminder',
             title: 'Appointment Reminder',
@@ -375,57 +393,89 @@ export const AppointmentService = {
     },
 
     update: async (user: User, id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'>>) => {
-        const apps = mockDb.getCollection<Appointment>('appointments');
-        const app = apps.find(a => a.id === id);
-        if (!app) throw new Error("Appointment not found");
-        const updated = { ...app, ...data, ...createMeta(user, app) };
-        await mockDb.writeDocument('appointments', updated);
+        if (USE_POSTGRES) {
+          await pgAppointments.update(id, data);
+        } else {
+          const apps = mockDb.getCollection<Appointment>('appointments');
+          const app = apps.find(a => a.id === id);
+          if (!app) throw new Error("Appointment not found");
+          const updated = { ...app, ...data, ...createMeta(user, app) };
+          await mockDb.writeDocument('appointments', updated);
+        }
     },
 
     updateStatus: async (user: User, id: string, status: Appointment['status']) => {
-        const apps = mockDb.getCollection<Appointment>('appointments');
-        const app = apps.find(a => a.id === id);
-        if (!app) throw new Error("Appointment not found");
-        const updated = { ...app, status, ...createMeta(user, app) };
-        await mockDb.writeDocument('appointments', updated);
+        if (USE_POSTGRES) {
+          await pgAppointments.update(id, { status });
+        } else {
+          const apps = mockDb.getCollection<Appointment>('appointments');
+          const app = apps.find(a => a.id === id);
+          if (!app) throw new Error("Appointment not found");
+          const updated = { ...app, status, ...createMeta(user, app) };
+          await mockDb.writeDocument('appointments', updated);
+        }
     },
     
     delete: async (user: User, id: string) => {
-        await mockDb.deleteDocument('appointments', id);
+        if (USE_POSTGRES) {
+          await pgAppointments.delete(id);
+        } else {
+          await mockDb.deleteDocument('appointments', id);
+        }
     },
 
     checkIn: async (user: User, appointmentId: string) => {
-        const apps = mockDb.getCollection<Appointment>('appointments');
-        const app = apps.find(a => a.id === appointmentId);
-        if (!app) throw new Error("Appointment not found");
+        let app: Appointment | undefined;
+        let patient: Patient | null;
 
-        const patients = mockDb.getCollection<Patient>('patients');
-        const patient = patients.find(p => p.id === app.patientId);
-        if (!patient) throw new Error("Patient not found in database");
+        if (USE_POSTGRES) {
+          const allApps = await pgAppointments.getAll();
+          app = allApps.find(a => a.id === appointmentId);
+          if (!app) throw new Error("Appointment not found");
+          
+          patient = await PatientService.getById(user, app.patientId);
+          if (!patient) throw new Error("Patient not found in database");
+        } else {
+          const apps = mockDb.getCollection<Appointment>('appointments');
+          app = apps.find(a => a.id === appointmentId);
+          if (!app) throw new Error("Appointment not found");
 
-        const updatedApp = { ...app, status: 'checked-in' as const, ...createMeta(user, app) };
+          const patients = mockDb.getCollection<Patient>('patients');
+          patient = patients.find(p => p.id === app.patientId) || null;
+          if (!patient) throw new Error("Patient not found in database");
+        }
 
         const oldHistory = Array.isArray(patient.history) ? patient.history : [];
         const historyToAdd = patient.currentVisit ? [{ ...patient.currentVisit, status: 'completed' as const }] : [];
         
-        const updatedPatient: Patient = {
-            ...patient,
-            history: [...oldHistory, ...historyToAdd],
-            currentVisit: {
-                visitId: generateId('v_app'),
-                clinicId: app.clinicId,
-                doctorId: app.doctorId,
-                date: Date.now(),
-                status: 'waiting',
-                priority: 'normal',
-                source: 'appointment',
-                reasonForVisit: app.reason || 'Appointment'
-            },
-            ...createMeta(user, patient)
+        const newCurrentVisit = {
+            visitId: generateId('v_app'),
+            clinicId: app.clinicId,
+            doctorId: app.doctorId,
+            date: Date.now(),
+            status: 'waiting' as const,
+            priority: 'normal' as const,
+            source: 'appointment' as const,
+            reasonForVisit: app.reason || 'Appointment'
         };
 
-        await mockDb.writeDocument('appointments', updatedApp);
-        await mockDb.writeDocument('patients', updatedPatient);
+        if (USE_POSTGRES) {
+          await pgAppointments.update(appointmentId, { status: 'checked-in' });
+          await pgPatients.update(patient.id, {
+            history: [...oldHistory, ...historyToAdd],
+            currentVisit: newCurrentVisit
+          });
+        } else {
+          const updatedApp = { ...app, status: 'checked-in' as const, ...createMeta(user, app) };
+          const updatedPatient: Patient = {
+              ...patient,
+              history: [...oldHistory, ...historyToAdd],
+              currentVisit: newCurrentVisit,
+              ...createMeta(user, patient)
+          };
+          await mockDb.writeDocument('appointments', updatedApp);
+          await mockDb.writeDocument('patients', updatedPatient);
+        }
     }
 };
 
