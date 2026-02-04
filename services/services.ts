@@ -156,8 +156,13 @@ export const PatientService = {
     if (USE_POSTGRES) {
       // Use PostgreSQL with polling for real-time updates
       return pgPatients.subscribe((allPatients) => {
-        // Filter: only active patients with current visit
-        let filtered = allPatients.filter(p => !p.isArchived && p.currentVisit && p.currentVisit.visitId);
+        // Filter: only active patients with current visit (visitId must be non-empty string)
+        let filtered = allPatients.filter(p => {
+          return !p.isArchived && 
+                 p.currentVisit && 
+                 p.currentVisit.visitId && 
+                 p.currentVisit.visitId.trim() !== '';
+        });
         
         // Filter for Doctors: Only see patients in their clinics
         if (user.role === UserRole.DOCTOR) {
@@ -179,8 +184,13 @@ export const PatientService = {
     } else {
       // Use mockDb.subscribeToPatients for real-time updates
       return mockDb.subscribeToPatients((allPatients) => {
-        // Filter: only active patients with current visit
-        let filtered = allPatients.filter(p => !p.isArchived && p.currentVisit && p.currentVisit.visitId);
+        // Filter: only active patients with VALID visitId (not empty string)
+        let filtered = allPatients.filter(p => {
+          return !p.isArchived && 
+                 p.currentVisit && 
+                 p.currentVisit.visitId && 
+                 p.currentVisit.visitId.trim() !== '';
+        });
       
         // Filter for Doctors: Only see patients in their clinics
         if (user.role === UserRole.DOCTOR) {
@@ -201,8 +211,13 @@ export const PatientService = {
   getAll: async (user: User): Promise<Patient[]> => {
     if (USE_POSTGRES) {
       const allPatients = await pgPatients.getAll();
-      // Filter: only active patients with current visit
-      const activePatients = allPatients.filter(p => !p.isArchived && p.currentVisit && p.currentVisit.visitId);
+      // Filter: only active patients with VALID visitId (not empty string)
+      const activePatients = allPatients.filter(p => {
+        return !p.isArchived && 
+               p.currentVisit && 
+               p.currentVisit.visitId && 
+               p.currentVisit.visitId.trim() !== '';
+      });
       if (user.role === UserRole.DOCTOR) {
         if (!user.clinicIds || user.clinicIds.length === 0) {
           console.warn('[PatientService.getAll] Doctor has no clinicIds:', user.name);
@@ -216,8 +231,13 @@ export const PatientService = {
       return activePatients;
     } else {
       const allPatients = mockDb.getCollection<Patient>('patients');
-      // Filter: only active patients with current visit
-      const activePatients = allPatients.filter(p => !p.isArchived && p.currentVisit && p.currentVisit.visitId);
+      // Filter: only active patients with VALID visitId (not empty string)
+      const activePatients = allPatients.filter(p => {
+        return !p.isArchived && 
+               p.currentVisit && 
+               p.currentVisit.visitId && 
+               p.currentVisit.visitId.trim() !== '';
+      });
       if (user.role === UserRole.DOCTOR) {
         if (!user.clinicIds || user.clinicIds.length === 0) return [];
         return activePatients.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));

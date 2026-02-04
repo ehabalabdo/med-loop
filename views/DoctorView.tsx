@@ -59,6 +59,13 @@ const DoctorView: React.FC = () => {
       // Filter out patients that we've marked as completed locally
       const filteredData = data.filter(p => !completedPatientIds.has(p.id));
       
+      console.log('[DoctorView] Subscribe callback:', {
+        totalFromDB: data.length,
+        completedIds: Array.from(completedPatientIds),
+        afterFilter: filteredData.length,
+        patients: filteredData.map(p => ({ id: p.id, name: p.name, visitId: p.currentVisit.visitId }))
+      });
+      
       setPatients(filteredData);
       // Real-time update for selected patient if their status changes externally
       if (selectedPatient) {
@@ -81,7 +88,7 @@ const DoctorView: React.FC = () => {
         };
         loadData();
     return () => unsubscribeQueue();
-  }, [user, selectedPatient?.id, completedPatientIds]); // Fixed: Added completedPatientIds dependency
+  }, [user, selectedPatient?.id]); // Removed completedPatientIds from deps to avoid infinite loop
 
   useEffect(() => {
     if (selectedPatient) {
@@ -105,15 +112,20 @@ const DoctorView: React.FC = () => {
   const handleSaveVisit = async (status: VisitData['status']) => {
     if (!selectedPatient || !user) return;
     try {
+        if(status === 'completed') {
+            // STEP 1: Mark as completed BEFORE API call
+            setCompletedPatientIds(prev => new Set(prev).add(selectedPatient.id));
+            // STEP 2: Optimistic UI - remove immediately
+            setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
+            console.log('[DoctorView] Patient marked as completed:', selectedPatient.id);
+        }
+        
+        // STEP 3: Make API call
         await PatientService.updateStatus(user, selectedPatient, status, {
             diagnosis, doctorNotes: notes, prescriptions, attachments, invoiceItems
         });
         
         if(status === 'completed') {
-            // Mark patient as completed to prevent re-appearing from polling
-            setCompletedPatientIds(prev => new Set(prev).add(selectedPatient.id));
-            // Optimistic UI update: Remove patient from queue immediately
-            setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
             // Clear screen
             setSelectedPatient(null);
             setMobileTab('queue');
