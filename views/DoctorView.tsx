@@ -35,6 +35,18 @@ const DoctorView: React.FC = () => {
   const [mobileTab, setMobileTab] = useState<'queue' | 'emr'>('queue');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleSelectPatient = async (p: Patient) => {
+    setSelectedPatient(p);
+    // Auto-update status to "in-progress" when doctor starts consultation
+    if (p.currentVisit.status === 'waiting' && user) {
+      try {
+        await PatientService.updateStatus(user, p, 'in-progress');
+      } catch (e) {
+        console.error('Failed to update patient status:', e);
+      }
+    }
+  };
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -292,7 +304,7 @@ const DoctorView: React.FC = () => {
                             }
 
                             return (
-                                <button key={p.id} onClick={() => setSelectedPatient(p)} className={cardClass}>
+                                <button key={p.id} onClick={() => handleSelectPatient(p)} className={cardClass}>
                                     {isUrgent && <div className="absolute top-2 right-2 text-xs font-bold bg-red-500 text-white px-2 py-0.5 rounded animate-pulse">URGENT</div>}
                                     <div className={`font-bold text-sm mb-1 truncate pr-6 ${isSelected ? 'text-white' : 'text-slate-800'}`}>{p.name}</div>
                                     <div className="flex justify-between items-center text-[10px]">
