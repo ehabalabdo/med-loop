@@ -34,21 +34,90 @@ const PatientProfileView: React.FC = () => {
   const [editPassword, setEditPassword] = useState('');
   const [editHasAccess, setEditHasAccess] = useState(false);
 
+  // Sound notification system
+  const prevStatusRef = React.useRef<string | null>(null);
+  
+  const playCallingSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Calling tone
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime);
+      oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.15);
+      oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.3);
+      
+      gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.6);
+      
+      // Show alert notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('جاء دورك!', {
+          body: 'الرجاء التوجه إلى غرفة الفحص',
+          icon: '/logo.png'
+        });
+      }
+    } catch (e) {
+      console.log('Audio calling not supported');
+    }
+  };
+
+  // Monitor patient status for calling notification
+  useEffect(() => {
+    if (patient && patient.currentVisit) {
+      const currentStatus = patient.currentVisit.status;
+      
+      // If status changed from 'waiting' to 'in-progress', play calling sound
+      if (prevStatusRef.current === 'waiting' && currentStatus === 'in-progress') {
+        playCallingSound();
+      }
+      
+      prevStatusRef.current = currentStatus;
+    }
+  }, [patient?.currentVisit?.status]);
+  
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+    // Load patient data with real-time updates
     useEffect(() => {
         const fetchData = async () => {
-            if (!user) return;
+            if (!user || !id) return;
             try {
-                const appointments = await api.get('/appointments/patient');
-                // يمكنك هنا ربط المواعيد مع بيانات المريض حسب الحاجة
-                setPatient({ ...patient, appointments });
+                const patientData = await PatientService.getById(user, id);
+                if (patientData) {
+                    setPatient(patientData);
+                    const allClinics = await ClinicService.getActive();
+                    setClinics(allClinics);
+                } else {
+                    setError('Patient not found');
+                }
             } catch (err: any) {
-                setError(err.message);
+                setError(err.message || 'Access denied');
             } finally {
                 setLoading(false);
             }
         };
+        
         fetchData();
-    }, [user]);
+        
+        // Poll for updates every 2 seconds to catch status changes
+        const interval = setInterval(fetchData, 2000);
+        
+        return () => clearInterval(interval);
+    }, [user, id]);
 
   const handleSaveClinical = async () => {
      if(!patient || !user) return;

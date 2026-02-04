@@ -96,18 +96,48 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   }, []);
 
 
-    // تحميل المرضى من السيرفر
-    const fetchPatients = async () => {
-        if (!user) return;
+    // Play notification sound when new patient arrives
+    const prevPatientCountRef = React.useRef<number>(0);
+    const playNotificationSound = () => {
         try {
-            const data = await PatientService.getAll(user);
-            setPatients(data);
-        } catch (e) { setPatients([]); }
+            const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Pleasant notification tone
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.4);
+        } catch (e) {
+            console.log('Audio notification not supported');
+        }
     };
 
+    // تحميل المرضى من السيرفر مع real-time subscription
     useEffect(() => {
-        fetchPatients();
-    }, []);
+        if (!user) return;
+        
+        const unsubscribe = PatientService.subscribe(user, (data) => {
+            // Check if new patient arrived (count increased)
+            if (prevPatientCountRef.current > 0 && data.length > prevPatientCountRef.current) {
+                playNotificationSound();
+            }
+            prevPatientCountRef.current = data.length;
+            setPatients(data);
+        });
+        
+        return () => unsubscribe();
+    }, [user]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
