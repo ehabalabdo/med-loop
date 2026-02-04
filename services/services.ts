@@ -318,19 +318,9 @@ export const PatientService = {
 
   updateStatus: async (user: User, patient: Patient, status: VisitData['status'], doctorData?: Partial<VisitData>) => {
     const updatedVisit = { ...patient.currentVisit, status, ...(doctorData || {}) };
-    const updated: Patient = { 
-      ...patient,
-      currentVisit: updatedVisit,
-      ...createMeta(user, patient) 
-    };
-    
-    if (USE_POSTGRES) {
-      await pgPatients.update(patient.id, { currentVisit: updatedVisit });
-    } else {
-      await mockDb.writeDocument('patients', updated);
-    }
     
     if (status === 'completed') {
+       // Create invoice first
        const billableItems = doctorData?.invoiceItems || [];
        if (billableItems.length === 0) {
            billableItems.push({ id: generateId('item'), description: 'Medical Consultation', price: 50 });
@@ -342,7 +332,7 @@ export const PatientService = {
            items: billableItems
        });
        
-       // Move current visit to history and reset currentVisit
+       // Move current visit to history and reset currentVisit in ONE update
        const newHistory = [...(patient.history || []), updatedVisit];
        const resetVisit = {
          visitId: '',
@@ -359,7 +349,27 @@ export const PatientService = {
            history: newHistory,
            currentVisit: resetVisit
          });
+       } else {
+         const updated: Patient = { 
+           ...patient,
+           history: newHistory,
+           currentVisit: resetVisit,
+           ...createMeta(user, patient) 
+         };
+         await mockDb.writeDocument('patients', updated);
        }
+    } else {
+      // For non-completed status, just update currentVisit
+      if (USE_POSTGRES) {
+        await pgPatients.update(patient.id, { currentVisit: updatedVisit });
+      } else {
+        const updated: Patient = { 
+          ...patient,
+          currentVisit: updatedVisit,
+          ...createMeta(user, patient) 
+        };
+        await mockDb.writeDocument('patients', updated);
+      }
     }
   },
 
