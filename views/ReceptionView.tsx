@@ -165,6 +165,14 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     const prevPatientCountRef = React.useRef<number>(0);
     const prevPatientsRef = React.useRef<Patient[]>([]);
     
+    // Use ref to always get latest completedPatientIds in subscription callback
+    const completedPatientIdsRef = React.useRef<Set<string>>(completedPatientIds);
+    
+    // Keep ref in sync with state
+    React.useEffect(() => {
+        completedPatientIdsRef.current = completedPatientIds;
+    }, [completedPatientIds]);
+    
     const playNotificationSound = () => {
         try {
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -209,8 +217,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
             // Store current patients for next comparison
             prevPatientsRef.current = data;
             
-            // Filter out completed patients
-            const filteredData = data.filter(p => !completedPatientIds.has(p.id));
+            // Filter out completed patients using ref to get latest value
+            const filteredData = data.filter(p => !completedPatientIdsRef.current.has(p.id));
             
             // Check if new patient arrived (count increased)
             if (prevPatientCountRef.current > 0 && filteredData.length > prevPatientCountRef.current) {
@@ -221,7 +229,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         });
         
         return () => unsubscribe();
-    }, [user, completedPatientIds]);
+    }, [user]); // Remove completedPatientIds from dependencies - use ref instead
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
