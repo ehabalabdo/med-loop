@@ -123,6 +123,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     const pollCompletedIds = () => {
       try {
         const stored = localStorage.getItem('completedPatientIds');
+        console.log('[ReceptionView] Polling localStorage - raw value:', stored);
         if (stored) {
           const parsed = JSON.parse(stored);
           const newSet = new Set(parsed);
@@ -130,8 +131,13 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
           // Only update if there are differences
           const currentIds = Array.from(completedPatientIds);
           if (JSON.stringify(currentIds.sort()) !== JSON.stringify(parsed.sort())) {
-            console.log('[ReceptionView] Detected completed IDs update from localStorage:', parsed);
+            console.log('[ReceptionView] ✅ Detected completed IDs update from localStorage:', {
+              old: currentIds,
+              new: parsed
+            });
             setCompletedPatientIds(newSet);
+          } else {
+            console.log('[ReceptionView] No changes in completedPatientIds');
           }
         }
       } catch (e) {
@@ -139,8 +145,12 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
       }
     };
     
+    console.log('[ReceptionView] Starting localStorage polling every 2 seconds');
     const interval = setInterval(pollCompletedIds, 2000); // Poll every 2 seconds
-    return () => clearInterval(interval);
+    return () => {
+      console.log('[ReceptionView] Stopping localStorage polling');
+      clearInterval(interval);
+    };
   }, [completedPatientIds]);
 
   // Save completed patient IDs to localStorage whenever they change
@@ -362,10 +372,19 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
       try { const fullUrl = window.location.href.split('#')[0] + '#/queue-display'; window.open(fullUrl, 'MedCoreQueue', 'width=1000,height=800'); } catch (e) { alert("Cannot open window."); }
   };
 
-  // Filter out completed patients from UI display (using both status AND completedPatientIds Set)
-  const activeQueue = patients.filter(p => 
-    p.currentVisit.status !== 'completed' && !completedPatientIds.has(p.id)
-  );
+  // Filter out completed patients from UI display (using useMemo to ensure re-calculation when dependencies change)
+  const activeQueue = React.useMemo(() => {
+    const filtered = patients.filter(p => 
+      p.currentVisit.status !== 'completed' && !completedPatientIds.has(p.id)
+    );
+    console.log('[ReceptionView] activeQueue recalculated:', {
+      totalPatients: patients.length,
+      completedIds: Array.from(completedPatientIds),
+      filteredCount: filtered.length,
+      filteredPatients: filtered.map(p => ({ id: p.id, name: p.name }))
+    });
+    return filtered;
+  }, [patients, completedPatientIds]);
 
   // Time formatting for the fancy clock
   const hh = currentTime.getHours().toString().padStart(2, '0');
