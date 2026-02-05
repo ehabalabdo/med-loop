@@ -66,48 +66,43 @@ const QueueDisplayView: React.FC = () => {
       setClinics(map);
     });
 
-    // 2. Poll for Patients
-    const fetchData = async () => {
-       const dummyUser = { ...user, role: UserRole.SECRETARY }; 
-       const subscription = PatientService.subscribe(dummyUser, (data) => {
-          // Filter out completed to keep screen clean
-          const active = data.filter(p => p.currentVisit.status !== 'completed');
-          
-          // Check for new "in-progress" status (patient called by doctor)
-          active.forEach(p => {
-              const prev = prevPatientsRef.current.find(old => old.id === p.id);
-              if (p.currentVisit.status === 'in-progress' && prev?.currentVisit.status !== 'in-progress') {
-                  const clinicName = clinics[p.currentVisit.clinicId] || 'Clinic';
-                  // Announce patient name
-                  const text = language === 'ar' 
-                    ? `المريض ${p.name}, يرجى التوجه إلى ${clinicName}`
-                    : `Patient ${p.name}, please proceed to ${clinicName}`;
-                  speak(text);
-              }
-          });
-
-          prevPatientsRef.current = active;
-          setPatients(active);
+    // 2. Subscribe to Patients (PatientService already filters by visitId)
+    const dummyUser = { ...user, role: UserRole.SECRETARY }; 
+    const subscription = PatientService.subscribe(dummyUser, (data) => {
+       console.log('[QueueDisplayView] Received patients from subscription:', {
+         count: data.length,
+         patients: data.map(p => ({ id: p.id, name: p.name, status: p.currentVisit.status }))
        });
-       return subscription;
-    };
+       
+       // PatientService.subscribe already filters out patients with empty visitId
+       // So we only need to filter by status here
+       const active = data.filter(p => p.currentVisit.status !== 'completed');
+       
+       console.log('[QueueDisplayView] Active patients after filter:', active.length);
+       
+       // Check for new "in-progress" status (patient called by doctor)
+       active.forEach(p => {
+           const prev = prevPatientsRef.current.find(old => old.id === p.id);
+           if (p.currentVisit.status === 'in-progress' && prev?.currentVisit.status !== 'in-progress') {
+               const clinicName = clinics[p.currentVisit.clinicId] || 'Clinic';
+               // Announce patient name
+               const text = language === 'ar' 
+                 ? `المريض ${p.name}, يرجى التوجه إلى ${clinicName}`
+                 : `Patient ${p.name}, please proceed to ${clinicName}`;
+               speak(text);
+           }
+       });
 
-    fetchData().then(unsub => {
-      unsubscribeRef.current = unsub;
+       prevPatientsRef.current = active;
+       setPatients(active);
     });
-
-    const poller = setInterval(() => {
-       fetchData().then(unsub => {
-          if(unsubscribeRef.current) unsubscribeRef.current();
-          unsubscribeRef.current = unsub;
-       });
-    }, 3000);
+    
+    unsubscribeRef.current = subscription;
 
     return () => {
         if(unsubscribeRef.current) unsubscribeRef.current();
-        clearInterval(poller);
     };
-  }, [user, clinics, soundEnabled]); // Added dependencies
+  }, [user, clinics, soundEnabled, language]); // Added all dependencies
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col font-sans">
