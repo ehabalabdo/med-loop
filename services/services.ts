@@ -273,6 +273,18 @@ export const PatientService = {
     }
   },
 
+  // Get ALL patients for Registry view (including those without active visits)
+  getAllForRegistry: async (user: User): Promise<Patient[]> => {
+    if (USE_POSTGRES) {
+      const allPatients = await pgPatients.getAll();
+      // Only filter out archived patients, keep all others including completed ones
+      return allPatients.filter(p => !p.isArchived);
+    } else {
+      const allPatients = mockDb.getCollection<Patient>('patients');
+      return allPatients.filter(p => !p.isArchived);
+    }
+  },
+
   getById: async (user: User, id: string): Promise<Patient | null> => {
     if (USE_POSTGRES) {
       const allPatients = await pgPatients.getAll();

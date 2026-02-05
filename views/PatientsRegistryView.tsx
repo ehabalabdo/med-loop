@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { api } from '../src/api';
+import { PatientService, ClinicService } from '../services/services';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Patient, Clinic } from '../types';
@@ -22,16 +22,18 @@ const PatientsRegistryView: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState('all');
 
   const fetchData = async () => {
+    if (!user) return;
     setLoading(true);
     try {
-      const [pats, clins] = await Promise.all([
-        api.get('/patients'),
-        api.get('/clinics')
-      ]);
-      setPatients(pats);
-      setClinics(clins.filter((c:any) => c.category === 'clinic'));
+      // Get ALL patients (including those without active visits for registry view)
+      const allPatientsRaw = await PatientService.getAllForRegistry(user);
+      const activeClinics = await ClinicService.getActive();
+      
+      console.log('[PatientsRegistryView] Loaded patients:', allPatientsRaw.length);
+      setPatients(allPatientsRaw);
+      setClinics(activeClinics.filter((c:any) => c.category === 'clinic'));
     } catch (err) {
-      // Optionally handle error
+      console.error('[PatientsRegistryView] Error fetching data:', err);
     } finally {
       setLoading(false);
     }
