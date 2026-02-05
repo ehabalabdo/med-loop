@@ -303,11 +303,16 @@ export const pgPatients = {
     // Call once immediately
     fetchAndCompare();
     
-    // Poll every 3 seconds (reduced from 1 second to prevent excessive re-renders)
-    const interval = setInterval(fetchAndCompare, 3000);
+    // Poll every 1 second for faster updates (with comparison to prevent unnecessary re-renders)
+    const interval = setInterval(fetchAndCompare, 1000);
     
-    // Return unsubscribe function
-    return () => clearInterval(interval);
+    // Return unsubscribe function with manual refresh capability
+    const unsubscribe = () => clearInterval(interval);
+    
+    // Expose refresh method for manual triggering
+    (unsubscribe as any).refresh = fetchAndCompare;
+    
+    return unsubscribe;
   }
 };
 
