@@ -212,13 +212,26 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     useEffect(() => {
         if (!user) return;
         
+        console.log('[ReceptionView] 🔴 Setting up subscription...');
+        
         const unsubscribe = PatientService.subscribe(user, (data) => {
+            console.log('[ReceptionView] 📨 Received data from subscription:', {
+                count: data.length,
+                patients: data.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    visitId: p.currentVisit?.visitId,
+                    status: p.currentVisit?.status
+                }))
+            });
+            
             // Detect patients who got completed (disappeared from data but were in previous list)
             if (prevPatientsRef.current.length > 0) {
                 prevPatientsRef.current.forEach(prevPatient => {
                     const stillExists = data.find(p => p.id === prevPatient.id);
                     // If patient was waiting/in-progress and now disappeared, mark as completed
                     if (!stillExists && prevPatient.currentVisit?.visitId) {
+                        console.log('[ReceptionView] ✅ Patient disappeared from subscription, marking as completed:', prevPatient.id);
                         setCompletedPatientIds(prev => new Set(prev).add(prevPatient.id));
                     }
                 });
@@ -237,10 +250,15 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                 playNotificationSound();
             }
             prevPatientCountRef.current = displayCount;
+            
+            console.log('[ReceptionView] 💾 Setting patients state to:', filteredData.length, 'patients');
             setPatients(filteredData); // Store ALL patients, filter in render
         });
         
-        return () => unsubscribe();
+        return () => {
+            console.log('[ReceptionView] 🔴 Cleaning up subscription');
+            unsubscribe();
+        };
     }, [user]); // Remove completedPatientIds from dependencies - use ref instead
 
     const handleSubmit = async (e: React.FormEvent) => {
