@@ -114,7 +114,26 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000); // Polling for notifs
+    const interval = setInterval(loadData, 30000); // Polling for appointments/notifs
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Faster polling for invoices (every 5 seconds) to catch new invoices from doctor
+  useEffect(() => {
+    if (!user) return;
+    
+    const loadInvoices = async () => {
+      try {
+        const allInvoices = await BillingService.getAll(user);
+        setInvoices(allInvoices.filter(i => i.status !== 'paid'));
+        console.log('[ReceptionView] Loaded invoices:', allInvoices.length);
+      } catch (e) {
+        console.error('[ReceptionView] Failed to load invoices:', e);
+      }
+    };
+    
+    loadInvoices(); // Load immediately
+    const interval = setInterval(loadInvoices, 5000); // Then every 5 seconds
     return () => clearInterval(interval);
   }, [user]);
 

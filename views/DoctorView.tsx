@@ -155,6 +155,14 @@ const DoctorView: React.FC = () => {
             // STEP 2: Optimistic UI - remove immediately
             setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
             console.log('[DoctorView] Patient marked as completed:', selectedPatient.id);
+        } else if (status === 'in-progress') {
+            // Update status in patients list immediately
+            setPatients(prev => prev.map(p => 
+                p.id === selectedPatient.id 
+                    ? { ...p, currentVisit: { ...p.currentVisit, status: 'in-progress' } }
+                    : p
+            ));
+            console.log('[DoctorView] Patient status changed to in-progress:', selectedPatient.id);
         }
         
         // STEP 3: Make API call
@@ -168,7 +176,7 @@ const DoctorView: React.FC = () => {
             setMobileTab('queue');
             setDiagnosis(''); setNotes(''); setPrescriptions([]); setAttachments([]); setInvoiceItems([]);
         } else if (status === 'in-progress') {
-            // Just update local state to reflect UI change immediately
+            // Update selected patient to reflect new status
             setSelectedPatient({
                 ...selectedPatient,
                 currentVisit: { ...selectedPatient.currentVisit, status: 'in-progress' }

@@ -286,13 +286,25 @@ export const pgPatients = {
   },
 
   subscribe: (callback: (patients: Patient[]) => void): (() => void) => {
-    // For real-time updates, call once immediately
-    pgPatients.getAll().then(callback);
+    let lastDataString = '';
     
-    // Poll frequently for near real-time updates
-    const interval = setInterval(() => {
-      pgPatients.getAll().then(callback);
-    }, 1000); // Poll every 1 second for faster UI updates
+    const fetchAndCompare = async () => {
+      const data = await pgPatients.getAll();
+      const dataString = JSON.stringify(data.map(p => ({ id: p.id, visitId: p.currentVisit?.visitId, status: p.currentVisit?.status })));
+      
+      // Only call callback if data actually changed
+      if (dataString !== lastDataString) {
+        console.log('[pgPatients.subscribe] Data changed, triggering callback');
+        lastDataString = dataString;
+        callback(data);
+      }
+    };
+    
+    // Call once immediately
+    fetchAndCompare();
+    
+    // Poll every 3 seconds (reduced from 1 second to prevent excessive re-renders)
+    const interval = setInterval(fetchAndCompare, 3000);
     
     // Return unsubscribe function
     return () => clearInterval(interval);
