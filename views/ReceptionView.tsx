@@ -217,15 +217,17 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
             // Store current patients for next comparison
             prevPatientsRef.current = data;
             
-            // Filter out completed patients using ref to get latest value
-            const filteredData = data.filter(p => !completedPatientIdsRef.current.has(p.id));
+            // Store RAW data without filtering - filtering happens in activeQueue
+            // This allows re-filtering when completedPatientIds changes via polling
+            const filteredData = data; // Don't filter here anymore
             
             // Check if new patient arrived (count increased)
-            if (prevPatientCountRef.current > 0 && filteredData.length > prevPatientCountRef.current) {
+            const displayCount = data.filter(p => !completedPatientIdsRef.current.has(p.id)).length;
+            if (prevPatientCountRef.current > 0 && displayCount > prevPatientCountRef.current) {
                 playNotificationSound();
             }
-            prevPatientCountRef.current = filteredData.length;
-            setPatients(filteredData);
+            prevPatientCountRef.current = displayCount;
+            setPatients(filteredData); // Store ALL patients, filter in render
         });
         
         return () => unsubscribe();
