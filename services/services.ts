@@ -3,10 +3,8 @@ import { Clinic, Patient, User, UserRole, AuditMetadata, VisitData, Appointment,
 import { mockDb } from './mockFirebase';
 import { pgUsers, pgClinics, pgPatients, pgAppointments } from './pgServices';
 
-// Check if we should use PostgreSQL (production) or mockDb (development)
-// TEMPORARILY DISABLED: PostgreSQL connection not working in browser
-// Using Mock Database for now until we set up proper backend API
-const USE_POSTGRES = false;
+// Production mode: Always use PostgreSQL (Neon Database)
+const USE_POSTGRES = true;
 
 /**
  * PRODUCTION READINESS:
