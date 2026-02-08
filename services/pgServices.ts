@@ -263,11 +263,14 @@ export const pgPatients = {
     if (data.hasAccess !== undefined) updateFields.has_access = data.hasAccess;
     if (data.medicalProfile !== undefined) updateFields.medical_profile = JSON.stringify(data.medicalProfile);
     if (data.currentVisit !== undefined) {
-      updateFields.current_visit = JSON.stringify(data.currentVisit);
+      const visitJson = JSON.stringify(data.currentVisit);
+      updateFields.current_visit = visitJson;
       console.log('[pgPatients.update] ✏️ Updating currentVisit:', {
         visitId: data.currentVisit.visitId,
         status: data.currentVisit.status,
-        clinicId: data.currentVisit.clinicId
+        clinicId: data.currentVisit.clinicId,
+        jsonString: visitJson,
+        jsonLength: visitJson.length
       });
     }
     if (data.history !== undefined) updateFields.history = JSON.stringify(data.history);
@@ -277,9 +280,15 @@ export const pgPatients = {
       return;
     }
     
-    // Construct dynamic query
+    // Construct dynamic query with proper JSONB casting
     const setClause = Object.keys(updateFields)
-      .map((key, idx) => `${key} = $${idx + 1}`)
+      .map((key, idx) => {
+        // Add ::jsonb cast for JSON columns
+        if (key === 'medical_profile' || key === 'current_visit' || key === 'history') {
+          return `${key} = $${idx + 1}::jsonb`;
+        }
+        return `${key} = $${idx + 1}`;
+      })
       .join(', ');
     
     const values = Object.values(updateFields);
@@ -290,9 +299,20 @@ export const pgPatients = {
     console.log('[pgPatients.update] 📝 Query:', query);
     console.log('[pgPatients.update] 📊 Values:', values);
     
-    await sql.unsafe(query, values);
-    
-    console.log('[pgPatients.update] ✅ Update successful');
+    try {
+      await sql.unsafe(query, values);
+      console.log('[pgPatients.update] ✅ Update successful');
+    } catch (error: any) {
+      console.error('[pgPatients.update] ❌ Update FAILED:', error);
+      console.error('[pgPatients.update] ❌ Error details:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        query: query,
+        values: values
+      });
+      throw error;
+    }
   },
 
   subscribe: (callback: (patients: Patient[]) => void): (() => void) => {
