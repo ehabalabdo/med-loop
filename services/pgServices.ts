@@ -49,9 +49,10 @@ export const pgUsers = {
 
   create: async (user: Omit<User, 'uid' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
     const clinicId = user.clinicIds.length > 0 ? parseInt(user.clinicIds[0]) : null;
+    const clinicIdsJson = JSON.stringify(user.clinicIds);
     const result = await sql`
-      INSERT INTO users (full_name, email, password, role, clinic_id, created_at) 
-      VALUES (${user.name}, ${user.email}, ${user.password || 'password123'}, ${user.role}, ${clinicId}, NOW()) 
+      INSERT INTO users (full_name, email, password, role, clinic_id, clinic_ids, created_at, updated_at, created_by, updated_by, is_active, is_archived) 
+      VALUES (${user.name}, ${user.email}, ${user.password || 'password123'}, ${user.role}, ${clinicId}, ${clinicIdsJson}::jsonb, NOW(), NOW(), 'system', 'system', TRUE, FALSE) 
       RETURNING id
     `;
     return String(result[0].id);
@@ -102,17 +103,17 @@ export const pgClinics = {
       category: (row.category || 'clinic') as ClinicCategory,
       active: row.active !== false,
       createdAt: new Date(row.created_at || Date.now()).getTime(),
-      createdBy: 'system',
-      updatedAt: new Date(row.created_at || Date.now()).getTime(),
-      updatedBy: 'system',
-      isArchived: false
+      createdBy: row.created_by || 'system',
+      updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+      updatedBy: row.updated_by || 'system',
+      isArchived: row.is_archived || false
     }));
   },
 
   create: async (clinic: Omit<Clinic, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
     const result = await sql`
-      INSERT INTO clinics (name, type, category, active, created_at) 
-      VALUES (${clinic.name}, ${clinic.type}, ${clinic.category || 'clinic'}, ${clinic.active !== false}, NOW()) 
+      INSERT INTO clinics (name, type, category, active, created_at, updated_at, created_by, updated_by, is_archived) 
+      VALUES (${clinic.name}, ${clinic.type}, ${clinic.category || 'clinic'}, ${clinic.active !== false}, NOW(), NOW(), 'system', 'system', FALSE) 
       RETURNING id
     `;
     return String(result[0].id);
@@ -215,7 +216,7 @@ export const pgPatients = {
     const result = await sql`
       INSERT INTO patients (
         full_name, age, gender, phone, username, email, password, has_access, 
-        notes, medical_profile, current_visit, history, created_at
+        notes, medical_profile, current_visit, history, created_at, updated_at, created_by, updated_by, is_archived
       ) 
       VALUES (
         ${patient.name}, 
@@ -230,7 +231,11 @@ export const pgPatients = {
         ${medicalProfileJson}::jsonb,
         ${currentVisitJson}::jsonb,
         ${historyJson}::jsonb,
-        NOW()
+        NOW(),
+        NOW(),
+        'system',
+        'system',
+        FALSE
       )
       RETURNING id
     `;
@@ -348,25 +353,31 @@ export const pgAppointments = {
       reason: row.reason || '',
       notes: '',
       createdAt: new Date(row.created_at || Date.now()).getTime(),
-      createdBy: 'system',
-      updatedAt: new Date(row.created_at || Date.now()).getTime(),
-      updatedBy: 'system',
-      isArchived: false
+      createdBy: row.created_by || 'system',
+      updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+      updatedBy: row.updated_by || 'system',
+      isArchived: row.is_archived || false
     }));
   },
 
   create: async (data: Pick<Appointment, 'id'|'patientId'|'patientName'|'clinicId'|'doctorId'|'date'|'reason'|'status'>): Promise<void> => {
+    const startTime = new Date(data.date).toISOString();
+    // Add 1 hour for end_time (or use same time if not specified)
+    const endTime = new Date(data.date + 3600000).toISOString(); // +1 hour
+    
     await sql`
-      INSERT INTO appointments (id, patient_id, patient_name, clinic_id, doctor_id, start_time, status, reason)
+      INSERT INTO appointments (id, patient_id, patient_name, clinic_id, doctor_id, start_time, end_time, status, reason, created_at)
       VALUES (
         ${data.id},
         ${data.patientId},
         ${data.patientName},
         ${data.clinicId},
         ${data.doctorId || null},
-        ${new Date(data.date).toISOString()},
+        ${startTime},
+        ${endTime},
         ${data.status},
-        ${data.reason}
+        ${data.reason},
+        NOW()
       )
     `;
   },
