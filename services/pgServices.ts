@@ -235,60 +235,48 @@ export const pgPatients = {
 
   update: async (id: string, data: Partial<Patient>): Promise<void> => {
     const patientId = parseInt(id);
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramCounter = 1;
+    
+    // Build update object for direct SQL construction
+    const updateParts: string[] = [];
     
     if (data.name !== undefined) {
-      updates.push(`full_name = $${paramCounter++}`);
-      values.push(data.name);
+      updateParts.push(`full_name = '${data.name.replace(/'/g, "''")}'`);
     }
     if (data.age !== undefined) {
-      updates.push(`age = $${paramCounter++}`);
-      values.push(data.age);
+      updateParts.push(`age = ${data.age}`);
     }
     if (data.gender !== undefined) {
-      updates.push(`gender = $${paramCounter++}`);
-      values.push(data.gender);
+      updateParts.push(`gender = '${data.gender}'`);
     }
     if (data.phone !== undefined) {
-      updates.push(`phone = $${paramCounter++}`);
-      values.push(data.phone);
+      updateParts.push(`phone = '${data.phone.replace(/'/g, "''")}'`);
     }
     if (data.username !== undefined) {
-      updates.push(`username = $${paramCounter++}`);
-      values.push(data.username || null);
+      const username = data.username || null;
+      updateParts.push(username ? `username = '${username.replace(/'/g, "''")}'` : `username = NULL`);
     }
     if (data.email !== undefined) {
-      updates.push(`email = $${paramCounter++}`);
-      values.push(data.email || null);
+      const email = data.email || null;
+      updateParts.push(email ? `email = '${email.replace(/'/g, "''")}'` : `email = NULL`);
     }
     if (data.password !== undefined && data.password !== '') {
-      updates.push(`password = $${paramCounter++}`);
-      values.push(data.password);
+      updateParts.push(`password = '${data.password.replace(/'/g, "''")}'`);
     }
     if (data.hasAccess !== undefined) {
-      updates.push(`has_access = $${paramCounter++}`);
-      values.push(data.hasAccess);
+      updateParts.push(`has_access = ${data.hasAccess}`);
     }
     if (data.medicalProfile !== undefined) {
-      updates.push(`medical_profile = $${paramCounter++}::jsonb`);
-      values.push(JSON.stringify(data.medicalProfile));
+      updateParts.push(`medical_profile = '${JSON.stringify(data.medicalProfile).replace(/'/g, "''")}'::jsonb`);
     }
     if (data.currentVisit !== undefined) {
-      updates.push(`current_visit = $${paramCounter++}::jsonb`);
-      values.push(JSON.stringify(data.currentVisit));
+      updateParts.push(`current_visit = '${JSON.stringify(data.currentVisit).replace(/'/g, "''")}'::jsonb`);
     }
     if (data.history !== undefined) {
-      updates.push(`history = $${paramCounter++}::jsonb`);
-      values.push(JSON.stringify(data.history));
+      updateParts.push(`history = '${JSON.stringify(data.history).replace(/'/g, "''")}'::jsonb`);
     }
     
-    if (updates.length > 0) {
-      values.push(patientId);
-      const placeholders = updates.map((_, i) => `$${i + 1}`).join(', ');
-      const setClauses = updates.map((update, i) => update.replace(`$${i + 1}`, `$${i + 1}`));
-      await sql`UPDATE patients SET ${sql.unsafe(updates.join(', '))} WHERE id = ${patientId}`;
+    if (updateParts.length > 0) {
+      await sql.unsafe(`UPDATE patients SET ${updateParts.join(', ')} WHERE id = ${patientId}`);
     }
   },
 
@@ -363,34 +351,28 @@ export const pgAppointments = {
   },
 
   update: async (id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'|'status'>>): Promise<void> => {
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramCounter = 1;
+    const updateParts: string[] = [];
 
     if (data.clinicId !== undefined) {
-      updates.push(`clinic_id = $${paramCounter++}`);
-      values.push(data.clinicId);
+      updateParts.push(`clinic_id = ${data.clinicId}`);
     }
     if (data.doctorId !== undefined) {
-      updates.push(`doctor_id = $${paramCounter++}`);
-      values.push(data.doctorId || null);
+      const doctorId = data.doctorId || null;
+      updateParts.push(doctorId ? `doctor_id = ${doctorId}` : `doctor_id = NULL`);
     }
     if (data.date !== undefined) {
-      updates.push(`start_time = $${paramCounter++}`);
-      values.push(new Date(data.date).toISOString());
+      updateParts.push(`start_time = '${new Date(data.date).toISOString()}'`);
     }
     if (data.reason !== undefined) {
-      updates.push(`reason = $${paramCounter++}`);
-      values.push(data.reason);
+      updateParts.push(`reason = '${data.reason.replace(/'/g, "''")}'`);
     }
     if (data.status !== undefined) {
-      updates.push(`status = $${paramCounter++}`);
-      values.push(data.status);
+      updateParts.push(`status = '${data.status}'`);
     }
 
-    if (updates.length === 0) return;
+    if (updateParts.length === 0) return;
 
-    await sql`UPDATE appointments SET ${sql.unsafe(updates.join(', '))} WHERE id = ${id}`;
+    await sql.unsafe(`UPDATE appointments SET ${updateParts.join(', ')} WHERE id = '${id}'`);
   },
 
   delete: async (id: string): Promise<void> => {
