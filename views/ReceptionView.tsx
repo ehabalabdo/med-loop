@@ -311,8 +311,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     return filtered;
   }, [patients]);
 
-  // Time formatting for the fancy clock
-  co<Layout title={t('reception_desk')}>
+  return (
+    <Layout title={t('reception_desk')}>
       <div className="flex flex-col gap-6 md:gap-10 max-w-7xl mx-auto relative">
         
         {/* NOTIFICATIONS & BILLING BAR */}
