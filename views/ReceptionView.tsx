@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { ClinicService, PatientService, AppointmentService, NotificationService, BillingService, SettingsService, CourseService } from '../services/services';
-import { api } from '../src/api';
+import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Clinic, Patient, Gender, Priority, Appointment, Notification, Invoice } from '../types';
@@ -107,33 +107,30 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     setTodaysAppointments(unifiedSchedule);
     setClinics(patientClinics);
     setNotifications(notifs);
-    setInvoices(allInvoices.filter(i => i.status !== 'paid')); // Show unpaid
     
     if (patientClinics.length > 0 && !formData.clinicId) setFormData(prev => ({ ...prev, clinicId: patientClinics[0].id }));
   };
 
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30000); // Polling for appointments/notifs
-    return () => clearInterval(interval);
-  }, [user]);
+  const loadInvoices = async () => {
+    if (!user) return;
+    try {
+      const allInvoices = await BillingService.getAll(user);
+      setInvoices(allInvoices.filter(i => i.status !== 'paid'));
+    } catch (e) {
+      console.error('[ReceptionView] Failed to load invoices:', e);
+    }
+  };
 
-  // Faster polling for invoices (every 5 seconds) to catch new invoices from doctor
+  // Combined polling: appointments, notifications, and invoices every 10 seconds
   useEffect(() => {
     if (!user) return;
     
-    const loadInvoices = async () => {
-      try {
-        const allInvoices = await BillingService.getAll(user);
-        setInvoices(allInvoices.filter(i => i.status !== 'paid'));
-        console.log('[ReceptionView] Loaded invoices:', allInvoices.length);
-      } catch (e) {
-        console.error('[ReceptionView] Failed to load invoices:', e);
-      }
+    const loadAll = async () => {
+      await Promise.all([loadData(), loadInvoices()]);
     };
     
-    loadInvoices(); // Load immediately
-    const interval = setInterval(loadInvoices, 5000); // Then every 5 seconds
+    loadAll(); // Load immediately
+    const interval = setInterval(loadAll, 10000); // Every 10 seconds
     return () => clearInterval(interval);
   }, [user]);
 

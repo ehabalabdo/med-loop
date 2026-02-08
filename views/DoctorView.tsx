@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import { ClinicService, PatientService, AppointmentService, SettingsService } from '../services/services';
-import { api } from '../src/api';
+import { api } from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Patient, VisitData, Appointment, Gender, Priority, PrescriptionItem, Attachment, InvoiceItem } from '../types';
@@ -125,7 +125,7 @@ const DoctorView: React.FC = () => {
         };
         loadData();
     return () => unsubscribeQueue();
-  }, [user, selectedPatient?.id]); // Removed completedPatientIds from deps to avoid infinite loop
+  }, [user, selectedPatient?.id, completedPatientIds]); // Fixed: Added completedPatientIds to deps
 
   useEffect(() => {
     if (selectedPatient) {

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Patient } from '../types';
-import { api } from '../src/api';
+import { api } from '../utils/api';
 import { pgUsers, pgPatients } from '../services/pgServices';
 
 interface AuthContextType {
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const foundPatient = allPatients.find(
       p => (p.username === identifier || p.name === identifier || p.email === identifier) && 
            p.password === password && 
-           (p.hasAccess === true || p.hasAccess === 'true' || p.hasAccess === 1)
+           Boolean(p.hasAccess) === true
     );
     
     if (foundPatient) {

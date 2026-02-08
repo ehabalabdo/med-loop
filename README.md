@@ -1,20 +1,131 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# 🏥 MED LOOP - Multi-Clinic Management System
 
-# Run and deploy your AI Studio app
+A comprehensive clinic management system built with React, TypeScript, and PostgreSQL.
 
-This contains everything you need to run your app locally.
+## ✨ Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1iI47-s_mnUxZFLgnhFr4xTjW1kS2Kvpn
+- **Multi-Role Access**: Admin, Doctor, Secretary, Lab, Patient Portal
+- **Real-time Queue**: Live patient tracking with instant updates (1s polling)
+- **EMR System**: Complete electronic medical records
+- **Billing**: Invoice generation and payment tracking
+- **Appointments**: Schedule and manage patient visits
+- **Dental Lab**: Case tracking and management
+- **Implant Inventory**: Supply tracking
+- **Training Academy**: Course management
+- **Multi-language**: Arabic & English
+- **Themes**: Dark & Light modes
 
-## Run Locally
+## 🚀 Quick Start
 
-**Prerequisites:**  Node.js
+```bash
+# Install
+npm install
 
+# Setup environment
+cp .env.example .env
+# Edit .env with your credentials
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+# Run
+npm run dev
+
+# Build
+npm run build
+```
+
+## 🔧 Configuration
+
+### Environment Variables (.env)
+```env
+VITE_API_URL=https://your-api.com
+VITE_DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
+```
+
+### Debug Mode
+Enable logging in `services/services.ts`:
+```typescript
+const DEBUG_MODE = true;
+```
+
+## 📊 Architecture
+
+- **Frontend**: React 18 + TypeScript + Vite
+- **Database**: PostgreSQL (Neon serverless)
+- **Styling**: Tailwind CSS
+- **State**: React Context API
+- **Routing**: React Router v6
+
+## 🗂️ Project Structure
+
+```
+medloop2/
+├── components/        # Reusable UI components
+├── context/           # React contexts (Auth, Theme, Language)
+├── hooks/             # Custom hooks
+├── services/          # Business logic & API
+├── views/             # Main application views
+├── types.ts           # TypeScript definitions
+└── App.tsx            # Root component
+```
+
+## 🔐 Default Login
+
+- Admin: admin@clinic.com / password
+- Doctor: doctor@clinic.com / password
+- Secretary: secretary@clinic.com / password
+
+**⚠️ Change these after first login!**
+
+## 🎯 Key Components
+
+### Services
+- `services.ts` - Main business logic
+- `pgServices.ts` - PostgreSQL operations
+- `db.ts` - Database connection
+
+### Views
+- `AdminView` - System management
+- `DoctorView` - Patient care & EMR
+- `ReceptionView` - Registration & queue
+- `PatientProfileView` - Patient portal
+
+### Custom Hooks
+- `useCompletedPatients()` - Shared patient state across views
+
+## 🐛 Known Issues
+
+- Billing uses mock database (migration pending)
+- Data comparison every 1s (optimized with change detection)
+
+## 📈 Performance
+
+- Polling: 1s with intelligent change detection
+- Error boundaries for crash prevention
+- Optimized re-renders with React hooks
+- Efficient PostgreSQL queries
+
+## 🚢 Deployment
+
+### Vercel
+```bash
+vercel --prod
+```
+
+### Manual
+```bash
+npm run build
+# Upload dist/ folder to hosting
+```
+
+## 📞 Support
+
+For issues: GitHub Issues  
+For questions: Check documentation
+
+## 📄 License
+
+Proprietary - All rights reserved
+
+---
+
+**Version**: 2.0.0  
+**Built with** ❤️ **by MED LOOP Team**

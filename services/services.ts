@@ -6,6 +6,13 @@ import { pgUsers, pgClinics, pgPatients, pgAppointments } from './pgServices';
 // Production mode: Always use PostgreSQL (Neon Database)
 const USE_POSTGRES = true;
 
+// Debug mode: Enable detailed console logging (disable in production)
+const DEBUG_MODE = false;
+
+const debugLog = (...args: any[]) => {
+  if (DEBUG_MODE) console.log(...args);
+};
+
 /**
  * PRODUCTION READINESS:
  * Services act as gatekeepers. IDs are now generated using high-entropy randoms.
@@ -155,7 +162,7 @@ export const PatientService = {
     if (USE_POSTGRES) {
       // Use PostgreSQL with polling for real-time updates
       return pgPatients.subscribe((allPatients) => {
-        console.log('[PatientService.subscribe] BEFORE FILTER - All patients from DB:', allPatients.map(p => ({
+        debugLog('[PatientService.subscribe] BEFORE FILTER - All patients from DB:', allPatients.map(p => ({
           id: p.id,
           name: p.name,
           visitId: p.currentVisit?.visitId,
@@ -172,7 +179,7 @@ export const PatientService = {
                  p.currentVisit.visitId.trim() !== '';
           
           if (!shouldShow) {
-            console.log('[PatientService.subscribe] FILTERING OUT patient:', {
+            debugLog('[PatientService.subscribe] FILTERING OUT patient:', {
               id: p.id,
               name: p.name,
               isArchived: p.isArchived,
@@ -188,12 +195,12 @@ export const PatientService = {
           return shouldShow;
         });
         
-        console.log('[PatientService.subscribe] AFTER FILTER - Filtered count:', filtered.length);
+        debugLog('[PatientService.subscribe] AFTER FILTER - Filtered count:', filtered.length);
         
         // Filter for Doctors: Only see patients in their clinics
         if (user.role === UserRole.DOCTOR) {
           if (!user.clinicIds || user.clinicIds.length === 0) {
-            console.warn('[PatientService.subscribe] Doctor has no clinicIds:', user.name);
+            debugLog('[PatientService.subscribe] Doctor has no clinicIds:', user.name);
             callback([]); return;
           }
           filtered = filtered.filter(p => {
@@ -378,7 +385,7 @@ export const PatientService = {
     const updatedVisit = { ...patient.currentVisit, status, ...(doctorData || {}) };
     
     if (status === 'completed') {
-       console.log('[PatientService.updateStatus] COMPLETING patient:', {
+       debugLog('[PatientService.updateStatus] COMPLETING patient:', {
          patientId: patient.id,
          patientName: patient.name,
          currentVisitId: patient.currentVisit.visitId,
@@ -409,7 +416,7 @@ export const PatientService = {
          source: 'walk-in' as const
        };
        
-       console.log('[PatientService.updateStatus] About to save to DB:', {
+       debugLog('[PatientService.updateStatus] About to save to DB:', {
          patientId: patient.id,
          resetVisit: resetVisit,
          resetVisitStringified: JSON.stringify(resetVisit)
@@ -421,7 +428,7 @@ export const PatientService = {
            currentVisit: resetVisit
          });
          
-         console.log('[PatientService.updateStatus] SAVED to PostgreSQL successfully');
+         debugLog('[PatientService.updateStatus] SAVED to PostgreSQL successfully');
        } else {
          const updated: Patient = { 
            ...patient,

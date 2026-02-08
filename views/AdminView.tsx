@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ClinicService, AuthService } from '../services/services';
 import { pgUsers } from '../services/pgServices';
-import { api } from '../src/api';
+import { api } from '../utils/api';
 import { Clinic, User, UserRole, Invoice, SystemSettings, ClinicCategory } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';

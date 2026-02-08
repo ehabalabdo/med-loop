@@ -1,6 +1,12 @@
 import sql from './db';
 import { User, Patient, Clinic, Appointment, ClinicCategory } from '../types';
 
+// Debug mode (match services.ts)
+const DEBUG_MODE = false;
+const debugLog = (...args: any[]) => {
+  if (DEBUG_MODE) console.log(...args);
+};
+
 /**
  * PostgreSQL Services - Direct connection to Neon Database
  * Using @neondatabase/serverless for browser compatibility via HTTP
@@ -279,9 +285,10 @@ export const pgPatients = {
     }
     
     if (updates.length > 0) {
-      const query = `UPDATE patients SET ${updates.join(', ')} WHERE id = $${paramCounter}`;
       values.push(patientId);
-      await sql.unsafe(query, values);
+      const placeholders = updates.map((_, i) => `$${i + 1}`).join(', ');
+      const setClauses = updates.map((update, i) => update.replace(`$${i + 1}`, `$${i + 1}`));
+      await sql`UPDATE patients SET ${sql.unsafe(updates.join(', '))} WHERE id = ${patientId}`;
     }
   },
 
@@ -294,7 +301,7 @@ export const pgPatients = {
       
       // Only call callback if data actually changed
       if (dataString !== lastDataString) {
-        console.log('[pgPatients.subscribe] Data changed, triggering callback');
+        debugLog('[pgPatients.subscribe] Data changed, triggering callback');
         lastDataString = dataString;
         callback(data);
       }
@@ -383,9 +390,7 @@ export const pgAppointments = {
 
     if (updates.length === 0) return;
 
-    values.push(id);
-    const query = `UPDATE appointments SET ${updates.join(', ')} WHERE id = $${paramCounter}`;
-    await sql.unsafe(query, values);
+    await sql`UPDATE appointments SET ${sql.unsafe(updates.join(', '))} WHERE id = ${id}`;
   },
 
   delete: async (id: string): Promise<void> => {

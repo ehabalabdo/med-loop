@@ -4,6 +4,7 @@ import { HashRouter, MemoryRouter, Routes, Route, useNavigate } from 'react-rout
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { UserRole, User } from './types';
 import LoginView from './views/LoginView';
 import AdminView from './views/AdminView';
@@ -239,16 +240,18 @@ const AppRoutes: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <SafeRouter>
-            <AppRoutes />
-            <DevModeSwitcher /> 
-          </SafeRouter>
-        </AuthProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <SafeRouter>
+              <AppRoutes />
+              <DevModeSwitcher /> 
+            </SafeRouter>
+          </AuthProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 };
 
