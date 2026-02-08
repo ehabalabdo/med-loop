@@ -229,59 +229,99 @@ export const pgPatients = {
       updates: Object.keys(data)
     });
     
-    // Build update object for each field
-    const updateFields: any = {};
+    // Build SET clause fragments with values embedded
+    const setClauses: string[] = [];
+    const queryParams: any[] = [];
+    let paramIndex = 1;
     
-    if (data.name !== undefined) updateFields.full_name = data.name;
-    if (data.age !== undefined) updateFields.age = data.age;
-    if (data.gender !== undefined) updateFields.gender = data.gender;
-    if (data.phone !== undefined) updateFields.phone = data.phone;
-    if (data.username !== undefined) updateFields.username = data.username || null;
-    // Build update object for each field
-    const updateFields: any = {};
-    
-    if (data.name !== undefined) updateFields.full_name = data.name;
-    if (data.age !== undefined) updateFields.age = data.age;
-    if (data.gender !== undefined) updateFields.gender = data.gender;
-    if (data.phone !== undefined) updateFields.phone = data.phone;
-    if (data.username !== undefined) updateFields.username = data.username || null;
-    if (data.email !== undefined) updateFields.email = data.email || null;
-    if (data.password !== undefined && data.password !== '') updateFields.password = data.password;
-    if (data.hasAccess !== undefined) updateFields.has_access = data.hasAccess;
-    if (data.medicalProfile !== undefined) updateFields.medical_profile = JSON.stringify(data.medicalProfile);
-    if (data.currentVisit !== undefined) {
-      const visitJson = JSON.stringify(data.currentVisit);
-      updateFields.current_visit = visitJson;
+    if (data.name !== undefined) {
+      setClauses.push(`full_name = $${paramIndex++}`);
+      queryParams.push(data.name);
     }
-    if (data.history !== undefined) updateFields.history = JSON.stringify(data.history);
+    if (data.age !== undefined) {
+      setClauses.push(`age = $${paramIndex++}`);
+      queryParams.push(data.age);
+    }
+    if (data.gender !== undefined) {
+      setClauses.push(`gender = $${paramIndex++}`);
+      queryParams.push(data.gender);
+    }
+    if (data.phone !== undefined) {
+      setClauses.push(`phone = $${paramIndex++}`);
+      queryParams.push(data.phone);
+    }
+    if (data.username !== undefined) {
+      setClauses.push(`username = $${paramIndex++}`);
+      queryParams.push(data.username || null);
+    }
+    if (data.email !== undefined) {
+      setClauses.push(`email = $${paramIndex++}`);
+      queryParams.push(data.email || null);
+    }
+    if (data.password !== undefined && data.password !== '') {
+      setClauses.push(`password = $${paramIndex++}`);
+      queryParams.push(data.password);
+    }
+    if (data.hasAccess !== undefined) {
+      setClauses.push(`has_access = $${paramIndex++}`);
+      queryParams.push(data.hasAccess);
+    }
     
-    if (Object.keys(updateFields).length === 0) {
+    // JSON columns with ::jsonb casting
+    if (data.medicalProfile !== undefined) {
+      setClauses.push(`medical_profile = $${paramIndex++}::jsonb`);
+      queryParams.push(JSON.stringify(data.medicalProfile));
+    }
+    if (data.currentVisit !== undefined) {
+      setClauses.push(`current_visit = $${paramIndex++}::jsonb`);
+      queryParams.push(JSON.stringify(data.currentVisit));
+    }
+    if (data.history !== undefined) {
+      setClauses.push(`history = $${paramIndex++}::jsonb`);
+      queryParams.push(JSON.stringify(data.history));
+    }
+    
+    if (setClauses.length === 0) {
+      console.log('[pgPatients.update] ⚠️ No fields to update');
       return;
     }
     
-    // Construct dynamic query with proper JSONB casting
-    const setClause = Object.keys(updateFields)
-      .map((key, idx) => {
-        // Add ::jsonb cast for JSON columns
-        if (key === 'medical_profile' || key === 'current_visit' || key === 'history') {
-          return `${key} = $${idx + 1}::jsonb`;
-        }
-        return `${key} = $${idx + 1}`;
-      })
-      .join(', ');
+    // Build final query with WHERE clause
+    const setClause = setClauses.join(', ');
+    const whereParam = `$${paramIndex}`;
+    queryParams.push(patientId);
     
-    const values = Object.values(updateFields);
-    values.push(patientId);
+    const query = `UPDATE patients SET ${setClause} WHERE id = ${whereParam}`;
     
-    const query = `UPDATE patients SET ${setClause} WHERE id = $${values.length}`;
+    console.log('[pgPatients.update] 📝 Executing query:', {
+      fields: setClauses.length,
+      patientId
+    });
     
     try {
-      await sql.unsafe(query, values);
+      // neon() supports raw parameterized queries at runtime
+      // @ts-ignore
+      await sql(query, queryParams);
+      console.log('[pgPatients.update] ✅ Update successful');
     } catch (error: any) {
       console.error('[pgPatients.update] ❌ Update FAILED:', {
         message: error.message,
+        stack: error.stack,
         patientId: patientId,
-        fields: Object.keys(updateFields)lback if data actually changed
+        fields: Object.keys(data)
+      });
+      throw error;
+    }
+  },
+
+  subscribe: (callback: (data: Patient[]) => void) => {
+    let lastDataString = '';
+    
+    const fetchAndCompare = async () => {
+      const data = await pgPatients.getAll();
+      const dataString = JSON.stringify(data);
+      
+      // Only trigger callback if data actually changed
       if (dataString !== lastDataString) {
         console.log('[pgPatients.subscribe] Data changed, triggering callback');
         lastDataString = dataString;
@@ -292,8 +332,8 @@ export const pgPatients = {
     // Call once immediately
     fetchAndCompare();
     
-    // Poll every 1 second for faster updates (with comparison to prevent unnecessary re-renders)
-    const interval = setInterval(fetchAndCompare, 1000);
+    // Poll every 3 seconds (reduced from 1s to avoid spam)
+    const interval = setInterval(fetchAndCompare, 3000);
     
     // Return unsubscribe function with manual refresh capability
     const unsubscribe = () => clearInterval(interval);
@@ -303,25 +343,28 @@ export const pgPatients = {
     
     return unsubscribe;
   }
-};lastDataString = dataString;
-        callback(data);
-      }
-    };
-    
-    // Call once immediately
-    fetchAndCompare();
-    
-    // Poll every 3 seconds (reduced from 1s to avoid spam)
-    const interval = setInterval(fetchAndCompare, 3000);
-    
-    // Return unsubscribe function
-    const unsubscribe = () => clearInterval(interval);
+};
+
+// ==================== APPOINTMENTS ====================
+
+export const pgAppointments = {
+  getAll: async (): Promise<Appointment[]> => {
+    const result = await sql`SELECT * FROM appointments ORDER BY start_time DESC`;
+    return result.map((row: any) => ({
+      id: row.id,
+      patientId: String(row.patient_id),
+      patientName: row.patient_name,
+      clinicId: String(row.clinic_id),
+      doctorId: row.doctor_id ? String(row.doctor_id) : undefined,
+      date: new Date(row.start_time).getTime(),
+      status: row.status,
+      reason: row.reason || '',
       notes: '',
       createdAt: new Date(row.created_at || Date.now()).getTime(),
       createdBy: 'system',
       updatedAt: new Date(row.created_at || Date.now()).getTime(),
       updatedBy: 'system',
-      isArchived: row.is_archived || false
+      isArchived: false
     }));
   },
 
@@ -342,36 +385,39 @@ export const pgPatients = {
   },
 
   update: async (id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'|'status'>>): Promise<void> => {
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramCounter = 1;
+    const setClauses: string[] = [];
+    const queryParams: any[] = [];
+    let paramIndex = 1;
 
     if (data.clinicId !== undefined) {
-      updates.push(`clinic_id = $${paramCounter++}`);
-      values.push(data.clinicId);
+      setClauses.push(`clinic_id = $${paramIndex++}`);
+      queryParams.push(data.clinicId);
     }
     if (data.doctorId !== undefined) {
-      updates.push(`doctor_id = $${paramCounter++}`);
-      values.push(data.doctorId || null);
+      setClauses.push(`doctor_id = $${paramIndex++}`);
+      queryParams.push(data.doctorId || null);
     }
     if (data.date !== undefined) {
-      updates.push(`start_time = $${paramCounter++}`);
-      values.push(new Date(data.date).toISOString());
+      setClauses.push(`start_time = $${paramIndex++}`);
+      queryParams.push(new Date(data.date).toISOString());
     }
     if (data.reason !== undefined) {
-      updates.push(`reason = $${paramCounter++}`);
-      values.push(data.reason);
+      setClauses.push(`reason = $${paramIndex++}`);
+      queryParams.push(data.reason);
     }
     if (data.status !== undefined) {
-      updates.push(`status = $${paramCounter++}`);
-      values.push(data.status);
+      setClauses.push(`status = $${paramIndex++}`);
+      queryParams.push(data.status);
     }
 
-    if (updates.length === 0) return;
+    if (setClauses.length === 0) return;
 
-    values.push(id);
-    const query = `UPDATE appointments SET ${updates.join(', ')} WHERE id = $${paramCounter}`;
-    await sql.unsafe(query, values);
+    const setClause = setClauses.join(', ');
+    queryParams.push(id);
+    const query = `UPDATE appointments SET ${setClause} WHERE id = $${paramIndex}`;
+    
+    // @ts-ignore - neon() supports raw queries
+    await sql(query, queryParams);
   },
 
   delete: async (id: string): Promise<void> => {
