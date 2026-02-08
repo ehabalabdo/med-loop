@@ -180,6 +180,12 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         e.preventDefault();
         if (!formData.name || !formData.clinicId || !user) return;
         try {
+            console.log('[ReceptionView] 📝 Registering new patient:', {
+                name: formData.name,
+                clinicId: formData.clinicId,
+                status: 'waiting'
+            });
+            
             await PatientService.add(user, {
                 name: formData.name,
                 age: parseInt(formData.age) || 0,

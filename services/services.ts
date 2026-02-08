@@ -221,10 +221,28 @@ export const PatientService = {
       
         // Filter for Doctors: Only see patients in their clinics
         if (user.role === UserRole.DOCTOR) {
+          console.log('[PatientService.subscribe] DOCTOR FILTER:', {
+            doctorName: user.name,
+            doctorClinicIds: user.clinicIds,
+            allPatientsCount: filtered.length,
+            patientsWithClinics: filtered.map(p => ({
+              id: p.id,
+              name: p.name,
+              clinicId: p.currentVisit.clinicId
+            }))
+          });
+          
           if (!user.clinicIds || user.clinicIds.length === 0) {
+            console.warn('[PatientService.subscribe] ❌ Doctor has NO clinicIds!');
             callback([]); return;
           }
           filtered = filtered.filter(p => user.clinicIds.includes(p.currentVisit.clinicId));
+          
+          console.log('[PatientService.subscribe] After clinic filter:', {
+            doctorClinicIds: user.clinicIds,
+            remainingPatients: filtered.length,
+            patients: filtered.map(p => ({ name: p.name, clinicId: p.currentVisit.clinicId }))
+          });
         }
         callback(filtered.sort((a, b) => {
           if (a.currentVisit.priority === 'urgent' && b.currentVisit.priority !== 'urgent') return -1;
