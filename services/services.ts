@@ -4,8 +4,8 @@ import { mockDb } from './mockFirebase';
 import { pgUsers, pgClinics, pgPatients, pgAppointments } from './pgServices';
 
 // Check if we should use PostgreSQL (production) or mockDb (development)
-// TEMPORARILY DISABLED: Neon SDK requires ORM for dynamic queries
-const USE_POSTGRES = false;
+// ✅ ENABLED: Database schema fixed + Neon-compatible queries
+const USE_POSTGRES = true;
 
 /**
  * PRODUCTION READINESS:

@@ -12,20 +12,37 @@ export const pgUsers = {
   getAll: async (): Promise<User[]> => {
     const result = await sql`SELECT * FROM users ORDER BY id`;
     
-    const users = result.map((row: any) => ({
-      uid: String(row.id),
-      email: row.email,
-      password: row.password,
-      name: row.full_name,
-      role: row.role,
-      clinicIds: row.clinic_id ? [String(row.clinic_id)] : [],
-      isActive: true,
-      createdAt: new Date(row.created_at).getTime(),
-      createdBy: 'system',
-      updatedAt: new Date(row.created_at).getTime(),
-      updatedBy: 'system',
-      isArchived: false
-    }));
+    const users = result.map((row: any) => {
+      // Parse clinic_ids jsonb array
+      let clinicIds: string[] = [];
+      if (row.clinic_ids) {
+        try {
+          const parsed = typeof row.clinic_ids === 'string' ? JSON.parse(row.clinic_ids) : row.clinic_ids;
+          clinicIds = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          clinicIds = [];
+        }
+      }
+      // Fallback to old clinic_id if clinic_ids is empty
+      if (clinicIds.length === 0 && row.clinic_id) {
+        clinicIds = [String(row.clinic_id)];
+      }
+      
+      return {
+        uid: String(row.id),
+        email: row.email,
+        password: row.password,
+        name: row.full_name,
+        role: row.role,
+        clinicIds: clinicIds,
+        isActive: row.is_active !== false,
+        createdAt: new Date(row.created_at || Date.now()).getTime(),
+        createdBy: row.created_by || 'system',
+        updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+        updatedBy: row.updated_by || 'system',
+        isArchived: row.is_archived || false
+      };
+    });
     
     return users;
   },
@@ -42,20 +59,28 @@ export const pgUsers = {
 
   update: async (uid: string, data: Partial<Pick<User, 'name' | 'email' | 'password' | 'role' | 'clinicIds' | 'isActive'>>): Promise<void> => {
     const userId = parseInt(uid);
-    const updates: any = {};
     
-    if (data.name !== undefined) updates.full_name = data.name;
-    if (data.email !== undefined) updates.email = data.email;
-    if (data.password !== undefined && data.password !== '') updates.password = data.password;
-    if (data.role !== undefined) updates.role = data.role;
-    if (data.clinicIds !== undefined && data.clinicIds.length > 0) {
-      updates.clinic_id = parseInt(data.clinicIds[0]);
+    // Execute separate UPDATEs for each field
+    await sql`UPDATE users SET updated_at = NOW() WHERE id = ${userId}`;
+    
+    if (data.name !== undefined) {
+      await sql`UPDATE users SET full_name = ${data.name} WHERE id = ${userId}`;
     }
-    
-    if (Object.keys(updates).length > 0) {
-      const setClause = Object.keys(updates).map((key, i) => `${key} = $${i + 1}`).join(', ');
-      const values = Object.values(updates);
-      await sql`UPDATE users SET ${sql.unsafe(setClause)} WHERE id = ${userId}`;
+    if (data.email !== undefined) {
+      await sql`UPDATE users SET email = ${data.email} WHERE id = ${userId}`;
+    }
+    if (data.password !== undefined && data.password !== '') {
+      await sql`UPDATE users SET password = ${data.password} WHERE id = ${userId}`;
+    }
+    if (data.role !== undefined) {
+      await sql`UPDATE users SET role = ${data.role} WHERE id = ${userId}`;
+    }
+    if (data.clinicIds !== undefined) {
+      const clinicIdsJson = JSON.stringify(data.clinicIds);
+      await sql`UPDATE users SET clinic_ids = ${clinicIdsJson}::jsonb WHERE id = ${userId}`;
+    }
+    if (data.isActive !== undefined) {
+      await sql`UPDATE users SET is_active = ${data.isActive} WHERE id = ${userId}`;
     }
   },
 
@@ -95,29 +120,20 @@ export const pgClinics = {
 
   update: async (id: string, data: Partial<Pick<Clinic, 'name' | 'type' | 'category' | 'active'>>): Promise<void> => {
     const clinicId = parseInt(id);
-    const updates: string[] = [];
-    const values: any[] = [];
+    
+    await sql`UPDATE clinics SET updated_at = NOW() WHERE id = ${clinicId}`;
     
     if (data.name !== undefined) {
-      updates.push(`name = $${updates.length + 1}`);
-      values.push(data.name);
+      await sql`UPDATE clinics SET name = ${data.name} WHERE id = ${clinicId}`;
     }
     if (data.type !== undefined) {
-      updates.push(`type = $${updates.length + 1}`);
-      values.push(data.type);
+      await sql`UPDATE clinics SET type = ${data.type} WHERE id = ${clinicId}`;
     }
     if (data.category !== undefined) {
-      updates.push(`category = $${updates.length + 1}`);
-      values.push(data.category);
+      await sql`UPDATE clinics SET category = ${data.category} WHERE id = ${clinicId}`;
     }
     if (data.active !== undefined) {
-      updates.push(`active = $${updates.length + 1}`);
-      values.push(data.active);
-    }
-    
-    if (updates.length > 0) {
-      values.push(clinicId);
-      await sql`UPDATE clinics SET ${sql.unsafe(updates.join(', '))} WHERE id = ${clinicId}`;
+      await sql`UPDATE clinics SET active = ${data.active} WHERE id = ${clinicId}`;
     }
   },
 
@@ -181,10 +197,10 @@ export const pgPatients = {
         },
         history: Array.isArray(history) ? history : [],
         createdAt: new Date(row.created_at || Date.now()).getTime(),
-        createdBy: 'system',
-        updatedAt: new Date(row.created_at || Date.now()).getTime(),
-        updatedBy: 'system',
-        isArchived: false
+        createdBy: row.created_by || 'system',
+        updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+        updatedBy: row.updated_by || 'system',
+        isArchived: row.is_archived || false
       };
     });
     
@@ -229,79 +245,50 @@ export const pgPatients = {
       updates: Object.keys(data)
     });
     
-    // Build SET clause fragments with values embedded
-    const setClauses: string[] = [];
-    const queryParams: any[] = [];
-    let paramIndex = 1;
-    
-    if (data.name !== undefined) {
-      setClauses.push(`full_name = $${paramIndex++}`);
-      queryParams.push(data.name);
-    }
-    if (data.age !== undefined) {
-      setClauses.push(`age = $${paramIndex++}`);
-      queryParams.push(data.age);
-    }
-    if (data.gender !== undefined) {
-      setClauses.push(`gender = $${paramIndex++}`);
-      queryParams.push(data.gender);
-    }
-    if (data.phone !== undefined) {
-      setClauses.push(`phone = $${paramIndex++}`);
-      queryParams.push(data.phone);
-    }
-    if (data.username !== undefined) {
-      setClauses.push(`username = $${paramIndex++}`);
-      queryParams.push(data.username || null);
-    }
-    if (data.email !== undefined) {
-      setClauses.push(`email = $${paramIndex++}`);
-      queryParams.push(data.email || null);
-    }
-    if (data.password !== undefined && data.password !== '') {
-      setClauses.push(`password = $${paramIndex++}`);
-      queryParams.push(data.password);
-    }
-    if (data.hasAccess !== undefined) {
-      setClauses.push(`has_access = $${paramIndex++}`);
-      queryParams.push(data.hasAccess);
-    }
-    
-    // JSON columns with ::jsonb casting
-    if (data.medicalProfile !== undefined) {
-      setClauses.push(`medical_profile = $${paramIndex++}::jsonb`);
-      queryParams.push(JSON.stringify(data.medicalProfile));
-    }
-    if (data.currentVisit !== undefined) {
-      setClauses.push(`current_visit = $${paramIndex++}::jsonb`);
-      queryParams.push(JSON.stringify(data.currentVisit));
-    }
-    if (data.history !== undefined) {
-      setClauses.push(`history = $${paramIndex++}::jsonb`);
-      queryParams.push(JSON.stringify(data.history));
-    }
-    
-    if (setClauses.length === 0) {
-      console.log('[pgPatients.update] ⚠️ No fields to update');
-      return;
-    }
-    
-    // Build final query with WHERE clause
-    const setClause = setClauses.join(', ');
-    const whereParam = `$${paramIndex}`;
-    queryParams.push(patientId);
-    
-    const query = `UPDATE patients SET ${setClause} WHERE id = ${whereParam}`;
-    
-    console.log('[pgPatients.update] 📝 Executing query:', {
-      fields: setClauses.length,
-      patientId
-    });
-    
     try {
-      // neon() supports raw parameterized queries at runtime
-      // @ts-ignore
-      await sql(query, queryParams);
+      // Execute separate UPDATE for each field - Neon-compatible approach
+      // Always update updated_at timestamp
+      await sql`UPDATE patients SET updated_at = NOW() WHERE id = ${patientId}`;
+      
+      if (data.name !== undefined) {
+        await sql`UPDATE patients SET full_name = ${data.name} WHERE id = ${patientId}`;
+      }
+      if (data.age !== undefined) {
+        await sql`UPDATE patients SET age = ${data.age} WHERE id = ${patientId}`;
+      }
+      if (data.gender !== undefined) {
+        await sql`UPDATE patients SET gender = ${data.gender} WHERE id = ${patientId}`;
+      }
+      if (data.phone !== undefined) {
+        await sql`UPDATE patients SET phone = ${data.phone} WHERE id = ${patientId}`;
+      }
+      if (data.username !== undefined) {
+        await sql`UPDATE patients SET username = ${data.username || null} WHERE id = ${patientId}`;
+      }
+      if (data.email !== undefined) {
+        await sql`UPDATE patients SET email = ${data.email || null} WHERE id = ${patientId}`;
+      }
+      if (data.password !== undefined && data.password !== '') {
+        await sql`UPDATE patients SET password = ${data.password} WHERE id = ${patientId}`;
+      }
+      if (data.hasAccess !== undefined) {
+        await sql`UPDATE patients SET has_access = ${data.hasAccess} WHERE id = ${patientId}`;
+      }
+      
+      // JSON columns - convert to string first, then cast to jsonb in SQL
+      if (data.medicalProfile !== undefined) {
+        const jsonStr = JSON.stringify(data.medicalProfile);
+        await sql`UPDATE patients SET medical_profile = ${jsonStr}::jsonb WHERE id = ${patientId}`;
+      }
+      if (data.currentVisit !== undefined) {
+        const jsonStr = JSON.stringify(data.currentVisit);
+        await sql`UPDATE patients SET current_visit = ${jsonStr}::jsonb WHERE id = ${patientId}`;
+      }
+      if (data.history !== undefined) {
+        const jsonStr = JSON.stringify(data.history);
+        await sql`UPDATE patients SET history = ${jsonStr}::jsonb WHERE id = ${patientId}`;
+      }
+      
       console.log('[pgPatients.update] ✅ Update successful');
     } catch (error: any) {
       console.error('[pgPatients.update] ❌ Update FAILED:', {
@@ -385,39 +372,24 @@ export const pgAppointments = {
   },
 
   update: async (id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'|'status'>>): Promise<void> => {
-    const setClauses: string[] = [];
-    const queryParams: any[] = [];
-    let paramIndex = 1;
-
+    await sql`UPDATE appointments SET updated_at = NOW() WHERE id = ${id}`;
+    
     if (data.clinicId !== undefined) {
-      setClauses.push(`clinic_id = $${paramIndex++}`);
-      queryParams.push(data.clinicId);
+      await sql`UPDATE appointments SET clinic_id = ${data.clinicId} WHERE id = ${id}`;
     }
     if (data.doctorId !== undefined) {
-      setClauses.push(`doctor_id = $${paramIndex++}`);
-      queryParams.push(data.doctorId || null);
+      await sql`UPDATE appointments SET doctor_id = ${data.doctorId || null} WHERE id = ${id}`;
     }
     if (data.date !== undefined) {
-      setClauses.push(`start_time = $${paramIndex++}`);
-      queryParams.push(new Date(data.date).toISOString());
+      const dateStr = new Date(data.date).toISOString();
+      await sql`UPDATE appointments SET start_time = ${dateStr} WHERE id = ${id}`;
     }
     if (data.reason !== undefined) {
-      setClauses.push(`reason = $${paramIndex++}`);
-      queryParams.push(data.reason);
+      await sql`UPDATE appointments SET reason = ${data.reason} WHERE id = ${id}`;
     }
     if (data.status !== undefined) {
-      setClauses.push(`status = $${paramIndex++}`);
-      queryParams.push(data.status);
+      await sql`UPDATE appointments SET status = ${data.status} WHERE id = ${id}`;
     }
-
-    if (setClauses.length === 0) return;
-
-    const setClause = setClauses.join(', ');
-    queryParams.push(id);
-    const query = `UPDATE appointments SET ${setClause} WHERE id = $${paramIndex}`;
-    
-    // @ts-ignore - neon() supports raw queries
-    await sql(query, queryParams);
   },
 
   delete: async (id: string): Promise<void> => {
