@@ -11,7 +11,6 @@ import { User, Patient, Clinic, Appointment, ClinicCategory } from '../types';
 export const pgUsers = {
   getAll: async (): Promise<User[]> => {
     const result = await sql`SELECT * FROM users ORDER BY id`;
-    console.log('[pgUsers.getAll] 🗄️ Raw data from Neon:', result);
     
     const users = result.map((row: any) => ({
       uid: String(row.id),
@@ -27,13 +26,6 @@ export const pgUsers = {
       updatedBy: 'system',
       isArchived: false
     }));
-    
-    console.log('[pgUsers.getAll] 👥 Mapped users:', users.map(u => ({
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      clinicIds: u.clinicIds
-    })));
     
     return users;
   },
@@ -196,19 +188,6 @@ export const pgPatients = {
       };
     });
     
-    // DEBUG: Log what we're getting from database
-    console.log('[pgPatients.getAll] 🗄️ Raw DB data from Neon:', patients.map(p => ({
-      id: p.id,
-      name: p.name,
-      clinicId: p.currentVisit?.clinicId,
-      visitId: p.currentVisit?.visitId,
-      status: p.currentVisit?.status,
-      visitIdLength: p.currentVisit?.visitId?.length,
-      visitIdIsEmpty: p.currentVisit?.visitId === ''
-    })));
-    
-    console.log('[pgPatients.getAll] 📊 Total patients in Neon:', patients.length);
-    
     return patients;
   },
 
@@ -258,6 +237,14 @@ export const pgPatients = {
     if (data.gender !== undefined) updateFields.gender = data.gender;
     if (data.phone !== undefined) updateFields.phone = data.phone;
     if (data.username !== undefined) updateFields.username = data.username || null;
+    // Build update object for each field
+    const updateFields: any = {};
+    
+    if (data.name !== undefined) updateFields.full_name = data.name;
+    if (data.age !== undefined) updateFields.age = data.age;
+    if (data.gender !== undefined) updateFields.gender = data.gender;
+    if (data.phone !== undefined) updateFields.phone = data.phone;
+    if (data.username !== undefined) updateFields.username = data.username || null;
     if (data.email !== undefined) updateFields.email = data.email || null;
     if (data.password !== undefined && data.password !== '') updateFields.password = data.password;
     if (data.hasAccess !== undefined) updateFields.has_access = data.hasAccess;
@@ -265,18 +252,10 @@ export const pgPatients = {
     if (data.currentVisit !== undefined) {
       const visitJson = JSON.stringify(data.currentVisit);
       updateFields.current_visit = visitJson;
-      console.log('[pgPatients.update] ✏️ Updating currentVisit:', {
-        visitId: data.currentVisit.visitId,
-        status: data.currentVisit.status,
-        clinicId: data.currentVisit.clinicId,
-        jsonString: visitJson,
-        jsonLength: visitJson.length
-      });
     }
     if (data.history !== undefined) updateFields.history = JSON.stringify(data.history);
     
     if (Object.keys(updateFields).length === 0) {
-      console.log('[pgPatients.update] ⚠️ No fields to update');
       return;
     }
     
@@ -296,33 +275,13 @@ export const pgPatients = {
     
     const query = `UPDATE patients SET ${setClause} WHERE id = $${values.length}`;
     
-    console.log('[pgPatients.update] 📝 Query:', query);
-    console.log('[pgPatients.update] 📊 Values:', values);
-    
     try {
       await sql.unsafe(query, values);
-      console.log('[pgPatients.update] ✅ Update successful');
     } catch (error: any) {
-      console.error('[pgPatients.update] ❌ Update FAILED:', error);
-      console.error('[pgPatients.update] ❌ Error details:', {
+      console.error('[pgPatients.update] ❌ Update FAILED:', {
         message: error.message,
-        code: error.code,
-        detail: error.detail,
-        query: query,
-        values: values
-      });
-      throw error;
-    }
-  },
-
-  subscribe: (callback: (patients: Patient[]) => void): (() => void) => {
-    let lastDataString = '';
-    
-    const fetchAndCompare = async () => {
-      const data = await pgPatients.getAll();
-      const dataString = JSON.stringify(data.map(p => ({ id: p.id, visitId: p.currentVisit?.visitId, status: p.currentVisit?.status })));
-      
-      // Only call callback if data actually changed
+        patientId: patientId,
+        fields: Object.keys(updateFields)lback if data actually changed
       if (dataString !== lastDataString) {
         console.log('[pgPatients.subscribe] Data changed, triggering callback');
         lastDataString = dataString;
@@ -344,22 +303,19 @@ export const pgPatients = {
     
     return unsubscribe;
   }
-};
-
-// ==================== APPOINTMENTS ====================
-
-export const pgAppointments = {
-  getAll: async (): Promise<Appointment[]> => {
-    const result = await sql`SELECT * FROM appointments ORDER BY start_time DESC`;
-    return result.map((row: any) => ({
-      id: String(row.id),
-      patientId: String(row.patient_id),
-      patientName: row.patient_name || 'Unknown',
-      clinicId: String(row.clinic_id),
-      doctorId: row.doctor_id ? String(row.doctor_id) : undefined,
-      date: new Date(row.start_time).getTime(),
-      status: row.status || 'scheduled',
-      reason: row.reason || '',
+};lastDataString = dataString;
+        callback(data);
+      }
+    };
+    
+    // Call once immediately
+    fetchAndCompare();
+    
+    // Poll every 3 seconds (reduced from 1s to avoid spam)
+    const interval = setInterval(fetchAndCompare, 3000);
+    
+    // Return unsubscribe function
+    const unsubscribe = () => clearInterval(interval);
       notes: '',
       createdAt: new Date(row.created_at || Date.now()).getTime(),
       createdBy: 'system',

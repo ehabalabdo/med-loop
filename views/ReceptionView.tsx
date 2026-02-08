@@ -150,15 +150,6 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         console.log('[ReceptionView] 🔴 Setting up subscription...');
         
         const unsubscribe = PatientService.subscribe(user, (data) => {
-            console.log('[ReceptionView] 📨 Received data from subscription:', {
-                count: data.length,
-                patients: data.map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    status: p.currentVisit?.status
-                }))
-            });
-            
             // التحقق من مريض جديد للصوت
             const waitingCount = data.filter(p => p.currentVisit?.status === 'waiting').length;
             if (prevPatientCountRef.current > 0 && waitingCount > prevPatientCountRef.current) {
@@ -180,12 +171,6 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         e.preventDefault();
         if (!formData.name || !formData.clinicId || !user) return;
         try {
-            console.log('[ReceptionView] 📝 Registering new patient:', {
-                name: formData.name,
-                clinicId: formData.clinicId,
-                status: 'waiting'
-            });
-            
             await PatientService.add(user, {
                 name: formData.name,
                 age: parseInt(formData.age) || 0,
@@ -327,12 +312,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   }, [patients]);
 
   // Time formatting for the fancy clock
-  const hh = currentTime.getHours().toString().padStart(2, '0');
-  const mm = currentTime.getMinutes().toString().padStart(2, '0');
-  const ss = currentTime.getSeconds();
-  
-  return (
-    <Layout title={t('reception_desk')}>
+  co<Layout title={t('reception_desk')}>
       <div className="flex flex-col gap-6 md:gap-10 max-w-7xl mx-auto relative">
         
         {/* NOTIFICATIONS & BILLING BAR */}

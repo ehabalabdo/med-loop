@@ -70,24 +70,7 @@ const DoctorView: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     
-    console.log('[DoctorView] 🔵 Setting up subscription for doctor:', {
-      name: user.name,
-      role: user.role,
-      clinicIds: user.clinicIds
-    });
-    
     const unsubscribeQueue = PatientService.subscribe(user, (data) => {
-      console.log('[DoctorView] 📨 Subscribe callback received:', {
-        totalFromDB: data.length,
-        patients: data.map(p => ({ 
-          id: p.id, 
-          name: p.name, 
-          status: p.currentVisit.status,
-          clinicId: p.currentVisit.clinicId,
-          visitId: p.currentVisit.visitId
-        }))
-      });
-      
       setPatients(data);
       
       // Real-time update for selected patient
@@ -306,16 +289,6 @@ const DoctorView: React.FC = () => {
     p.currentVisit.visitId.trim() !== '' && 
     (p.currentVisit.status === 'waiting' || p.currentVisit.status === 'in-progress')
   );
-  
-  console.log('[DoctorView] 🎯 WaitingList after filter:', {
-    totalPatients: patients.length,
-    waitingListCount: waitingList.length,
-    waitingList: waitingList.map(p => ({ 
-      name: p.name, 
-      visitId: p.currentVisit.visitId, 
-      status: p.currentVisit.status 
-    }))
-  });
 
   return (
     <Layout title={t('doctor_console')}>
