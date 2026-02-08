@@ -244,60 +244,55 @@ export const pgPatients = {
 
   update: async (id: string, data: Partial<Patient>): Promise<void> => {
     const patientId = parseInt(id);
-    const updates: string[] = [];
-    const values: any[] = [];
-    let paramCounter = 1;
     
-    if (data.name !== undefined) {
-      updates.push(`full_name = $${paramCounter++}`);
-      values.push(data.name);
-    }
-    if (data.age !== undefined) {
-      updates.push(`age = $${paramCounter++}`);
-      values.push(data.age);
-    }
-    if (data.gender !== undefined) {
-      updates.push(`gender = $${paramCounter++}`);
-      values.push(data.gender);
-    }
-    if (data.phone !== undefined) {
-      updates.push(`phone = $${paramCounter++}`);
-      values.push(data.phone);
-    }
-    if (data.username !== undefined) {
-      updates.push(`username = $${paramCounter++}`);
-      values.push(data.username || null);
-    }
-    if (data.email !== undefined) {
-      updates.push(`email = $${paramCounter++}`);
-      values.push(data.email || null);
-    }
-    if (data.password !== undefined && data.password !== '') {
-      updates.push(`password = $${paramCounter++}`);
-      values.push(data.password);
-    }
-    if (data.hasAccess !== undefined) {
-      updates.push(`has_access = $${paramCounter++}`);
-      values.push(data.hasAccess);
-    }
-    if (data.medicalProfile !== undefined) {
-      updates.push(`medical_profile = $${paramCounter++}::jsonb`);
-      values.push(JSON.stringify(data.medicalProfile));
-    }
+    console.log('[pgPatients.update] 🔄 Updating patient:', {
+      id: patientId,
+      updates: Object.keys(data)
+    });
+    
+    // Build update object for each field
+    const updateFields: any = {};
+    
+    if (data.name !== undefined) updateFields.full_name = data.name;
+    if (data.age !== undefined) updateFields.age = data.age;
+    if (data.gender !== undefined) updateFields.gender = data.gender;
+    if (data.phone !== undefined) updateFields.phone = data.phone;
+    if (data.username !== undefined) updateFields.username = data.username || null;
+    if (data.email !== undefined) updateFields.email = data.email || null;
+    if (data.password !== undefined && data.password !== '') updateFields.password = data.password;
+    if (data.hasAccess !== undefined) updateFields.has_access = data.hasAccess;
+    if (data.medicalProfile !== undefined) updateFields.medical_profile = JSON.stringify(data.medicalProfile);
     if (data.currentVisit !== undefined) {
-      updates.push(`current_visit = $${paramCounter++}::jsonb`);
-      values.push(JSON.stringify(data.currentVisit));
+      updateFields.current_visit = JSON.stringify(data.currentVisit);
+      console.log('[pgPatients.update] ✏️ Updating currentVisit:', {
+        visitId: data.currentVisit.visitId,
+        status: data.currentVisit.status,
+        clinicId: data.currentVisit.clinicId
+      });
     }
-    if (data.history !== undefined) {
-      updates.push(`history = $${paramCounter++}::jsonb`);
-      values.push(JSON.stringify(data.history));
+    if (data.history !== undefined) updateFields.history = JSON.stringify(data.history);
+    
+    if (Object.keys(updateFields).length === 0) {
+      console.log('[pgPatients.update] ⚠️ No fields to update');
+      return;
     }
     
-    if (updates.length > 0) {
-      const query = `UPDATE patients SET ${updates.join(', ')} WHERE id = $${paramCounter}`;
-      values.push(patientId);
-      await sql.unsafe(query, values);
-    }
+    // Construct dynamic query
+    const setClause = Object.keys(updateFields)
+      .map((key, idx) => `${key} = $${idx + 1}`)
+      .join(', ');
+    
+    const values = Object.values(updateFields);
+    values.push(patientId);
+    
+    const query = `UPDATE patients SET ${setClause} WHERE id = $${values.length}`;
+    
+    console.log('[pgPatients.update] 📝 Query:', query);
+    console.log('[pgPatients.update] 📊 Values:', values);
+    
+    await sql.unsafe(query, values);
+    
+    console.log('[pgPatients.update] ✅ Update successful');
   },
 
   subscribe: (callback: (patients: Patient[]) => void): (() => void) => {
