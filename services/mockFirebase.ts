@@ -66,11 +66,10 @@ const SEED_CLINICS: Clinic[] = [
 // Updated Users to test STRICT ISOLATION
 const SEED_USERS: User[] = [
   // 1. Admin & Secretary (See ALL)
-  // تم حذف المستخدمين التجريبيين
   { uid: 'sec_1', email: 'reception@medcore.com', name: 'Sarah Reception', role: UserRole.SECRETARY, clinicIds: [], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
   
-  // 2. Dentist (Sees Dental + Implants only)
-  //
+  // 2. Dentist (Sees Dental Clinic)
+  { uid: 'doc_dental', email: 'drmahmud@medcore.com', name: 'Dr. Mahmud', role: UserRole.DOCTOR, clinicIds: ['c_dental'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
   
   // 3. GP Doctor (Sees General Medicine only)
   { uid: 'doc_gp', email: 'gp@medcore.com', name: 'Dr. General', role: UserRole.DOCTOR, clinicIds: ['c_gp'], isActive: true, createdAt: Date.now(), createdBy: 'system', updatedAt: Date.now(), updatedBy: 'system' },
@@ -102,12 +101,12 @@ class MockAdapter {
   private patientListeners: ((data: Patient[]) => void)[] = [];
   
   constructor() {
-    // FORCE RESET to ensure new Role is applied to seeded users
+    // FORCE RESET: Update drmahmud user if exists with wrong clinicIds
     const users = load<User[]>('medcore_users', []);
-    const acadUser = users.find(u => u.email === 'academy@medcore.com');
+    const drmahmud = users.find(u => u.email === 'drmahmud@medcore.com');
     
-    if (!acadUser) {
-        console.warn("Detected missing Academy Manager. Refreshing Seed Data.");
+    if (!drmahmud || !drmahmud.clinicIds || drmahmud.clinicIds.length === 0) {
+        console.warn("⚠️ Detected drmahmud with missing/wrong clinicIds. Refreshing Seed Data.");
         save('medcore_users', SEED_USERS);
         save('medcore_clinics', SEED_CLINICS);
     }

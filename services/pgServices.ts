@@ -11,7 +11,9 @@ import { User, Patient, Clinic, Appointment, ClinicCategory } from '../types';
 export const pgUsers = {
   getAll: async (): Promise<User[]> => {
     const result = await sql`SELECT * FROM users ORDER BY id`;
-    return result.map((row: any) => ({
+    console.log('[pgUsers.getAll] 🗄️ Raw data from Neon:', result);
+    
+    const users = result.map((row: any) => ({
       uid: String(row.id),
       email: row.email,
       password: row.password,
@@ -25,6 +27,15 @@ export const pgUsers = {
       updatedBy: 'system',
       isArchived: false
     }));
+    
+    console.log('[pgUsers.getAll] 👥 Mapped users:', users.map(u => ({
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      clinicIds: u.clinicIds
+    })));
+    
+    return users;
   },
 
   create: async (user: Omit<User, 'uid' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
@@ -186,13 +197,17 @@ export const pgPatients = {
     });
     
     // DEBUG: Log what we're getting from database
-    console.log('[pgPatients.getAll] Raw DB data:', patients.map(p => ({
+    console.log('[pgPatients.getAll] 🗄️ Raw DB data from Neon:', patients.map(p => ({
       id: p.id,
       name: p.name,
+      clinicId: p.currentVisit?.clinicId,
       visitId: p.currentVisit?.visitId,
+      status: p.currentVisit?.status,
       visitIdLength: p.currentVisit?.visitId?.length,
-      visitIdType: typeof p.currentVisit?.visitId
+      visitIdIsEmpty: p.currentVisit?.visitId === ''
     })));
+    
+    console.log('[pgPatients.getAll] 📊 Total patients in Neon:', patients.length);
     
     return patients;
   },
