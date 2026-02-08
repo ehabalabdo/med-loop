@@ -422,7 +422,7 @@ export const PatientService = {
            currentVisit: resetVisit
          });
          
-         console.log('[PatientService.updateStatus] SAVED to PostgreSQL successfully');
+         console.log('[PatientService.updateStatus] ✅ COMPLETED - UPDATE successful in PostgreSQL');
        } else {
          const updated: Patient = { 
            ...patient,
@@ -434,8 +434,11 @@ export const PatientService = {
        }
     } else {
       // For non-completed status, just update currentVisit
+      console.log('[PatientService.updateStatus] Updating status to:', status, 'for patient:', patient.id);
+      
       if (USE_POSTGRES) {
         await pgPatients.update(patient.id, { currentVisit: updatedVisit });
+        console.log('[PatientService.updateStatus] ✅ Status UPDATE successful in PostgreSQL');
       } else {
         const updated: Patient = { 
           ...patient,

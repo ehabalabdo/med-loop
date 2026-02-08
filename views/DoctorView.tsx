@@ -53,7 +53,11 @@ const DoctorView: React.FC = () => {
         
         // تحديث في Database
         await PatientService.updateStatus(user, p, 'in-progress');
-        console.log('[DoctorView] ✅ Patient status changed to IN-PROGRESS:', p.id);
+        
+        // Force immediate refresh from database
+        if ((window as any).__patientRefresh) {
+          await (window as any).__patientRefresh();
+        }
       } catch (e) {
         console.error('[DoctorView] ❌ Failed to update patient status:', e);
       }
@@ -81,7 +85,11 @@ const DoctorView: React.FC = () => {
         }
       }
     });
-        const loadData = async () => {
+    
+    // Store the unsubscribe function with refresh capability
+    (window as any).__patientRefresh = (unsubscribeQueue as any).refresh;
+    
+    const loadData = async () => {
             try {
                 const apps = await AppointmentService.getAll(user);
                 setAppointments(apps.filter(a => a.status === 'scheduled').sort((a,b) => a.date - b.date));
@@ -118,7 +126,6 @@ const DoctorView: React.FC = () => {
         if(status === 'completed') {
             // الإزالة الفورية من UI
             setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
-            console.log('[DoctorView] Patient marked as completed:', selectedPatient.id);
         } else if (status === 'in-progress') {
             // تحديث الحالة فوراً
             setPatients(prev => prev.map(p => 
@@ -126,13 +133,17 @@ const DoctorView: React.FC = () => {
                     ? { ...p, currentVisit: { ...p.currentVisit, status: 'in-progress' } }
                     : p
             ));
-            console.log('[DoctorView] Patient status changed to in-progress:', selectedPatient.id);
         }
         
-        // استدعاء API
+        // استدعاء API - هذا رح يحدث database
         await PatientService.updateStatus(user, selectedPatient, status, {
             diagnosis, doctorNotes: notes, prescriptions, attachments, invoiceItems
         });
+        
+        // CRITICAL: Force immediate refresh from database
+        if ((window as any).__patientRefresh) {
+            await (window as any).__patientRefresh();
+        }
         
         if(status === 'completed') {
             setSelectedPatient(null);
@@ -144,7 +155,10 @@ const DoctorView: React.FC = () => {
                 currentVisit: { ...selectedPatient.currentVisit, status: 'in-progress' }
             });
         }
-    } catch(e: any) { alert(e.message); }
+    } catch(e: any) { 
+        console.error('[DoctorView] ❌ Save visit failed:', e);
+        alert('Failed to save: ' + e.message); 
+    }
   };
 
   // --- PDF GENERATOR ---
