@@ -4,8 +4,8 @@ import { mockDb } from './mockFirebase';
 import { pgUsers, pgClinics, pgPatients, pgAppointments } from './pgServices';
 
 // Check if we should use PostgreSQL (production) or mockDb (development)
-// For now, always use PostgreSQL since we have Neon set up
-const USE_POSTGRES = true;
+// REVERTED: Use Mock Database - it was working fine
+const USE_POSTGRES = false;
 
 /**
  * PRODUCTION READINESS:

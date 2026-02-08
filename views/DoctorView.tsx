@@ -17,33 +17,6 @@ const DoctorView: React.FC = () => {
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // Load completed patient IDs from localStorage on mount
-  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(() => {
-    try {
-      // Check if it's a new day - clear completed IDs from previous days
-      const today = new Date().toDateString();
-      const lastClearDate = localStorage.getItem('completedPatientIds_lastClear');
-      
-      if (lastClearDate !== today) {
-        // New day - clear old completed IDs
-        console.log('[DoctorView] New day detected - clearing old completed IDs');
-        localStorage.removeItem('completedPatientIds');
-        localStorage.setItem('completedPatientIds_lastClear', today);
-        return new Set();
-      }
-      
-      const stored = localStorage.getItem('completedPatientIds');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        console.log('[DoctorView] Loaded completed IDs from localStorage:', parsed);
-        return new Set(parsed);
-      }
-    } catch (e) {
-      console.error('[DoctorView] Failed to load completed IDs from localStorage:', e);
-    }
-    return new Set();
-  });
 
   // EMR Form State
   const [diagnosis, setDiagnosis] = useState('');
@@ -63,14 +36,29 @@ const DoctorView: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSelectPatient = async (p: Patient) => {
-    setSelectedPatient(p);
-    // Auto-update status to "in-progress" when doctor starts consultation
+    // أول ما الدكتور يختار المريض، يصير in-progress فوراً
     if (p.currentVisit.status === 'waiting' && user) {
       try {
+        // تحديث محلي فوري
+        const updatedPatient = {
+          ...p,
+          currentVisit: { ...p.currentVisit, status: 'in-progress' as const }
+        };
+        setSelectedPatient(updatedPatient);
+        
+        // تحديث الـ state
+        setPatients(prev => prev.map(patient => 
+          patient.id === p.id ? updatedPatient : patient
+        ));
+        
+        // تحديث في Database
         await PatientService.updateStatus(user, p, 'in-progress');
+        console.log('[DoctorView] ✅ Patient status changed to IN-PROGRESS:', p.id);
       } catch (e) {
-        console.error('Failed to update patient status:', e);
+        console.error('[DoctorView] ❌ Failed to update patient status:', e);
       }
+    } else {
+      setSelectedPatient(p);
     }
   };
 
@@ -79,39 +67,21 @@ const DoctorView: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Save completed patient IDs to localStorage whenever they change
-  useEffect(() => {
-    try {
-      const idsArray = Array.from(completedPatientIds);
-      localStorage.setItem('completedPatientIds', JSON.stringify(idsArray));
-      console.log('[DoctorView] Saved completed IDs to localStorage:', idsArray);
-    } catch (e) {
-      console.error('[DoctorView] Failed to save completed IDs to localStorage:', e);
-    }
-  }, [completedPatientIds]);
-
   useEffect(() => {
     if (!user) return;
     const unsubscribeQueue = PatientService.subscribe(user, (data) => {
-      // Filter out patients that we've marked as completed locally
-      const filteredData = data.filter(p => !completedPatientIds.has(p.id));
-      
       console.log('[DoctorView] Subscribe callback:', {
         totalFromDB: data.length,
-        completedIds: Array.from(completedPatientIds),
-        afterFilter: filteredData.length,
-        patients: filteredData.map(p => ({ id: p.id, name: p.name, visitId: p.currentVisit.visitId }))
+        patients: data.map(p => ({ id: p.id, name: p.name, status: p.currentVisit.status }))
       });
       
-      setPatients(filteredData);
-      // Real-time update for selected patient if their status changes externally
+      setPatients(data);
+      
+      // Real-time update for selected patient
       if (selectedPatient) {
         const updated = data.find(p => p.id === selectedPatient.id);
-        if (updated) {
-            // Only update local state if status changed to avoid overwriting typing
-            if(updated.currentVisit.status !== selectedPatient.currentVisit.status) {
-                 setSelectedPatient(updated);
-            }
+        if (updated && updated.currentVisit.status !== selectedPatient.currentVisit.status) {
+          setSelectedPatient(updated);
         }
       }
     });
@@ -150,13 +120,11 @@ const DoctorView: React.FC = () => {
     if (!selectedPatient || !user) return;
     try {
         if(status === 'completed') {
-            // STEP 1: Mark as completed BEFORE API call
-            setCompletedPatientIds(prev => new Set(prev).add(selectedPatient.id));
-            // STEP 2: Optimistic UI - remove immediately
+            // الإزالة الفورية من UI
             setPatients(prev => prev.filter(p => p.id !== selectedPatient.id));
             console.log('[DoctorView] Patient marked as completed:', selectedPatient.id);
         } else if (status === 'in-progress') {
-            // Update status in patients list immediately
+            // تحديث الحالة فوراً
             setPatients(prev => prev.map(p => 
                 p.id === selectedPatient.id 
                     ? { ...p, currentVisit: { ...p.currentVisit, status: 'in-progress' } }
@@ -165,18 +133,16 @@ const DoctorView: React.FC = () => {
             console.log('[DoctorView] Patient status changed to in-progress:', selectedPatient.id);
         }
         
-        // STEP 3: Make API call
+        // استدعاء API
         await PatientService.updateStatus(user, selectedPatient, status, {
             diagnosis, doctorNotes: notes, prescriptions, attachments, invoiceItems
         });
         
         if(status === 'completed') {
-            // Clear screen
             setSelectedPatient(null);
             setMobileTab('queue');
             setDiagnosis(''); setNotes(''); setPrescriptions([]); setAttachments([]); setInvoiceItems([]);
         } else if (status === 'in-progress') {
-            // Update selected patient to reflect new status
             setSelectedPatient({
                 ...selectedPatient,
                 currentVisit: { ...selectedPatient.currentVisit, status: 'in-progress' }
@@ -322,7 +288,11 @@ const DoctorView: React.FC = () => {
       }
   };
 
-  const waitingList = patients.filter(p => p.currentVisit.status !== 'completed');
+  const waitingList = patients.filter(p => 
+    p.currentVisit.visitId && 
+    p.currentVisit.visitId.trim() !== '' && 
+    (p.currentVisit.status === 'waiting' || p.currentVisit.status === 'in-progress')
+  );
 
   return (
     <Layout title={t('doctor_console')}>

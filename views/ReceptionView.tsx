@@ -24,34 +24,6 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   
-  // Load completed patient IDs from localStorage on mount
-  // IMPORTANT: Use same key as DoctorView to share completed patient list
-  const [completedPatientIds, setCompletedPatientIds] = useState<Set<string>>(() => {
-    try {
-      // Check if it's a new day - clear completed IDs from previous days
-      const today = new Date().toDateString();
-      const lastClearDate = localStorage.getItem('completedPatientIds_lastClear');
-      
-      if (lastClearDate !== today) {
-        // New day - clear old completed IDs
-        console.log('[ReceptionView] New day detected - clearing old completed IDs');
-        localStorage.removeItem('completedPatientIds');
-        localStorage.setItem('completedPatientIds_lastClear', today);
-        return new Set();
-      }
-      
-      const stored = localStorage.getItem('completedPatientIds');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        console.log('[ReceptionView] Loaded completed IDs from localStorage:', parsed);
-        return new Set(parsed);
-      }
-    } catch (e) {
-      console.error('[ReceptionView] Failed to load completed IDs from localStorage:', e);
-    }
-    return new Set();
-  });
-  
   // UI State
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -137,53 +109,6 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     return () => clearInterval(interval);
   }, [user]);
 
-  // Poll localStorage for completed patient IDs updates from DoctorView
-  useEffect(() => {
-    const pollCompletedIds = () => {
-      try {
-        const stored = localStorage.getItem('completedPatientIds');
-        console.log('[ReceptionView] Polling localStorage - raw value:', stored);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          const newSet = new Set(parsed);
-          
-          // Only update if there are differences
-          const currentIds = Array.from(completedPatientIds);
-          if (JSON.stringify(currentIds.sort()) !== JSON.stringify(parsed.sort())) {
-            console.log('[ReceptionView] ✅ Detected completed IDs update from localStorage:', {
-              old: currentIds,
-              new: parsed
-            });
-            setCompletedPatientIds(newSet);
-          } else {
-            console.log('[ReceptionView] No changes in completedPatientIds');
-          }
-        }
-      } catch (e) {
-        console.error('[ReceptionView] Failed to poll completed IDs:', e);
-      }
-    };
-    
-    console.log('[ReceptionView] Starting localStorage polling every 2 seconds');
-    const interval = setInterval(pollCompletedIds, 2000); // Poll every 2 seconds
-    return () => {
-      console.log('[ReceptionView] Stopping localStorage polling');
-      clearInterval(interval);
-    };
-  }, [completedPatientIds]);
-
-  // Save completed patient IDs to localStorage whenever they change
-  // IMPORTANT: Use same key as DoctorView to share completed patient list
-  useEffect(() => {
-    try {
-      const idsArray = Array.from(completedPatientIds);
-      localStorage.setItem('completedPatientIds', JSON.stringify(idsArray));
-      console.log('[ReceptionView] Saved completed IDs to localStorage:', idsArray);
-    } catch (e) {
-      console.error('[ReceptionView] Failed to save completed IDs to localStorage:', e);
-    }
-  }, [completedPatientIds]);
-
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -192,15 +117,6 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
     // Play notification sound when new patient arrives
     const prevPatientCountRef = React.useRef<number>(0);
-    const prevPatientsRef = React.useRef<Patient[]>([]);
-    
-    // Use ref to always get latest completedPatientIds in subscription callback
-    const completedPatientIdsRef = React.useRef<Set<string>>(completedPatientIds);
-    
-    // Keep ref in sync with state
-    React.useEffect(() => {
-        completedPatientIdsRef.current = completedPatientIds;
-    }, [completedPatientIds]);
     
     const playNotificationSound = () => {
         try {
@@ -239,46 +155,26 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                 patients: data.map(p => ({
                     id: p.id,
                     name: p.name,
-                    visitId: p.currentVisit?.visitId,
                     status: p.currentVisit?.status
                 }))
             });
             
-            // Detect patients who got completed (disappeared from data but were in previous list)
-            if (prevPatientsRef.current.length > 0) {
-                prevPatientsRef.current.forEach(prevPatient => {
-                    const stillExists = data.find(p => p.id === prevPatient.id);
-                    // If patient was waiting/in-progress and now disappeared, mark as completed
-                    if (!stillExists && prevPatient.currentVisit?.visitId) {
-                        console.log('[ReceptionView] ✅ Patient disappeared from subscription, marking as completed:', prevPatient.id);
-                        setCompletedPatientIds(prev => new Set(prev).add(prevPatient.id));
-                    }
-                });
-            }
-            
-            // Store current patients for next comparison
-            prevPatientsRef.current = data;
-            
-            // Store RAW data without filtering - filtering happens in activeQueue
-            // This allows re-filtering when completedPatientIds changes via polling
-            const filteredData = data; // Don't filter here anymore
-            
-            // Check if new patient arrived (count increased)
-            const displayCount = data.filter(p => !completedPatientIdsRef.current.has(p.id)).length;
-            if (prevPatientCountRef.current > 0 && displayCount > prevPatientCountRef.current) {
+            // التحقق من مريض جديد للصوت
+            const waitingCount = data.filter(p => p.currentVisit?.status === 'waiting').length;
+            if (prevPatientCountRef.current > 0 && waitingCount > prevPatientCountRef.current) {
                 playNotificationSound();
             }
-            prevPatientCountRef.current = displayCount;
+            prevPatientCountRef.current = waitingCount;
             
-            console.log('[ReceptionView] 💾 Setting patients state to:', filteredData.length, 'patients');
-            setPatients(filteredData); // Store ALL patients, filter in render
+            // حفظ المرضى مباشرة - الفلترة ستحصل في activeQueue
+            setPatients(data);
         });
         
         return () => {
             console.log('[ReceptionView] 🔴 Cleaning up subscription');
             unsubscribe();
         };
-    }, [user]); // Remove completedPatientIds from dependencies - use ref instead
+    }, [user]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -409,19 +305,20 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
       try { const fullUrl = window.location.href.split('#')[0] + '#/queue-display'; window.open(fullUrl, 'MedCoreQueue', 'width=1000,height=800'); } catch (e) { alert("Cannot open window."); }
   };
 
-  // Filter out completed patients from UI display (using useMemo to ensure re-calculation when dependencies change)
+  // السكرتيرة تشوف فقط المرضى المنتظرين (لم يبدأ الدكتور معهم بعد)
   const activeQueue = React.useMemo(() => {
     const filtered = patients.filter(p => 
-      p.currentVisit.status !== 'completed' && !completedPatientIds.has(p.id)
+      p.currentVisit.visitId && 
+      p.currentVisit.visitId.trim() !== '' && 
+      p.currentVisit.status === 'waiting'  // فقط المنتظرين
     );
     console.log('[ReceptionView] activeQueue recalculated:', {
       totalPatients: patients.length,
-      completedIds: Array.from(completedPatientIds),
-      filteredCount: filtered.length,
-      filteredPatients: filtered.map(p => ({ id: p.id, name: p.name }))
+      waitingCount: filtered.length,
+      patients: filtered.map(p => ({ id: p.id, name: p.name, status: p.currentVisit.status }))
     });
     return filtered;
-  }, [patients, completedPatientIds]);
+  }, [patients]);
 
   // Time formatting for the fancy clock
   const hh = currentTime.getHours().toString().padStart(2, '0');
