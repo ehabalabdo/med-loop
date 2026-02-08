@@ -1,7 +1,7 @@
 
 import { Clinic, Patient, User, UserRole, AuditMetadata, VisitData, Appointment, Invoice, Notification, PrescriptionItem, Attachment, SystemSettings, ClinicCategory, LabCase, LabCaseStatus, ImplantItem, ImplantOrder, ImplantOrderStatus, Course, CourseStudent, CourseSession, CourseStatus } from '../types';
 import { mockDb } from './mockFirebase';
-import { pgUsers, pgClinics, pgPatients, pgAppointments } from './pgServices';
+import { pgUsers, pgClinics, pgPatients, pgAppointments, pgInvoices } from './pgServices';
 
 // Check if we should use PostgreSQL (production) or mockDb (development)
 // ✅ ENABLED: Database schema fixed + Neon-compatible queries
@@ -595,6 +595,9 @@ export const AppointmentService = {
 
 export const BillingService = {
     getAll: async (user: User): Promise<Invoice[]> => {
+        if (USE_POSTGRES) {
+            return await pgInvoices.getAll();
+        }
         const invoices = mockDb.getCollection<Invoice>('invoices');
         return invoices.sort((a,b) => b.createdAt - a.createdAt);
     },
@@ -610,10 +613,20 @@ export const BillingService = {
             paymentMethod: 'cash',
             ...createMeta(user)
         };
-        await mockDb.writeDocument('invoices', newInvoice);
+        
+        if (USE_POSTGRES) {
+            await pgInvoices.create(newInvoice);
+        } else {
+            await mockDb.writeDocument('invoices', newInvoice);
+        }
     },
 
     update: async (user: User, id: string, data: Partial<Invoice>) => {
+        if (USE_POSTGRES) {
+            await pgInvoices.update(id, data);
+            return;
+        }
+        
         const invoices = mockDb.getCollection<Invoice>('invoices');
         const inv = invoices.find(i => i.id === id);
         if (!inv) throw new Error("Invoice not found");
@@ -628,6 +641,22 @@ export const BillingService = {
     },
     
     processPayment: async (user: User, id: string, amount: number, method: Invoice['paymentMethod']) => {
+        if (USE_POSTGRES) {
+            const invoices = await pgInvoices.getAll();
+            const inv = invoices.find(i => i.id === id);
+            if (!inv) throw new Error("Invoice not found");
+            
+            const newPaid = inv.paidAmount + amount;
+            const status = newPaid >= inv.totalAmount ? 'paid' : 'partial';
+            
+            await pgInvoices.update(id, {
+                paidAmount: newPaid,
+                status,
+                paymentMethod: method
+            });
+            return;
+        }
+        
         const invoices = mockDb.getCollection<Invoice>('invoices');
         const inv = invoices.find(i => i.id === id);
         if (!inv) throw new Error("Invoice not found");

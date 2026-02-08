@@ -408,4 +408,70 @@ export const pgAppointments = {
   }
 };
 
+// ==================== INVOICES ====================
+
+export const pgInvoices = {
+  getAll: async (): Promise<any[]> => {
+    const result = await sql`SELECT * FROM invoices ORDER BY created_at DESC`;
+    return result.map((row: any) => ({
+      id: row.id,
+      visitId: row.visit_id,
+      patientId: row.patient_id,
+      patientName: row.patient_name,
+      items: typeof row.items === 'string' ? JSON.parse(row.items) : row.items,
+      totalAmount: parseFloat(row.total_amount),
+      paidAmount: parseFloat(row.paid_amount),
+      paymentMethod: row.payment_method,
+      status: row.status,
+      createdAt: new Date(row.created_at || Date.now()).getTime(),
+      createdBy: row.created_by || 'system',
+      updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+      updatedBy: row.updated_by || 'system',
+      isArchived: row.is_archived || false
+    }));
+  },
+
+  create: async (data: any): Promise<void> => {
+    const itemsJson = JSON.stringify(data.items);
+    await sql`
+      INSERT INTO invoices (
+        id, visit_id, patient_id, patient_name, items, 
+        total_amount, paid_amount, payment_method, status,
+        created_at, updated_at, created_by, updated_by, is_archived
+      )
+      VALUES (
+        ${data.id}, ${data.visitId}, ${data.patientId}, ${data.patientName},
+        ${itemsJson}::jsonb, ${data.totalAmount}, ${data.paidAmount || 0},
+        ${data.paymentMethod || 'cash'}, ${data.status}, 
+        NOW(), NOW(), 'system', 'system', FALSE
+      )
+    `;
+  },
+
+  update: async (id: string, data: any): Promise<void> => {
+    await sql`UPDATE invoices SET updated_at = NOW() WHERE id = ${id}`;
+    
+    if (data.items !== undefined) {
+      const itemsJson = JSON.stringify(data.items);
+      await sql`UPDATE invoices SET items = ${itemsJson}::jsonb WHERE id = ${id}`;
+    }
+    if (data.totalAmount !== undefined) {
+      await sql`UPDATE invoices SET total_amount = ${data.totalAmount} WHERE id = ${id}`;
+    }
+    if (data.paidAmount !== undefined) {
+      await sql`UPDATE invoices SET paid_amount = ${data.paidAmount} WHERE id = ${id}`;
+    }
+    if (data.paymentMethod !== undefined) {
+      await sql`UPDATE invoices SET payment_method = ${data.paymentMethod} WHERE id = ${id}`;
+    }
+    if (data.status !== undefined) {
+      await sql`UPDATE invoices SET status = ${data.status} WHERE id = ${id}`;
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await sql`DELETE FROM invoices WHERE id = ${id}`;
+  }
+};
+
 
