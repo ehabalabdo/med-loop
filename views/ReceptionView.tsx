@@ -311,6 +311,11 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     return filtered;
   }, [patients]);
 
+  // Time formatting for the fancy clock
+  const hh = String(currentTime.getHours()).padStart(2, '0');
+  const mm = String(currentTime.getMinutes()).padStart(2, '0');
+  const ss = currentTime.getSeconds();
+
   return (
     <Layout title={t('reception_desk')}>
       <div className="flex flex-col gap-6 md:gap-10 max-w-7xl mx-auto relative">
