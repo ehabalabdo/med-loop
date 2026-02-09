@@ -629,23 +629,5 @@ const DoctorView: React.FC = () => {
     </Layout>
   );
 };
-                    {selectedPatient.currentVisit.status === 'in-progress' && (
-                        <button onClick={() => handleSaveVisit('completed')} className="flex-1 md:flex-none bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg w-full"><i className="fa-solid fa-check mr-2"></i> {t('complete_discharge')}</button>
-                    )}
-                 </div>
-              </div>
-
-            </>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-300 p-10 text-center">
-              <i className="fa-solid fa-user-doctor text-6xl opacity-10 mb-6 animate-pulse"></i>
-              <p className="text-xl font-extrabold text-slate-400">{t('select_patient')}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    </Layout>
-  );
-};
 
 export default DoctorView;
