@@ -121,7 +121,10 @@ const DoctorView: React.FC = () => {
     const loadData = async () => {
             try {
                 const apps = await AppointmentService.getAll(user);
-                setAppointments(apps.filter(a => a.status === 'scheduled').sort((a,b) => a.date - b.date));
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+                const todayEnd = todayStart + 86400000; // +24h
+                setAppointments(apps.filter(a => a.status === 'scheduled' && a.date >= todayStart && a.date < todayEnd).sort((a,b) => a.date - b.date));
             } catch {
                 setAppointments([]);
             }
