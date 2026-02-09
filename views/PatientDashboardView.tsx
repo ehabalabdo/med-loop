@@ -43,8 +43,8 @@ const PatientDashboardView: React.FC = () => {
 
     loadPatientData();
     
-    // Poll for updates every 3 seconds (for visit status changes)
-    const interval = setInterval(loadPatientData, 3000);
+    // Poll for updates every 30 seconds (reduced from 3 seconds to prevent freeze)
+    const interval = setInterval(loadPatientData, 30000);
     
     return () => clearInterval(interval);
   }, [patientUser, navigate]);

@@ -82,12 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Get all patients from PostgreSQL
     const allPatients = await pgPatients.getAll();
     
-    console.log('[PatientLogin] 🔍 Attempting login:', { 
-      inputUsername: username, 
-      totalPatients: allPatients.length,
-      patientsWithAccess: allPatients.filter(p => p.hasAccess).length 
-    });
-    
     // البحث برقم الهاتف (username أو phone)
     const foundPatient = allPatients.find(
       p => (p.username === username || p.phone === username) && 
@@ -96,36 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
     
     if (!foundPatient) {
-      // للتشخيص: تحقق من وجود المريض برقم الهاتف
-      const patientByPhone = allPatients.find(p => p.phone === username);
-      const patientByUsername = allPatients.find(p => p.username === username);
-      
-      console.log('[PatientLogin] ❌ Login failed:', {
-        foundByPhone: patientByPhone ? {
-          id: patientByPhone.id,
-          name: patientByPhone.name,
-          phone: patientByPhone.phone,
-          username: patientByPhone.username,
-          hasPassword: !!patientByPhone.password,
-          hasAccess: patientByPhone.hasAccess
-        } : 'Not found',
-        foundByUsername: patientByUsername ? {
-          id: patientByUsername.id,
-          name: patientByUsername.name,
-          phone: patientByUsername.phone,
-          hasPassword: !!patientByUsername.password,
-          hasAccess: patientByUsername.hasAccess
-        } : 'Not found'
-      });
-      
       throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة');
     }
-    
-    console.log('[PatientLogin] ✅ Login successful:', {
-      id: foundPatient.id,
-      name: foundPatient.name,
-      phone: foundPatient.phone
-    });
     
     // Save patient to localStorage
     localStorage.setItem('patientUser', JSON.stringify(foundPatient));

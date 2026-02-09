@@ -569,16 +569,12 @@ https://med.loopjo.com
                       <div className="flex flex-col h-full gap-6">
                           <div className="bg-rose-50/50 p-5 md:p-6 rounded-2xl border border-rose-100 flex-1 space-y-4">
                              <h3 className="text-[10px] font-bold uppercase text-rose-700 flex items-center gap-2 mb-4"><span className="w-1 h-4 bg-rose-500 rounded-full"></span> {t('medical_intake')}</h3>
-                             {/* Medical intake fields: allergies, chronic conditions, medications, and previous surgeries */}
-                             {['allergies', 'chronic', 'meds', 'surgeries'].map((key) => {
-                                 console.log('Rendering medical field:', key); // DEBUG: verify all 4 fields render
-                                 return (
+                             {['allergies', 'chronic', 'meds', 'surgeries'].map((key) => (
                                  <div key={key} className="bg-white/70 p-3 rounded-xl border border-rose-100/30" data-field={key}>
                                     <div className="flex items-center gap-3 mb-2"><input type="checkbox" checked={(formData as any)[`${key}Exists`]} onChange={e => setFormData({...formData, [`${key}Exists`]: e.target.checked})} className="w-5 h-5 text-rose-600 rounded-md" /><label className="text-xs font-bold text-slate-700 capitalize">{t(key as any)}</label></div>
                                     {(formData as any)[`${key}Exists`] && <input type="text" placeholder="..." className="w-full bg-white border border-rose-100 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-rose-200" value={(formData as any)[`${key}Detail`]} onChange={e => setFormData({...formData, [`${key}Detail`]: e.target.value})} />}
                                  </div>
-                                 );
-                             })}
+                             ))}
                           </div>
                           
                           {/* WhatsApp Checkbox */}
