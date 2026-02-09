@@ -231,7 +231,7 @@ const CoursesView: React.FC = () => {
                               <h4 className="font-bold text-lg text-slate-800 mb-1">{c.title}</h4>
                               <p className="text-sm text-slate-500 mb-4">{c.duration} • Instructor: {c.instructorName}</p>
                               <div className="flex justify-between items-center border-t border-slate-100 pt-4">
-                                  <span className="font-bold text-xl text-slate-800">${c.price}</span>
+                                  <span className="font-bold text-xl text-slate-800">{c.price} د.أ</span>
                                   <span className="text-xs text-slate-400 font-bold uppercase">{c.hasCertificate ? 'Certificate Included' : 'No Certificate'}</span>
                               </div>
                           </div>
@@ -347,7 +347,7 @@ const CoursesView: React.FC = () => {
                   <form onSubmit={handleRegisterStudent} className="space-y-4">
                       <select className="w-full p-3 border rounded-xl" value={studentForm.courseId} onChange={e => setStudentForm({...studentForm, courseId: e.target.value})} required>
                           <option value="">-- Select Course --</option>
-                          {courses.filter(c => c.status === 'ACTIVE').map(c => <option key={c.id} value={c.id}>{c.title} (${c.price})</option>)}
+                          {courses.filter(c => c.status === 'ACTIVE').map(c => <option key={c.id} value={c.id}>{c.title} ({c.price} د.أ)</option>)}
                       </select>
                       <input className="w-full p-3 border rounded-xl" placeholder="Student Name" value={studentForm.name} onChange={e => setStudentForm({...studentForm, name: e.target.value})} required />
                       <input className="w-full p-3 border rounded-xl" placeholder="Phone Number" value={studentForm.phone} onChange={e => setStudentForm({...studentForm, phone: e.target.value})} required />

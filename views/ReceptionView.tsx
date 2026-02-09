@@ -269,7 +269,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
       
       selectedInvoice.items.forEach(item => {
           doc.text(item.description, 20, y);
-          doc.text(`$${item.price.toFixed(2)}`, pageWidth - 20, y, { align: "right" });
+          doc.text(`${item.price.toFixed(2)} JOD`, pageWidth - 20, y, { align: "right" });
           y += 8;
       });
       
@@ -281,7 +281,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
       
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text(`Total Due: $${selectedInvoice.totalAmount.toFixed(2)}`, pageWidth - 20, y, { align: "right" });
+      doc.text(`Total Due: ${selectedInvoice.totalAmount.toFixed(2)} JOD`, pageWidth - 20, y, { align: "right" });
       
       // Footer
       doc.setFontSize(8);
@@ -374,12 +374,12 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                                         {selectedInvoice.items.map((item, idx) => (
                                             <div key={idx} className="flex justify-between text-sm text-slate-600 border-b border-slate-200 pb-1 last:border-0 last:pb-0">
                                                 <span>{item.description}</span>
-                                                <span className="font-mono font-bold">${item.price}</span>
+                                                <span className="font-mono font-bold">{item.price} د.أ</span>
                                             </div>
                                         ))}
                                     </div>
                                     <div className="text-sm text-slate-400 uppercase">Total Due</div>
-                                    <div className="text-4xl font-bold text-slate-800">${selectedInvoice.totalAmount}</div>
+                                    <div className="text-4xl font-bold text-slate-800">{selectedInvoice.totalAmount} د.أ</div>
                                 </div>
                                 <button onClick={() => handlePayInvoice(selectedInvoice.totalAmount)} className="w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-emerald-700 shadow-lg">
                                     <i className="fa-solid fa-check-circle mr-2"></i> Mark as Paid (Cash)
@@ -394,7 +394,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                                             <div className="font-bold text-slate-800">{inv.patientName}</div>
                                             <div className="text-xs text-slate-500">{new Date(inv.createdAt).toLocaleDateString()} • {inv.items.length} items</div>
                                         </div>
-                                        <div className="font-bold text-lg text-emerald-600">${inv.totalAmount}</div>
+                                        <div className="font-bold text-lg text-emerald-600">{inv.totalAmount} د.أ</div>
                                     </div>
                                 ))}
                             </div>

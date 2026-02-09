@@ -503,12 +503,12 @@ const DoctorView: React.FC = () => {
                         <div className="bg-emerald-50/50 rounded-xl border border-emerald-100 p-4">
                             <div className="flex gap-2 mb-3">
                                 <select className="flex-1 p-2 rounded-lg border text-sm bg-white" value={selectedService} onChange={e => setSelectedService(e.target.value)}>
-                                    <option value="Consultation">General Consultation ($50)</option>
-                                    <option value="Follow-up">Follow-up Visit ($25)</option>
-                                    <option value="Ultrasound">Ultrasound ($80)</option>
-                                    <option value="Lab Test (Basic)">Lab Test - Basic ($40)</option>
-                                    <option value="X-Ray">X-Ray ($60)</option>
-                                    <option value="Minor Surgery">Minor Surgery ($150)</option>
+                                    <option value="Consultation">General Consultation (50 د.أ)</option>
+                                    <option value="Follow-up">Follow-up Visit (25 د.أ)</option>
+                                    <option value="Ultrasound">Ultrasound (80 د.أ)</option>
+                                    <option value="Lab Test (Basic)">Lab Test - Basic (40 د.أ)</option>
+                                    <option value="X-Ray">X-Ray (60 د.أ)</option>
+                                    <option value="Minor Surgery">Minor Surgery (150 د.أ)</option>
                                 </select>
                                 <button onClick={addService} className="bg-emerald-600 text-white px-4 rounded-lg font-bold text-sm hover:bg-emerald-700">Add Service</button>
                             </div>
@@ -519,14 +519,14 @@ const DoctorView: React.FC = () => {
                                         <div key={item.id} className="flex justify-between items-center text-sm border-b border-gray-50 last:border-0 pb-1 last:pb-0">
                                             <span className="font-medium text-slate-700">{item.description}</span>
                                             <div className="flex items-center gap-4">
-                                                <span className="font-bold text-emerald-600">${item.price}</span>
+                                                <span className="font-bold text-emerald-600">{item.price} د.أ</span>
                                                 <button onClick={() => removeService(item.id)} className="text-slate-300 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button>
                                             </div>
                                         </div>
                                     ))}
                                     <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-100 font-bold text-slate-800">
                                         <span>Total Estimated</span>
-                                        <span>${invoiceItems.reduce((acc, i) => acc + i.price, 0)}</span>
+                                        <span>{invoiceItems.reduce((acc, i) => acc + i.price, 0)} د.أ</span>
                                     </div>
                                 </div>
                             ) : <div className="text-xs text-slate-400 italic text-center py-2">No services added. Invoice will be empty.</div>}
