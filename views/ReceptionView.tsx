@@ -241,7 +241,6 @@ https://med.loopjo.com
             } else {
                 alert('✅ تمت إضافة المريض بنجاح!');
             }
-            }
         } catch (e: any) {
             alert("Error: " + (e.message || 'فشل إضافة المريض'));
         }
