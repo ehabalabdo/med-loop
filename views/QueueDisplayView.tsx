@@ -17,11 +17,12 @@ const QueueDisplayView: React.FC = () => {
   const [clinics, setClinics] = useState<Record<string, string>>({});
   const [currentTime, setCurrentTime] = useState(new Date());
   const [soundEnabled, setSoundEnabled] = useState(false);
-  const [currentCalling, setCurrentCalling] = useState<{name: string, clinic: string} | null>(null);
+  const [currentCalling, setCurrentCalling] = useState<{name: string, clinic: string, patientId?: string} | null>(null);
   
   // Track previous patients to detect changes for TTS
   const prevPatientsRef = useRef<Patient[]>([]);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const callingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clock
   useEffect(() => {
@@ -88,8 +89,12 @@ const QueueDisplayView: React.FC = () => {
                const clinicName = clinics[p.currentVisit.clinicId] || 'Clinic';
                
                // Show popup notification
-               setCurrentCalling({ name: p.name, clinic: clinicName });
-               setTimeout(() => setCurrentCalling(null), 15000); // Hide after 15 seconds
+               setCurrentCalling({ name: p.name, clinic: clinicName, patientId: p.id });
+               
+               // Clear any existing timeout
+               if (callingTimeoutRef.current) clearTimeout(callingTimeoutRef.current);
+               // Auto-hide after 5 seconds
+               callingTimeoutRef.current = setTimeout(() => setCurrentCalling(null), 5000);
                
                // Announce patient name
                const text = language === 'ar' 
