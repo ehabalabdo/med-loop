@@ -22,7 +22,7 @@ const AppointmentsView: React.FC = () => {
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   
   // View State
-  const [activeTab, setActiveTab] = useState<'scheduled' | 'history'>('scheduled');
+  const [activeTab, setActiveTab] = useState<'pending' | 'scheduled' | 'history'>('pending');
   
   // Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -82,8 +82,9 @@ const AppointmentsView: React.FC = () => {
 
   // -- FILTER LOGIC --
   const filteredAppointments = appointments.filter(app => {
+      if (activeTab === 'pending') return app.status === 'pending';
       if (activeTab === 'scheduled') return app.status === 'scheduled';
-      return app.status !== 'scheduled'; // Show Checked-in, Cancelled, Completed in History
+      return app.status !== 'scheduled' && app.status !== 'pending';
   });
 
   // -- FORM HANDLERS --
@@ -201,14 +202,35 @@ const AppointmentsView: React.FC = () => {
   
   const handleCheckIn = async (appId: string) => {
       if (!user) return;
-      // Optimistic Update: Remove from view immediately by changing status
       setAppointments(prev => prev.map(a => a.id === appId ? { ...a, status: 'checked-in' } : a));
-
       try {
           await AppointmentService.checkIn(user, appId);
       } catch (e: any) {
           alert("Error: " + e.message);
           fetchData(); 
+      }
+  };
+
+  const handleApprove = async (appId: string) => {
+      if (!user) return;
+      setAppointments(prev => prev.map(a => a.id === appId ? { ...a, status: 'scheduled' as any } : a));
+      try {
+          await AppointmentService.updateStatus(user, appId, 'scheduled');
+      } catch (e: any) {
+          alert("Error: " + e.message);
+          fetchData();
+      }
+  };
+
+  const handleReject = async (appId: string) => {
+      if (!user) return;
+      if (!window.confirm("رفض هذا الموعد؟")) return;
+      setAppointments(prev => prev.map(a => a.id === appId ? { ...a, status: 'cancelled' as any } : a));
+      try {
+          await AppointmentService.updateStatus(user, appId, 'cancelled');
+      } catch (e: any) {
+          alert("Error: " + e.message);
+          fetchData();
       }
   };
 
@@ -243,6 +265,12 @@ const AppointmentsView: React.FC = () => {
              
              <div className="flex gap-2 bg-gray-200 p-1 rounded-lg">
                 <button 
+                    onClick={() => setActiveTab('pending')}
+                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${activeTab === 'pending' ? 'bg-white shadow text-amber-700' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                    <i className="fa-solid fa-clock mr-1"></i> بانتظار التأكيد ({appointments.filter(a => a.status === 'pending').length})
+                </button>
+                <button 
                     onClick={() => setActiveTab('scheduled')}
                     className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${activeTab === 'scheduled' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
                 >
@@ -272,7 +300,7 @@ const AppointmentsView: React.FC = () => {
               ) : (
                   <div className="space-y-3">
                       {filteredAppointments.map(app => (
-                          <div key={app.id} className={`flex flex-col md:flex-row items-start md:items-center justify-between p-4 rounded-lg border transition-colors bg-white group ${activeTab === 'history' ? 'border-gray-100 opacity-75 grayscale-[0.5] hover:grayscale-0' : 'border-gray-100 hover:border-blue-200'}`}>
+                          <div key={app.id} className={`flex flex-col md:flex-row items-start md:items-center justify-between p-4 rounded-lg border transition-colors bg-white group ${activeTab === 'history' ? 'border-gray-100 opacity-75 grayscale-[0.5] hover:grayscale-0' : activeTab === 'pending' ? 'border-amber-200 hover:border-amber-300 bg-amber-50/30' : 'border-gray-100 hover:border-blue-200'}`}>
                               <div className="flex items-center gap-4">
                                   <div className={`flex flex-col items-center justify-center w-16 h-16 rounded border text-slate-600 ${app.status === 'checked-in' ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-gray-200'}`}>
                                       <span className="text-xs uppercase font-bold">{new Date(app.date).toLocaleDateString([], { month: 'short' })}</span>
@@ -290,23 +318,46 @@ const AppointmentsView: React.FC = () => {
                               </div>
 
                               <div className="mt-4 md:mt-0 flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                                  {/* Status Label (Visible in History) */}
-                                  {activeTab === 'history' && (
+                                  {/* Status Label (Visible in History and Pending) */}
+                                  {(activeTab === 'history' || activeTab === 'pending') && (
                                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase text-center ${
+                                         app.status === 'pending' ? 'bg-amber-100 text-amber-700' :
                                          app.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
                                          app.status === 'checked-in' ? 'bg-green-100 text-green-700' :
+                                         app.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                                          'bg-gray-100 text-gray-500'
                                      }`}>
-                                         {app.status === 'scheduled' ? t('status_scheduled') : 
+                                         {app.status === 'pending' ? 'بانتظار التأكيد' :
+                                          app.status === 'scheduled' ? t('status_scheduled') : 
                                           app.status === 'checked-in' ? t('status_checked_in') : 
+                                          app.status === 'cancelled' ? t('cancel_btn') :
                                           t('status_cancelled')}
                                      </span>
                                   )}
 
-                                  {/* Action Buttons (Visible only in Scheduled) */}
+                                  {/* Action Buttons for PENDING */}
+                                  {user?.role !== UserRole.DOCTOR && activeTab === 'pending' && (
+                                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
+                                          <button 
+                                            onClick={() => handleApprove(app.id)} 
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 min-w-[120px]"
+                                          >
+                                              <i className="fa-solid fa-check-double"></i>
+                                              <span>تأكيد الموعد</span>
+                                          </button>
+                                          <button 
+                                            onClick={() => handleReject(app.id)} 
+                                            className="bg-white border border-gray-200 text-red-500 hover:border-red-500 hover:bg-red-50 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                          >
+                                              <i className="fa-solid fa-xmark"></i>
+                                              <span>رفض</span>
+                                          </button>
+                                      </div>
+                                  )}
+
+                                  {/* Action Buttons for SCHEDULED */}
                                   {user?.role !== UserRole.DOCTOR && activeTab === 'scheduled' && (
                                       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                                          {/* CHECK IN (Main Action) */}
                                           <button 
                                             onClick={() => handleCheckIn(app.id)} 
                                             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold transition-all shadow-sm flex items-center justify-center gap-2 min-w-[120px]"
@@ -314,8 +365,6 @@ const AppointmentsView: React.FC = () => {
                                               <i className="fa-solid fa-check"></i>
                                               <span>{t('check_in_btn')}</span>
                                           </button>
-                                          
-                                          {/* Edit */}
                                           <button 
                                             onClick={() => openEditModal(app)} 
                                             className="bg-white border border-gray-200 text-slate-600 hover:border-blue-500 hover:text-blue-600 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
@@ -323,8 +372,6 @@ const AppointmentsView: React.FC = () => {
                                               <i className="fa-solid fa-pen"></i>
                                               <span>{t('edit_btn')}</span>
                                           </button>
-
-                                          {/* Cancel */}
                                           <button 
                                             onClick={() => handleDelete(app.id)} 
                                             className="bg-white border border-gray-200 text-slate-400 hover:border-red-500 hover:text-red-600 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"

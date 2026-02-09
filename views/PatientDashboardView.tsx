@@ -51,7 +51,7 @@ const PatientDashboardView: React.FC = () => {
 
         // Load this patient's appointments
         const allApps = await pgAppointments.getAll();
-        const myApps = allApps.filter(a => a.patientId === patientUser.id && a.status === 'scheduled' && a.date >= Date.now());
+        const myApps = allApps.filter(a => a.patientId === patientUser.id && (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now());
         setAppointments(myApps.sort((a, b) => a.date - b.date));
       } catch (error) {
         console.error('[PatientDashboard] Error loading data:', error);
@@ -90,7 +90,7 @@ const PatientDashboardView: React.FC = () => {
         doctorId: undefined,
         date: timestamp,
         reason: bookingReason || 'حجز من بوابة المريض',
-        status: 'scheduled'
+        status: 'pending'
       });
 
       setBookingSuccess(true);
@@ -412,7 +412,9 @@ const PatientDashboardView: React.FC = () => {
                       {app.reason && <div className="text-xs text-slate-400 mt-1">{app.reason}</div>}
                     </div>
                   </div>
-                  <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">محجوز</span>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${app.status === 'pending' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'}`}>
+                    {app.status === 'pending' ? 'بانتظار التأكيد' : 'مؤكد'}
+                  </span>
                 </div>
               ))}
             </div>

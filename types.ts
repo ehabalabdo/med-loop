@@ -125,7 +125,7 @@ export interface Patient extends AuditMetadata {
 
 // --- NEW ENTITIES (Paths 1 & 2) ---
 
-export type AppointmentStatus = 'scheduled' | 'checked-in' | 'completed' | 'cancelled' | 'no-show';
+export type AppointmentStatus = 'pending' | 'scheduled' | 'checked-in' | 'completed' | 'cancelled' | 'no-show';
 
 export interface Appointment extends AuditMetadata {
   id: string;
