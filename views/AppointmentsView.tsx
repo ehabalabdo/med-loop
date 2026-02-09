@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { api } from '../src/api';
+import { ClinicService, PatientService, AppointmentService } from '../services/services';
+import { pgUsers } from '../services/pgServices';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Appointment, Clinic, Patient, UserRole, User, Gender } from '../types';
@@ -52,16 +53,16 @@ const AppointmentsView: React.FC = () => {
     const fetchData = async () => {
         if (!user) return;
         try {
-            const [apps, clins, allUsers, allPatients] = await Promise.all([
-                api.get('/appointments'),
-                api.get('/clinics'),
-                api.get('/users'),
-                api.get('/patients')
+            const [apps, activeClinics, allUsers, allPatients] = await Promise.all([
+                AppointmentService.getAll(user),
+                ClinicService.getActive(),
+                pgUsers.getAll(),
+                PatientService.getAllForRegistry(user)
             ]);
             setAppointments(apps.sort((a:any,b:any) => a.date - b.date));
-            const patientClinics = clins.filter((c:any) => c.category === 'clinic');
+            const patientClinics = activeClinics.filter((c:Clinic) => c.category === 'clinic');
             setClinics(patientClinics);
-            setDoctors(allUsers.filter((u:any) => u.role === UserRole.DOCTOR));
+            setDoctors(allUsers.filter((u:User) => u.role === UserRole.DOCTOR));
             setPatients(allPatients);
             if (!isEditing && patientClinics.length > 0 && !formData.clinicId) {
                 setFormData(prev => ({...prev, clinicId: patientClinics[0].id}));
