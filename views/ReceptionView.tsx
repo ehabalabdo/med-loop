@@ -168,6 +168,33 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         };
     }, [user]);
 
+    // WhatsApp Integration - Send login credentials via WhatsApp
+    const sendWhatsAppCredentials = (phone: string, name: string, password: string) => {
+        // Clean phone number (remove spaces, dashes, etc.)
+        const cleanPhone = phone.replace(/[^0-9+]/g, '');
+        
+        // Prepare message in Arabic
+        const message = `مرحباً ${name} 👋
+
+تم تسجيلك بنجاح في نظام *MED LOOP* الطبي
+
+🔐 *بيانات الدخول:*
+اسم المستخدم: ${phone}
+كلمة المرور: ${password}
+
+🌐 *رابط الدخول:*
+https://med.loopjo.com
+
+⚠️ احتفظ بهذه المعلومات بشكل آمن
+يمكنك تسجيل الدخول ومتابعة حجوزاتك ونتائج الفحوصات`;
+        
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+        
+        // Open WhatsApp in new tab
+        window.open(whatsappUrl, '_blank');
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name || !formData.clinicId || !user) return;
@@ -197,10 +224,21 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                     source: 'walk-in'
                 }
             });
+            
+            // Store patient credentials before clearing form
+            const patientName = formData.name;
+            const patientPhone = formData.phone;
+            const patientPassword = formData.password || 'patient123';
+            
             setFormData(prev => ({ ...prev, name: '', age: '', phone: '', email: '', password: '', reasonForVisit: '' }));
             setIsFormOpen(false);
             // No need to manually fetch - PatientService.subscribe will auto-update
-            alert('تمت إضافة المريض بنجاح');
+            
+            // Show success and offer WhatsApp option
+            const sendViaWhatsApp = confirm('✅ تمت إضافة المريض بنجاح!\n\n📱 هل تريد إرسال بيانات الدخول عبر واتساب؟');
+            if (sendViaWhatsApp && patientPhone) {
+                sendWhatsAppCredentials(patientPhone, patientName, patientPassword);
+            }
         } catch (e: any) {
             alert("Error: " + (e.message || 'فشل إضافة المريض'));
         }
