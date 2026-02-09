@@ -34,7 +34,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const [formData, setFormData] = useState({
-    name: '', age: '', phone: '', email: '', password: '', gender: 'male' as Gender,
+    name: '', age: '', phone: '', gender: 'male' as Gender,
     allergiesExists: false, allergiesDetail: '',
     chronicExists: false, chronicDetail: '',
     medsExists: false, medsDetail: '',
@@ -179,15 +179,16 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
 تم تسجيلك بنجاح في نظام *MED LOOP* الطبي
 
-🔐 *بيانات الدخول:*
-اسم المستخدم: ${phone}
-كلمة المرور: ${password}
+🔐 *بيانات الدخول للبوابة الإلكترونية:*
+📱 اسم المستخدم (رقم الهاتف): ${phone}
+🔑 كلمة المرور: ${password}
 
 🌐 *رابط الدخول:*
 https://med.loopjo.com
 
+💡 استخدم رقم هاتفك كاسم مستخدم
 ⚠️ احتفظ بهذه المعلومات بشكل آمن
-يمكنك تسجيل الدخول ومتابعة حجوزاتك ونتائج الفحوصات`;
+✅ يمكنك تسجيل الدخول ومتابعة حجوزاتك ونتائج الفحوصات`;
         
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
@@ -198,14 +199,18 @@ https://med.loopjo.com
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name || !formData.clinicId || !user) return;
+        if (!formData.name || !formData.clinicId || !formData.phone || !user) return;
+        
+        // Generate random 6-digit password
+        const generatedPassword = Math.floor(100000 + Math.random() * 900000).toString();
+        
         try {
             await PatientService.add(user, {
                 name: formData.name,
                 age: parseInt(formData.age) || 0,
                 phone: formData.phone,
-                email: formData.email || undefined,
-                password: formData.password || 'patient123',
+                email: undefined,
+                password: generatedPassword,
                 gender: formData.gender,
                 medicalProfile: {
                     allergies: { exists: formData.allergiesExists, details: formData.allergiesDetail },
@@ -229,9 +234,9 @@ https://med.loopjo.com
             // Store patient credentials before clearing form
             const patientName = formData.name;
             const patientPhone = formData.phone;
-            const patientPassword = formData.password || 'patient123';
+            const patientPassword = generatedPassword;
             
-            setFormData(prev => ({ ...prev, name: '', age: '', phone: '', email: '', password: '', reasonForVisit: '' }));
+            setFormData(prev => ({ ...prev, name: '', age: '', phone: '', reasonForVisit: '' }));
             setIsFormOpen(false);
             // No need to manually fetch - PatientService.subscribe will auto-update
             
@@ -549,8 +554,10 @@ https://med.loopjo.com
                                  <select className="input-modern" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as Gender})}><option value="male">{t('male')}</option><option value="female">{t('female')}</option></select>
                             </div>
                             <input type="tel" placeholder={t('phone')} className="input-modern" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required />
-                            <input type="email" placeholder="البريد الإلكتروني (للحساب)" className="input-modern" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                            <input type="password" placeholder="كلمة المرور (للحساب)" className="input-modern" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+                               <i className="fa-solid fa-info-circle mr-2"></i>
+                               <strong>ملاحظة:</strong> رقم الهاتف سيكون اسم المستخدم، وكلمة المرور ستُولّد تلقائياً
+                            </div>
                          </div>
                          <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                              <select className="input-modern" value={formData.clinicId} onChange={e => setFormData({...formData, clinicId: e.target.value})}>{clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
