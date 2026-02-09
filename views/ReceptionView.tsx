@@ -209,6 +209,7 @@ https://med.loopjo.com
                 name: formData.name,
                 age: parseInt(formData.age) || 0,
                 phone: formData.phone,
+                username: formData.phone, // رقم الهاتف هو username
                 email: undefined,
                 password: generatedPassword,
                 gender: formData.gender,

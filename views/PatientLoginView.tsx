@@ -52,17 +52,18 @@ const PatientLoginView: React.FC = () => {
 
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">
-                <i className="fa-solid fa-user ml-1"></i> اسم المستخدم
+                <i className="fa-solid fa-phone ml-1"></i> رقم الهاتف
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                placeholder="أدخل اسم المستخدم"
+                placeholder="مثال: 0791234567"
                 required
                 disabled={loading}
               />
+              <p className="text-xs text-gray-500 mt-1">استخدم رقم هاتفك المسجل في العيادة</p>
             </div>
 
             <div>
