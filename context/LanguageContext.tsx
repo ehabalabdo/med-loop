@@ -83,6 +83,7 @@ const translations = {
     advertisement: "Advertisement",
     
     register_patient: "Register Patient",
+    send_via_whatsapp: "Send login credentials via WhatsApp",
     todays_queue: "Today's Queue",
     open_queue_screen: "Launch TV Screen",
     time_col: "Time",
@@ -240,6 +241,7 @@ const translations = {
     advertisement: "إعلان",
 
     register_patient: "تسجيل المريض",
+    send_via_whatsapp: "إرسال بيانات الدخول عبر واتساب للمريض",
     todays_queue: "قائمة الانتظار",
     open_queue_screen: "فتح شاشة الانتظار",
     time_col: "الوقت",

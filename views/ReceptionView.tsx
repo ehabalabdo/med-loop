@@ -40,7 +40,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     medsExists: false, medsDetail: '',
     surgeriesExists: false, surgeriesDetail: '', // NEW: Previous surgeries
     isPregnant: false,
-    clinicId: '', priority: 'normal' as Priority, source: 'walk-in', reasonForVisit: ''
+    clinicId: '', priority: 'normal' as Priority, source: 'walk-in', reasonForVisit: '',
+    sendWhatsApp: true // NEW: Send credentials via WhatsApp by default
   });
 
   const loadData = async () => {
@@ -234,10 +235,12 @@ https://med.loopjo.com
             setIsFormOpen(false);
             // No need to manually fetch - PatientService.subscribe will auto-update
             
-            // Show success and offer WhatsApp option
-            const sendViaWhatsApp = confirm('✅ تمت إضافة المريض بنجاح!\n\n📱 هل تريد إرسال بيانات الدخول عبر واتساب؟');
-            if (sendViaWhatsApp && patientPhone) {
+            // Send via WhatsApp if enabled
+            if (formData.sendWhatsApp && patientPhone) {
                 sendWhatsAppCredentials(patientPhone, patientName, patientPassword);
+            } else {
+                alert('✅ تمت إضافة المريض بنجاح!');
+            }
             }
         } catch (e: any) {
             alert("Error: " + (e.message || 'فشل إضافة المريض'));
@@ -570,6 +573,22 @@ https://med.loopjo.com
                                  );
                              })}
                           </div>
+                          
+                          {/* WhatsApp Checkbox */}
+                          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                             <input 
+                                type="checkbox" 
+                                id="sendWhatsApp" 
+                                checked={formData.sendWhatsApp} 
+                                onChange={e => setFormData({...formData, sendWhatsApp: e.target.checked})} 
+                                className="w-5 h-5 text-green-600 rounded-md"
+                             />
+                             <label htmlFor="sendWhatsApp" className="flex items-center gap-2 text-sm font-semibold text-green-800 cursor-pointer">
+                                <i className="fab fa-whatsapp text-2xl"></i>
+                                <span>{t('send_via_whatsapp')}</span>
+                             </label>
+                          </div>
+                          
                           <button type="submit" className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl shadow-xl transition-all hover:bg-primary transform hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-3 text-lg"><i className="fa-solid fa-check-circle"></i> {t('register_patient')}</button>
                       </div>
                     </form>
