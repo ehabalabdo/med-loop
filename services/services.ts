@@ -311,7 +311,7 @@ export const PatientService = {
     if (USE_POSTGRES) {
       const patientId = await pgPatients.create({
         ...data,
-        hasAccess: !!(data.username && data.password), // Enable access if username and password provided
+        hasAccess: true, // ✅ Always enable access for all patients
         currentVisit: { ...data.currentVisit, visitId: generateId('v') },
         history: [],
         isArchived: false
@@ -322,7 +322,7 @@ export const PatientService = {
       const newPatient: Patient = {
         id: patientId,
         ...data,
-        hasAccess: !!(data.username && data.password),
+        hasAccess: true, // ✅ Always enable access for all patients
         currentVisit: { ...data.currentVisit, visitId: generateId('v') },
         history: [],
         ...createMeta(user)
