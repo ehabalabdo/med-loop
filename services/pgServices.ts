@@ -343,7 +343,7 @@ export const pgAppointments = {
   getAll: async (): Promise<Appointment[]> => {
     const result = await sql`SELECT * FROM appointments ORDER BY start_time DESC`;
     return result.map((row: any) => ({
-      id: row.id,
+      id: String(row.id),
       patientId: String(row.patient_id),
       patientName: row.patient_name,
       clinicId: String(row.clinic_id),
@@ -364,15 +364,17 @@ export const pgAppointments = {
     const startTime = new Date(data.date).toISOString();
     // Add 1 hour for end_time (or use same time if not specified)
     const endTime = new Date(data.date + 3600000).toISOString(); // +1 hour
+    const patientIdInt = parseInt(data.patientId) || 0;
+    const clinicIdInt = parseInt(data.clinicId) || 0;
+    const doctorIdInt = data.doctorId ? parseInt(data.doctorId) : null;
     
     await sql`
-      INSERT INTO appointments (id, patient_id, patient_name, clinic_id, doctor_id, start_time, end_time, status, reason, created_at)
+      INSERT INTO appointments (patient_id, patient_name, clinic_id, doctor_id, start_time, end_time, status, reason, created_at)
       VALUES (
-        ${data.id},
-        ${data.patientId},
+        ${patientIdInt},
         ${data.patientName},
-        ${data.clinicId},
-        ${data.doctorId || null},
+        ${clinicIdInt},
+        ${doctorIdInt},
         ${startTime},
         ${endTime},
         ${data.status},
@@ -383,28 +385,32 @@ export const pgAppointments = {
   },
 
   update: async (id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'|'status'>>): Promise<void> => {
-    await sql`UPDATE appointments SET updated_at = NOW() WHERE id = ${id}`;
+    const idInt = parseInt(id);
+    await sql`UPDATE appointments SET updated_at = NOW() WHERE id = ${idInt}`;
     
     if (data.clinicId !== undefined) {
-      await sql`UPDATE appointments SET clinic_id = ${data.clinicId} WHERE id = ${id}`;
+      const clinicIdInt = parseInt(data.clinicId) || 0;
+      await sql`UPDATE appointments SET clinic_id = ${clinicIdInt} WHERE id = ${idInt}`;
     }
     if (data.doctorId !== undefined) {
-      await sql`UPDATE appointments SET doctor_id = ${data.doctorId || null} WHERE id = ${id}`;
+      const doctorIdInt = data.doctorId ? parseInt(data.doctorId) : null;
+      await sql`UPDATE appointments SET doctor_id = ${doctorIdInt} WHERE id = ${idInt}`;
     }
     if (data.date !== undefined) {
       const dateStr = new Date(data.date).toISOString();
-      await sql`UPDATE appointments SET start_time = ${dateStr} WHERE id = ${id}`;
+      await sql`UPDATE appointments SET start_time = ${dateStr} WHERE id = ${idInt}`;
     }
     if (data.reason !== undefined) {
-      await sql`UPDATE appointments SET reason = ${data.reason} WHERE id = ${id}`;
+      await sql`UPDATE appointments SET reason = ${data.reason} WHERE id = ${idInt}`;
     }
     if (data.status !== undefined) {
-      await sql`UPDATE appointments SET status = ${data.status} WHERE id = ${id}`;
+      await sql`UPDATE appointments SET status = ${data.status} WHERE id = ${idInt}`;
     }
   },
 
   delete: async (id: string): Promise<void> => {
-    await sql`DELETE FROM appointments WHERE id = ${id}`;
+    const idInt = parseInt(id);
+    await sql`DELETE FROM appointments WHERE id = ${idInt}`;
   }
 };
 

@@ -526,7 +526,7 @@ const AppointmentsView: React.FC = () => {
                                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('doctor_col')}</label>
                                         <select className="w-full p-2 border rounded bg-white" value={formData.doctorId} onChange={e => setFormData({...formData, doctorId: e.target.value})}>
                                             <option value="">-- Any --</option>
-                                            {doctors.map(d => <option key={d.uid} value={d.uid}>{d.name}</option>)}
+                                            {doctors.filter(d => d.clinicIds.includes(formData.clinicId)).map(d => <option key={d.uid} value={d.uid}>{d.name}</option>)}
                                         </select>
                                     </div>
                                 </div>
