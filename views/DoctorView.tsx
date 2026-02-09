@@ -613,7 +613,13 @@ const DoctorView: React.FC = () => {
                     )}
                  </div>
               </div>
-           </div>
+            </>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-slate-300 p-10 text-center">
+              <i className="fa-solid fa-user-doctor text-6xl opacity-10 mb-6 animate-pulse"></i>
+              <p className="text-xl font-extrabold text-slate-400">{t('select_patient')}</p>
+            </div>
+          )}
         </div>
       </div>
 
