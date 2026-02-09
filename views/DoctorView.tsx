@@ -34,6 +34,9 @@ const DoctorView: React.FC = () => {
   // Mobile Tabs Logic
   const [mobileTab, setMobileTab] = useState<'queue' | 'emr'>('queue');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Track previous count for doctor notifications
+  const prevWaitingCountRef = useRef(0);
 
   const handleSelectPatient = async (p: Patient) => {
     // أول ما الدكتور يختار المريض، يصير in-progress فوراً
@@ -72,9 +75,35 @@ const DoctorView: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
     
     const unsubscribeQueue = PatientService.subscribe(user, (data) => {
+      const waitingCount = data.filter(p => p.currentVisit.status === 'waiting').length;
+      
+      // Notify doctor if new waiting patients arrived
+      if (waitingCount > prevWaitingCountRef.current && prevWaitingCountRef.current > 0) {
+        // Play notification sound
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiToIGGe87OehTg==');
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+        
+        // Visual notification
+        if (Notification.permission === 'granted') {
+          new Notification('مريض جديد في الانتظار', {
+            body: `عدد المرضى المنتظرين: ${waitingCount}`,
+            icon: '/favicon.ico'
+          });
+        }
+      }
+      
+      prevWaitingCountRef.current = waitingCount;
       setPatients(data);
       
       // Real-time update for selected patient
@@ -306,6 +335,27 @@ const DoctorView: React.FC = () => {
 
   return (
     <Layout title={t('doctor_console')}>
+      {/* Waiting Patients Notification Badge */}
+      {waitingList.filter(p => p.currentVisit.status === 'waiting').length > 0 && (
+        <div className="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between shadow-md animate-pulse-slow">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg">
+              {waitingList.filter(p => p.currentVisit.status === 'waiting').length}
+            </div>
+            <div>
+              <p className="font-bold text-amber-900 text-lg">
+                <i className="fa-solid fa-bell-concierge mr-2"></i>
+                {language === 'ar' ? 'مرضى في الانتظار' : 'Patients Waiting'}
+              </p>
+              <p className="text-amber-700 text-sm">
+                {language === 'ar' ? 'انقر على مريض لبدء الفحص' : 'Click on a patient to start examination'}
+              </p>
+            </div>
+          </div>
+          <i className="fa-solid fa-chevron-left text-amber-400 text-2xl"></i>
+        </div>
+      )}
+      
       {/* Mobile Tab Switcher */}
       <div className="lg:hidden flex mb-4 bg-white rounded-2xl p-1 shadow-sm border border-slate-100">
           <button onClick={() => setMobileTab('queue')} className={`flex-1 py-2 text-sm font-bold rounded-xl ${mobileTab === 'queue' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500'}`}>
@@ -556,6 +606,29 @@ const DoctorView: React.FC = () => {
                  <div className="text-xs font-bold text-slate-400 uppercase hidden md:block">Session Time: <span className="text-slate-800">12:05</span></div>
                  <div className="flex gap-3 w-full md:w-auto">
                     {/* Only show 'Complete' if In Progress */}
+                    {selectedPatient?.currentVisit.status === 'in-progress' && (
+                        <button onClick={() => handleSaveVisit('completed')} className="flex-1 md:flex-initial px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 text-white font-bold rounded-2xl shadow-lg transition-all">
+                            <i className="fa-solid fa-check-circle mr-2"></i>{t('btn_complete_visit')}
+                        </button>
+                    )}
+                 </div>
+              </div>
+           </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.8; }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 2s ease-in-out infinite;
+        }
+      `}</style>
+    </Layout>
+  );
+};
                     {selectedPatient.currentVisit.status === 'in-progress' && (
                         <button onClick={() => handleSaveVisit('completed')} className="flex-1 md:flex-none bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg w-full"><i className="fa-solid fa-check mr-2"></i> {t('complete_discharge')}</button>
                     )}

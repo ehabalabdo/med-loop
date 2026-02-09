@@ -17,6 +17,7 @@ const QueueDisplayView: React.FC = () => {
   const [clinics, setClinics] = useState<Record<string, string>>({});
   const [currentTime, setCurrentTime] = useState(new Date());
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [currentCalling, setCurrentCalling] = useState<{name: string, clinic: string} | null>(null);
   
   // Track previous patients to detect changes for TTS
   const prevPatientsRef = useRef<Patient[]>([]);
@@ -85,6 +86,11 @@ const QueueDisplayView: React.FC = () => {
            const prev = prevPatientsRef.current.find(old => old.id === p.id);
            if (p.currentVisit.status === 'in-progress' && prev?.currentVisit.status !== 'in-progress') {
                const clinicName = clinics[p.currentVisit.clinicId] || 'Clinic';
+               
+               // Show popup notification
+               setCurrentCalling({ name: p.name, clinic: clinicName });
+               setTimeout(() => setCurrentCalling(null), 15000); // Hide after 15 seconds
+               
                // Announce patient name
                const text = language === 'ar' 
                  ? `المريض ${p.name}, يرجى التوجه إلى ${clinicName}`
@@ -136,6 +142,39 @@ const QueueDisplayView: React.FC = () => {
            </div>
         </div>
       </header>
+
+      {/* Calling Popup */}
+      {currentCalling && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className="bg-gradient-to-br from-green-600 to-green-700 rounded-3xl p-12 shadow-2xl border-4 border-green-400 max-w-3xl w-full mx-8 animate-bounce-subtle">
+            <div className="text-center space-y-6">
+              <div className="text-8xl mb-4">
+                <i className="fa-solid fa-bell animate-ring text-white"></i>
+              </div>
+              <h2 className="text-5xl font-bold text-white">
+                {language === 'ar' ? 'حان دورك!' : 'Your Turn!'}
+              </h2>
+              <div className="bg-white/20 rounded-2xl p-6 backdrop-blur-sm">
+                <p className="text-3xl font-semibold text-white mb-2">
+                  {language === 'ar' ? 'المريض:' : 'Patient:'} <span className="font-bold">{currentCalling.name}</span>
+                </p>
+                <p className="text-2xl text-green-100">
+                  {language === 'ar' ? 'يرجى التوجه إلى:' : 'Please proceed to:'}
+                </p>
+                <p className="text-4xl font-bold text-white mt-2">
+                  <i className="fa-solid fa-hospital mr-3"></i>
+                  {currentCalling.clinic}
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-3 text-green-200 text-xl">
+                <i className="fa-solid fa-arrow-right animate-pulse"></i>
+                <span>{language === 'ar' ? 'توجه الآن للعيادة' : 'Proceed to the clinic now'}</span>
+                <i className="fa-solid fa-arrow-left animate-pulse"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 p-6 overflow-hidden flex flex-col">
@@ -216,6 +255,22 @@ const QueueDisplayView: React.FC = () => {
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes bounce-subtle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .animate-bounce-subtle {
+            animation: bounce-subtle 2s ease-in-out infinite;
+        }
+        @keyframes ring {
+            0%, 100% { transform: rotate(-15deg); }
+            25% { transform: rotate(15deg); }
+            50% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+        .animate-ring {
+            animation: ring 0.5s ease-in-out infinite;
         }
       `}</style>
     </div>
