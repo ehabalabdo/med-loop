@@ -101,6 +101,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                {role === UserRole.DOCTOR && <NavItem to="/doctor" icon="fa-solid fa-user-doctor" label={t('doctor_console')} />}
                <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label={t('appointments_nav')} />
                <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label={t('patients_registry')} />
+               {(role === UserRole.ADMIN || role === UserRole.DOCTOR) && <NavItem to="/clinic-history" icon="fa-solid fa-chart-line" label={t('clinic_history_nav')} />}
              </>
            )}
            
@@ -192,6 +193,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                 {role === UserRole.DOCTOR && <NavItem to="/doctor" icon="fa-solid fa-user-doctor" label="Console" mobile />}
                 <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label="Dates" mobile />
                 <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label="Registry" mobile />
+                {(role === UserRole.ADMIN || role === UserRole.DOCTOR) && <NavItem to="/clinic-history" icon="fa-solid fa-chart-line" label="History" mobile />}
               </>
             )}
             

@@ -157,6 +157,10 @@ const translations = {
     select_existing_patient: "Select Existing Patient",
     schedule_btn: "Schedule",
 
+    // Clinic History
+    clinic_history: "Clinic History",
+    clinic_history_nav: "Clinic History",
+
     // Statuses
     waiting: "Waiting",
     in_progress: "In Progress",
@@ -314,6 +318,10 @@ const translations = {
     no_appointments: "لا توجد مواعيد لهذا اليوم.",
     select_existing_patient: "اختر مريض مسجل",
     schedule_btn: "حجز الموعد",
+
+    // Clinic History
+    clinic_history: "سجل العيادات",
+    clinic_history_nav: "سجل العيادات",
 
     // Statuses
     waiting: "انتظار",

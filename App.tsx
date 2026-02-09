@@ -18,6 +18,7 @@ import ImplantView from './views/ImplantView';
 import CoursesView from './views/CoursesView';
 import PatientLoginView from './views/PatientLoginView';
 import PatientDashboardView from './views/PatientDashboardView';
+import ClinicHistoryView from './views/ClinicHistoryView';
 import DevModeSwitcher from './components/DevModeSwitcher';
 
 // --- Safe Router Strategy ---
@@ -210,6 +211,16 @@ const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.COURSE_MANAGER, UserRole.SECRETARY]}>
             <CoursesView />
+          </ProtectedRoute>
+        } 
+      />
+
+      {/* Clinic History - Admin & Doctors */}
+      <Route 
+        path="/clinic-history" 
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR]}>
+            <ClinicHistoryView />
           </ProtectedRoute>
         } 
       />
