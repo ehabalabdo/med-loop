@@ -9,13 +9,17 @@ import { Appointment, Clinic, Patient, UserRole, User, Gender } from '../types';
 
 const AppointmentsView: React.FC = () => {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   
   // State
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [doctors, setDoctors] = useState<User[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  
+  // Patient Search State
+  const [patientSearch, setPatientSearch] = useState('');
+  const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
   
   // View State
   const [activeTab, setActiveTab] = useState<'scheduled' | 'history'>('scheduled');
@@ -97,6 +101,8 @@ const AppointmentsView: React.FC = () => {
           newPregnant: false
       });
       setPatientMode('existing');
+      setPatientSearch('');
+      setIsPatientDropdownOpen(false);
       setIsEditing(false);
       setIsModalOpen(true);
   };
@@ -368,10 +374,89 @@ const AppointmentsView: React.FC = () => {
                             {patientMode === 'existing' ? (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('select_existing_patient')}</label>
-                                    <select className="w-full p-2 border rounded bg-white disabled:bg-gray-100" value={formData.patientId} onChange={e => setFormData({...formData, patientId: e.target.value})} required={patientMode === 'existing'} disabled={isEditing}>
-                                        <option value="">-- Select Patient --</option>
-                                        {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.phone})</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        {/* Search Input */}
+                                        <div className="relative">
+                                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                            <input 
+                                                type="text"
+                                                placeholder={language === 'ar' ? 'ابحث بالاسم أو رقم الهاتف...' : 'Search by name or phone...'}
+                                                className="w-full p-2.5 pl-9 border rounded-lg bg-white text-sm focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                                                value={patientSearch}
+                                                onChange={e => { setPatientSearch(e.target.value); setIsPatientDropdownOpen(true); }}
+                                                onFocus={() => setIsPatientDropdownOpen(true)}
+                                                disabled={isEditing}
+                                            />
+                                            {formData.patientId && !isPatientDropdownOpen && (
+                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">
+                                                        <i className="fa-solid fa-check mr-1"></i>
+                                                        {patients.find(p => p.id === formData.patientId)?.name || ''}
+                                                    </span>
+                                                    {!isEditing && (
+                                                        <button type="button" onClick={() => { setFormData({...formData, patientId: ''}); setPatientSearch(''); }} className="text-slate-400 hover:text-red-500 transition-colors">
+                                                            <i className="fa-solid fa-xmark text-xs"></i>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Dropdown List */}
+                                        {isPatientDropdownOpen && !isEditing && (
+                                            <>
+                                                <div className="fixed inset-0 z-10" onClick={() => setIsPatientDropdownOpen(false)}></div>
+                                                <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                                    {(() => {
+                                                        const query = patientSearch.toLowerCase().trim();
+                                                        // Sort by most recent first (createdAt descending)
+                                                        const sorted = [...patients].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                                                        const filtered = query 
+                                                            ? sorted.filter(p => 
+                                                                p.name.toLowerCase().includes(query) || 
+                                                                (p.phone && p.phone.includes(query))
+                                                              )
+                                                            : sorted;
+                                                        
+                                                        if (filtered.length === 0) {
+                                                            return (
+                                                                <div className="p-4 text-center text-slate-400 text-sm">
+                                                                    <i className="fa-solid fa-user-slash mb-1 block"></i>
+                                                                    {language === 'ar' ? 'لا يوجد نتائج' : 'No patients found'}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        
+                                                        return filtered.slice(0, 50).map(p => (
+                                                            <button
+                                                                key={p.id}
+                                                                type="button"
+                                                                className={`w-full text-left px-3 py-2.5 hover:bg-blue-50 transition-colors flex items-center justify-between border-b border-slate-50 last:border-0 ${formData.patientId === p.id ? 'bg-blue-50' : ''}`}
+                                                                onClick={() => {
+                                                                    setFormData({...formData, patientId: p.id});
+                                                                    setPatientSearch('');
+                                                                    setIsPatientDropdownOpen(false);
+                                                                }}
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
+                                                                        {p.name.charAt(0)}
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-sm font-semibold text-slate-700 block">{p.name}</span>
+                                                                        <span className="text-[11px] text-slate-400">{p.phone} {p.age ? `• ${p.age} ${language === 'ar' ? 'سنة' : 'y'}` : ''}</span>
+                                                                    </div>
+                                                                </div>
+                                                                {formData.patientId === p.id && (
+                                                                    <i className="fa-solid fa-circle-check text-primary"></i>
+                                                                )}
+                                                            </button>
+                                                        ));
+                                                    })()}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-4 animate-fade-in">
