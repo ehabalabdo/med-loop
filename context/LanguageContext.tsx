@@ -63,6 +63,9 @@ const translations = {
     
     allergies: "Allergies?",
     allergies_hint: "List specific allergens",
+    chronic: "Chronic Conditions?",
+    meds: "Current Medications?",
+    surgeries: "Previous Surgeries?",
     chronic_conditions: "Chronic Conditions?",
     current_meds: "Current Medications?",
     specify_details: "Please specify details...",
@@ -217,6 +220,9 @@ const translations = {
 
     allergies: "حساسية؟",
     allergies_hint: "اذكر التفاصيل إن وجدت",
+    chronic: "أمراض مزمنة؟",
+    meds: "أدوية حالية؟",
+    surgeries: "عمليات سابقة؟",
     chronic_conditions: "أمراض مزمنة؟",
     current_meds: "أدوية حالية؟",
     specify_details: "يرجى ذكر التفاصيل...",

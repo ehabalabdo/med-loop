@@ -48,6 +48,7 @@ export interface MedicalIntake {
   allergies: { exists: boolean; details: string };
   chronicConditions: { exists: boolean; details: string };
   currentMedications: { exists: boolean; details: string };
+  previousSurgeries: { exists: boolean; details: string }; // NEW: Previous surgeries
   isPregnant: boolean; // Only for female
   notes?: string;
 }

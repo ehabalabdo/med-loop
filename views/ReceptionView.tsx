@@ -38,6 +38,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
     allergiesExists: false, allergiesDetail: '',
     chronicExists: false, chronicDetail: '',
     medsExists: false, medsDetail: '',
+    surgeriesExists: false, surgeriesDetail: '', // NEW: Previous surgeries
     isPregnant: false,
     clinicId: '', priority: 'normal' as Priority, source: 'walk-in', reasonForVisit: ''
   });
@@ -178,7 +179,14 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                 email: formData.email || undefined,
                 password: formData.password || 'patient123',
                 gender: formData.gender,
-                medicalProfile: {},
+                medicalProfile: {
+                    allergies: { exists: formData.allergiesExists, details: formData.allergiesDetail },
+                    chronicConditions: { exists: formData.chronicExists, details: formData.chronicDetail },
+                    currentMedications: { exists: formData.medsExists, details: formData.medsDetail },
+                    previousSurgeries: { exists: formData.surgeriesExists, details: formData.surgeriesDetail },
+                    isPregnant: formData.isPregnant,
+                    notes: ''
+                },
                 currentVisit: {
                     visitId: '',
                     clinicId: formData.clinicId,
@@ -513,7 +521,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                       <div className="flex flex-col h-full gap-6">
                           <div className="bg-rose-50/50 p-5 md:p-6 rounded-2xl border border-rose-100 flex-1 space-y-4">
                              <h3 className="text-[10px] font-bold uppercase text-rose-700 flex items-center gap-2 mb-4"><span className="w-1 h-4 bg-rose-500 rounded-full"></span> {t('medical_intake')}</h3>
-                             {['allergies', 'chronic', 'meds'].map((key) => (
+                             {['allergies', 'chronic', 'meds', 'surgeries'].map((key) => (
                                  <div key={key} className="bg-white/70 p-3 rounded-xl border border-rose-100/30">
                                     <div className="flex items-center gap-3 mb-2"><input type="checkbox" checked={(formData as any)[`${key}Exists`]} onChange={e => setFormData({...formData, [`${key}Exists`]: e.target.checked})} className="w-5 h-5 text-rose-600 rounded-md" /><label className="text-xs font-bold text-slate-700 capitalize">{t(key as any)}</label></div>
                                     {(formData as any)[`${key}Exists`] && <input type="text" placeholder="..." className="w-full bg-white border border-rose-100 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-rose-200" value={(formData as any)[`${key}Detail`]} onChange={e => setFormData({...formData, [`${key}Detail`]: e.target.value})} />}
