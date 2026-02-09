@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Patient } from '../types';
+import { Patient, VisitData } from '../types';
+import { pgPatients } from '../services/pgServices';
 
 const PatientDashboardView: React.FC = () => {
   const navigate = useNavigate();
@@ -12,16 +13,40 @@ const PatientDashboardView: React.FC = () => {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Load fresh data from database
   useEffect(() => {
     if (!patientUser) {
       navigate('/patient/login');
       return;
     }
 
-    // In a real app, fetch patient data from backend
-    // For now, use the patient data from auth context
-    setPatient(patientUser as Patient);
-    setLoading(false);
+    const loadPatientData = async () => {
+      try {
+        // Get fresh data from PostgreSQL database
+        const allPatients = await pgPatients.getAll();
+        const freshData = allPatients.find(p => p.id === patientUser.id);
+        
+        if (freshData) {
+          setPatient(freshData);
+        } else {
+          // Fallback to localStorage data if not found in DB
+          setPatient(patientUser as Patient);
+        }
+      } catch (error) {
+        console.error('[PatientDashboard] Error loading data:', error);
+        // Fallback to localStorage data
+        setPatient(patientUser as Patient);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPatientData();
+    
+    // Poll for updates every 3 seconds (for visit status changes)
+    const interval = setInterval(loadPatientData, 3000);
+    
+    return () => clearInterval(interval);
   }, [patientUser, navigate]);
 
   const handleLogout = async () => {
@@ -77,6 +102,64 @@ const PatientDashboardView: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Current Visit Status - Show if patient has active visit */}
+        {patient.currentVisit && patient.currentVisit.visitId && patient.currentVisit.visitId.trim() !== '' && (
+          <div className={`rounded-2xl shadow-xl p-6 mb-8 border-2 ${
+            patient.currentVisit.status === 'in-progress' 
+              ? 'bg-gradient-to-r from-green-500 to-green-600 border-green-400' 
+              : patient.currentVisit.status === 'waiting'
+              ? 'bg-gradient-to-r from-amber-500 to-amber-600 border-amber-400'
+              : 'bg-gradient-to-r from-gray-500 to-gray-600 border-gray-400'
+          } text-white animate-pulse-slow`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-3xl">
+                  {patient.currentVisit.status === 'in-progress' ? (
+                    <i className="fa-solid fa-user-doctor animate-bounce"></i>
+                  ) : patient.currentVisit.status === 'waiting' ? (
+                    <i className="fa-solid fa-clock"></i>
+                  ) : (
+                    <i className="fa-solid fa-check-circle"></i>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold mb-1">
+                    {patient.currentVisit.status === 'in-progress' 
+                      ? '🔔 حان دورك!' 
+                      : patient.currentVisit.status === 'waiting'
+                      ? 'في قائمة الانتظار'
+                      : 'الزيارة مكتملة'
+                    }
+                  </h3>
+                  <p className="text-sm opacity-90">
+                    {patient.currentVisit.status === 'in-progress' 
+                      ? 'يرجى التوجه إلى غرفة الفحص الآن' 
+                      : patient.currentVisit.status === 'waiting'
+                      ? 'يرجى الانتظار حتى يحين دورك'
+                      : 'شكراً لزيارتك'
+                    }
+                  </p>
+                  {patient.currentVisit.reasonForVisit && (
+                    <p className="text-xs opacity-75 mt-1">
+                      <i className="fa-solid fa-notes-medical mr-1"></i>
+                      السبب: {patient.currentVisit.reasonForVisit}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm opacity-75">وقت الوصول</div>
+                <div className="text-xl font-bold font-mono">
+                  {new Date(patient.currentVisit.date).toLocaleTimeString('ar-EG', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -244,6 +327,16 @@ const PatientDashboardView: React.FC = () => {
           <p>© 2026 MED LOOP. جميع الحقوق محفوظة.</p>
         </div>
       </footer>
+
+      <style>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.95; transform: scale(1.01); }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 2s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };
