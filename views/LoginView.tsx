@@ -33,8 +33,19 @@ const LoginView: React.FC = () => {
           // Patient login - redirect to patient dashboard
           navigate('/patient/dashboard', { replace: true });
         } else if (savedUser) {
-          // Staff login - reload to trigger App.tsx routing
-          window.location.reload();
+          try {
+            const parsed = JSON.parse(savedUser);
+            const role = parsed.role;
+            if (role === 'admin') navigate('/admin', { replace: true });
+            else if (role === 'secretary') navigate('/reception', { replace: true });
+            else if (role === 'doctor') navigate('/doctor', { replace: true });
+            else if (role === 'lab_tech') navigate('/dental-lab', { replace: true });
+            else if (role === 'implant_manager') navigate('/implant-company', { replace: true });
+            else if (role === 'course_manager') navigate('/academy', { replace: true });
+            else navigate('/', { replace: true });
+          } catch {
+            navigate('/', { replace: true });
+          }
         }
       }, 100);
     } catch (err: any) {

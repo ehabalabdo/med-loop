@@ -11,11 +11,6 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-/**
- * Error Boundary Component
- * Catches JavaScript errors anywhere in the child component tree
- * and displays a fallback UI instead of crashing the entire app
- */
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -27,107 +22,75 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true };
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('[ErrorBoundary] Caught error:', error);
     console.error('[ErrorBoundary] Error info:', errorInfo);
-    
-    this.setState({
-      error,
-      errorInfo
-    });
+    this.setState({ errorInfo });
   }
 
   handleReset = () => {
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null
-    });
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
+
+  handleFullReset = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('patientUser');
+    window.location.hash = '#/login';
+    window.location.reload();
   };
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      // Default fallback UI
       return (
-        <div style={{
-          padding: '2rem',
-          maxWidth: '600px',
-          margin: '2rem auto',
-          backgroundColor: '#fff3cd',
-          border: '1px solid #ffc107',
-          borderRadius: '8px',
-          fontFamily: 'system-ui, -apple-system, sans-serif'
-        }}>
-          <h2 style={{ color: '#856404', marginBottom: '1rem' }}>
-            ⚠️ Something went wrong
-          </h2>
-          <p style={{ marginBottom: '1rem', color: '#856404' }}>
-            We're sorry for the inconvenience. The application encountered an error.
-          </p>
-          
-          {this.state.error && (
-            <details style={{ 
-              marginBottom: '1rem',
-              padding: '0.5rem',
-              backgroundColor: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
-              fontSize: '0.875rem'
-            }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
-                Error Details
-              </summary>
-              <pre style={{ 
-                marginTop: '0.5rem',
-                padding: '0.5rem',
-                backgroundColor: '#f8f9fa',
-                overflow: 'auto',
-                fontSize: '0.75rem'
-              }}>
-                {this.state.error.toString()}
-                {this.state.errorInfo && this.state.errorInfo.componentStack}
-              </pre>
-            </details>
-          )}
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4" dir="rtl">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full p-8 text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <i className="fa-solid fa-triangle-exclamation text-red-500 text-3xl"></i>
+            </div>
+            <h1 className="text-2xl font-bold text-slate-800 mb-2">حدث خطأ غير متوقع</h1>
+            <p className="text-slate-500 text-sm mb-6">
+              نعتذر عن هذا الخطأ. يمكنك المحاولة مرة أخرى أو تسجيل الدخول من جديد.
+            </p>
+            
+            {this.state.error && (
+              <details className="mb-6 text-left" dir="ltr">
+                <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600">Error Details</summary>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mt-2">
+                  <p className="text-xs font-mono text-red-600 break-all">
+                    {this.state.error.message}
+                  </p>
+                </div>
+              </details>
+            )}
 
-          <button
-            onClick={this.handleReset}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              marginRight: '0.5rem'
-            }}
-          >
-            Try Again
-          </button>
-          
-          <button
-            onClick={() => window.location.reload()}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '1rem'
-            }}
-          >
-            Reload Page
-          </button>
+            <div className="space-y-3">
+              <button
+                onClick={this.handleReset}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+              >
+                <i className="fa-solid fa-rotate-right"></i>
+                إعادة المحاولة
+              </button>
+              <button
+                onClick={this.handleFullReset}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2"
+              >
+                <i className="fa-solid fa-right-from-bracket"></i>
+                تسجيل خروج وإعادة تحميل
+              </button>
+            </div>
+            
+            <p className="text-xs text-slate-400 mt-6">
+              MED LOOP Medical System &copy; 2026
+            </p>
+          </div>
         </div>
       );
     }
@@ -136,14 +99,4 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-// Higher-order component for easier wrapping
-export const withErrorBoundary = <P extends object>(
-  Component: React.ComponentType<P>,
-  fallback?: ReactNode
-) => {
-  return (props: P) => (
-    <ErrorBoundary fallback={fallback}>
-      <Component {...props} />
-    </ErrorBoundary>
-  );
-};
+export default ErrorBoundary;

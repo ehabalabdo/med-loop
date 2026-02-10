@@ -20,6 +20,7 @@ import PatientLoginView from './views/PatientLoginView';
 import PatientDashboardView from './views/PatientDashboardView';
 import ClinicHistoryView from './views/ClinicHistoryView';
 import DevModeSwitcher from './components/DevModeSwitcher';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // --- Safe Router Strategy ---
 const SafeRouter: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -250,16 +251,18 @@ const AppRoutes: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <LanguageProvider>
-      <ThemeProvider>
-        <AuthProvider>
-          <SafeRouter>
-            <AppRoutes />
-            <DevModeSwitcher /> 
-          </SafeRouter>
-        </AuthProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <ErrorBoundary>
+      <LanguageProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <SafeRouter>
+              <AppRoutes />
+              {window.location.hostname === 'localhost' && <DevModeSwitcher />}
+            </SafeRouter>
+          </AuthProvider>
+        </ThemeProvider>
+      </LanguageProvider>
+    </ErrorBoundary>
   );
 };
 
