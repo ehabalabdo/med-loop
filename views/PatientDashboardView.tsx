@@ -11,11 +11,13 @@ const PatientDashboardView: React.FC = () => {
   const { patientUser, logout } = useAuth();
   const { t, dir } = useLanguage();
 
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Show cached data immediately - no waiting for DB
+  const [patient, setPatient] = useState<Patient | null>(patientUser as Patient | null);
+  const [loading, setLoading] = useState(false); // Start false - show UI immediately
   const [loadError, setLoadError] = useState(false);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [refreshing, setRefreshing] = useState(false); // Background refresh indicator
 
   // Booking modal state
   const [showBooking, setShowBooking] = useState(false);
@@ -26,74 +28,63 @@ const PatientDashboardView: React.FC = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
-  // Load fresh data from database
+  // Load fresh data from database in background (non-blocking)
   useEffect(() => {
     if (!patientUser) {
       navigate('/patient/login');
       return;
     }
 
+    // Set patient from cache immediately
+    setPatient(patientUser as Patient);
+
     let isMounted = true;
-    let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const loadPatientData = async (isFirstLoad = false) => {
+    const refreshData = async () => {
+      if (!isMounted) return;
+      setRefreshing(true);
+      
       try {
-        // Wrap each query with a 10s timeout to prevent infinite hanging
-        const withTimeout = <T,>(promise: Promise<T>, ms = 10000): Promise<T | null> =>
-          Promise.race([promise, new Promise<null>(res => setTimeout(() => res(null), ms))]);
+        // Load clinics (small table, fast)
+        const allClinics = await ClinicService.getActive();
+        if (isMounted) setClinics(allClinics);
+      } catch (e) {
+        console.error('[PatientDashboard] Clinics error:', e);
+      }
 
-        // Load patient data
-        const freshData = await withTimeout(pgPatients.getById(patientUser.id));
-        if (!isMounted) return;
-        if (freshData) {
-          setPatient(freshData);
-        } else if (isFirstLoad) {
-          setPatient(patientUser as Patient);
-        }
+      try {
+        // Load fresh patient data
+        const freshData = await pgPatients.getById(patientUser.id);
+        if (isMounted && freshData) setPatient(freshData);
+      } catch (e) {
+        console.error('[PatientDashboard] Patient error:', e);
+      }
 
-        // Load clinics only on first load
-        if (clinics.length === 0) {
-          const allClinics = await withTimeout(ClinicService.getActive());
-          if (isMounted && allClinics) setClinics(allClinics);
-        }
-
+      try {
         // Load appointments
-        const myApps = await withTimeout(pgAppointments.getByPatientId(patientUser.id));
-        if (isMounted && myApps) {
-          const upcomingApps = myApps.filter(a => (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now());
+        const myApps = await pgAppointments.getByPatientId(patientUser.id);
+        if (isMounted) {
+          const upcomingApps = myApps.filter(a => 
+            (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now()
+          );
           setAppointments(upcomingApps.sort((a, b) => a.date - b.date));
         }
-
-        if (isMounted) setLoadError(false);
-      } catch (error) {
-        console.error('[PatientDashboard] Error loading data:', error);
-        if (isMounted && isFirstLoad) {
-          setPatient(patientUser as Patient);
-          setLoadError(true);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
+      } catch (e) {
+        console.error('[PatientDashboard] Appointments error:', e);
       }
+
+      if (isMounted) setRefreshing(false);
     };
 
-    // First load
-    loadPatientData(true);
+    // Start background refresh
+    refreshData();
 
-    // Force show UI after 6 seconds even if queries haven't returned (cold start guard)
-    const forceShow = setTimeout(() => {
-      if (isMounted && loading) {
-        setPatient(prev => prev || patientUser as Patient);
-        setLoading(false);
-      }
-    }, 6000);
-
-    // Poll every 30 seconds
-    pollTimer = setInterval(() => loadPatientData(false), 30000);
+    // Poll every 60 seconds (less frequent)
+    const pollTimer = setInterval(refreshData, 60000);
 
     return () => {
       isMounted = false;
-      clearTimeout(forceShow);
-      if (pollTimer) clearInterval(pollTimer);
+      clearInterval(pollTimer);
     };
   }, [patientUser?.id, navigate]);
 
@@ -143,16 +134,11 @@ const PatientDashboardView: React.FC = () => {
 
   const getClinicName = (id: string) => clinics.find(c => c.id === id)?.name || id;
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
-        <i className="fa-solid fa-spinner fa-spin text-3xl text-blue-500"></i>
-        <p className="text-slate-500 text-sm">جاري تحميل بياناتك...</p>
-      </div>
-    );
+  if (!patient) {
+    // Redirect if no patient (not logged in)
+    navigate('/patient/login');
+    return null;
   }
-
-  if (!patient) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50" dir={dir}>
@@ -164,7 +150,10 @@ const PatientDashboardView: React.FC = () => {
               <i className="fa-solid fa-user-injured text-white text-xl"></i>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-800">بوابة المريض</h1>
+              <h1 className="text-xl font-bold text-slate-800">
+                بوابة المريض
+                {refreshing && <i className="fa-solid fa-sync fa-spin text-blue-400 text-sm mr-2"></i>}
+              </h1>
               <p className="text-xs text-slate-500">MED LOOP Patient Portal</p>
             </div>
           </div>
