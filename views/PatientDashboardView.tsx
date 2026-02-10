@@ -94,11 +94,16 @@ const PatientDashboardView: React.FC = () => {
   };
 
   const handleBookAppointment = async () => {
-    if (!patient || !bookingClinic || !bookingDate || !bookingTime) return;
+    if (!patient || !bookingClinic || !bookingDate || !bookingTime) {
+      alert('الرجاء تعبئة جميع الحقول المطلوبة');
+      return;
+    }
     setBookingLoading(true);
     try {
       const timestamp = new Date(`${bookingDate}T${bookingTime}`).getTime();
       if (isNaN(timestamp)) throw new Error('تاريخ غير صالح');
+
+      console.log('[Booking] Creating appointment:', { patientId: patient.id, clinicId: bookingClinic, date: timestamp });
 
       await pgAppointments.create({
         id: '',
@@ -111,6 +116,7 @@ const PatientDashboardView: React.FC = () => {
         status: 'pending'
       });
 
+      console.log('[Booking] Appointment created successfully');
       setBookingSuccess(true);
       // Refresh appointments using optimized query
       const myApps = await pgAppointments.getByPatientId(patient.id);
@@ -126,7 +132,8 @@ const PatientDashboardView: React.FC = () => {
         setBookingReason('');
       }, 2000);
     } catch (e: any) {
-      alert('خطأ في الحجز: ' + e.message);
+      console.error('[Booking] Error:', e);
+      alert('خطأ في الحجز: ' + (e.message || 'حدث خطأ غير متوقع'));
     } finally {
       setBookingLoading(false);
     }
@@ -468,16 +475,23 @@ const PatientDashboardView: React.FC = () => {
                     <label className="block text-sm font-bold text-slate-700 mb-2">
                       <i className="fa-solid fa-hospital ml-1"></i> العيادة *
                     </label>
-                    <select
-                      value={bookingClinic}
-                      onChange={e => setBookingClinic(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    >
-                      <option value="">اختر العيادة...</option>
-                      {clinics.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
+                    {clinics.length === 0 ? (
+                      <div className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-slate-400 flex items-center gap-2">
+                        <i className="fa-solid fa-spinner fa-spin"></i>
+                        جاري تحميل العيادات...
+                      </div>
+                    ) : (
+                      <select
+                        value={bookingClinic}
+                        onChange={e => setBookingClinic(e.target.value)}
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      >
+                        <option value="">اختر العيادة...</option>
+                        {clinics.map(c => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
 
                   {/* Date */}
