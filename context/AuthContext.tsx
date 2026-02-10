@@ -59,13 +59,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     
-    // If not found in staff, try patient login (search by username OR name OR email)
-    const allPatients = await pgPatients.getAll();
-    const foundPatient = allPatients.find(
-      p => (p.username === identifier || p.name === identifier || p.email === identifier) && 
-           p.password === password && 
-           (p.hasAccess === true || p.hasAccess === 'true' || p.hasAccess === 1)
-    );
+    // If not found in staff, try patient login (optimized single-row query)
+    const foundPatient = await pgPatients.findByLogin(identifier, password);
     
     if (foundPatient) {
       // Save patient to localStorage
@@ -79,15 +74,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const patientLogin = async (username: string, password: string) => {
-    // Get all patients from PostgreSQL
-    const allPatients = await pgPatients.getAll();
-    
-    // البحث برقم الهاتف (username أو phone)
-    const foundPatient = allPatients.find(
-      p => (p.username === username || p.phone === username) && 
-           p.password === password && 
-           p.hasAccess === true
-    );
+    // Optimized: single-row query instead of loading all patients
+    const foundPatient = await pgPatients.findByLogin(username, password);
     
     if (!foundPatient) {
       throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة');

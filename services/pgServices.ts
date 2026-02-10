@@ -208,6 +208,41 @@ export const pgPatients = {
     return patients;
   },
 
+  findByLogin: async (identifier: string, password: string): Promise<Patient | null> => {
+    const result = await sql`
+      SELECT * FROM patients 
+      WHERE (username = ${identifier} OR phone = ${identifier} OR full_name = ${identifier} OR email = ${identifier})
+        AND password = ${password}
+        AND has_access = true
+      LIMIT 1
+    `;
+    if (result.length === 0) return null;
+    const row = result[0] as any;
+    let medicalProfile = row.medical_profile;
+    if (typeof medicalProfile === 'string') { try { medicalProfile = JSON.parse(medicalProfile); } catch { medicalProfile = {}; } }
+    let currentVisit = row.current_visit;
+    if (typeof currentVisit === 'string') { try { currentVisit = JSON.parse(currentVisit); } catch { currentVisit = null; } }
+    let history = row.history;
+    if (typeof history === 'string') { try { history = JSON.parse(history); } catch { history = []; } }
+    return {
+      id: String(row.id), name: row.full_name, age: row.age || 0,
+      gender: (row.gender || 'male') as 'male' | 'female', phone: row.phone || '',
+      username: row.username || undefined, email: row.email || undefined,
+      password: row.password || undefined, hasAccess: row.has_access || false,
+      medicalProfile: medicalProfile && Object.keys(medicalProfile).length > 0 ? medicalProfile : {
+        allergies: { exists: false, details: '' }, chronicConditions: { exists: false, details: '' },
+        currentMedications: { exists: false, details: '' }, isPregnant: false, notes: row.notes || ''
+      },
+      currentVisit: currentVisit && Object.keys(currentVisit).length > 0 ? currentVisit : {
+        visitId: '', clinicId: '', date: Date.now(), status: 'waiting' as const, priority: 'normal' as const, reasonForVisit: ''
+      },
+      history: Array.isArray(history) ? history : [],
+      createdAt: new Date(row.created_at || Date.now()).getTime(), createdBy: row.created_by || 'system',
+      updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(), updatedBy: row.updated_by || 'system',
+      isArchived: row.is_archived || false
+    };
+  },
+
   getById: async (id: string): Promise<Patient | null> => {
     const idInt = parseInt(id);
     if (isNaN(idInt)) return null;

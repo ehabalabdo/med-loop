@@ -13,6 +13,7 @@ const PatientDashboardView: React.FC = () => {
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
 
@@ -32,42 +33,69 @@ const PatientDashboardView: React.FC = () => {
       return;
     }
 
-    const loadPatientData = async () => {
+    let isMounted = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const loadPatientData = async (isFirstLoad = false) => {
       try {
-        // Get only this patient's data (not ALL patients)
-        const freshData = await pgPatients.getById(patientUser.id);
-        
+        // Wrap each query with a 10s timeout to prevent infinite hanging
+        const withTimeout = <T,>(promise: Promise<T>, ms = 10000): Promise<T | null> =>
+          Promise.race([promise, new Promise<null>(res => setTimeout(() => res(null), ms))]);
+
+        // Load patient data
+        const freshData = await withTimeout(pgPatients.getById(patientUser.id));
+        if (!isMounted) return;
         if (freshData) {
           setPatient(freshData);
-        } else {
+        } else if (isFirstLoad) {
           setPatient(patientUser as Patient);
         }
 
-        // Load clinics (only on first load)
+        // Load clinics only on first load
         if (clinics.length === 0) {
-          const allClinics = await ClinicService.getActive();
-          setClinics(allClinics);
+          const allClinics = await withTimeout(ClinicService.getActive());
+          if (isMounted && allClinics) setClinics(allClinics);
         }
 
-        // Load only this patient's appointments (not ALL appointments)
-        const myApps = await pgAppointments.getByPatientId(patientUser.id);
-        const upcomingApps = myApps.filter(a => (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now());
-        setAppointments(upcomingApps.sort((a, b) => a.date - b.date));
+        // Load appointments
+        const myApps = await withTimeout(pgAppointments.getByPatientId(patientUser.id));
+        if (isMounted && myApps) {
+          const upcomingApps = myApps.filter(a => (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now());
+          setAppointments(upcomingApps.sort((a, b) => a.date - b.date));
+        }
+
+        if (isMounted) setLoadError(false);
       } catch (error) {
         console.error('[PatientDashboard] Error loading data:', error);
-        setPatient(patientUser as Patient);
+        if (isMounted && isFirstLoad) {
+          setPatient(patientUser as Patient);
+          setLoadError(true);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
-    loadPatientData();
-    
-    // Poll for updates every 30 seconds (reduced from 3 seconds to prevent freeze)
-    const interval = setInterval(loadPatientData, 30000);
-    
-    return () => clearInterval(interval);
-  }, [patientUser, navigate]);
+    // First load
+    loadPatientData(true);
+
+    // Force show UI after 6 seconds even if queries haven't returned (cold start guard)
+    const forceShow = setTimeout(() => {
+      if (isMounted && loading) {
+        setPatient(prev => prev || patientUser as Patient);
+        setLoading(false);
+      }
+    }, 6000);
+
+    // Poll every 30 seconds
+    pollTimer = setInterval(() => loadPatientData(false), 30000);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(forceShow);
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [patientUser?.id, navigate]);
 
   const handleLogout = async () => {
     await logout();
@@ -117,8 +145,9 @@ const PatientDashboardView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
         <i className="fa-solid fa-spinner fa-spin text-3xl text-blue-500"></i>
+        <p className="text-slate-500 text-sm">جاري تحميل بياناتك...</p>
       </div>
     );
   }
