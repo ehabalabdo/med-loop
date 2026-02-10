@@ -34,28 +34,27 @@ const PatientDashboardView: React.FC = () => {
 
     const loadPatientData = async () => {
       try {
-        // Get fresh data from PostgreSQL database
-        const allPatients = await pgPatients.getAll();
-        const freshData = allPatients.find(p => p.id === patientUser.id);
+        // Get only this patient's data (not ALL patients)
+        const freshData = await pgPatients.getById(patientUser.id);
         
         if (freshData) {
           setPatient(freshData);
         } else {
-          // Fallback to localStorage data if not found in DB
           setPatient(patientUser as Patient);
         }
 
-        // Load clinics
-        const allClinics = await ClinicService.getActive();
-        setClinics(allClinics);
+        // Load clinics (only on first load)
+        if (clinics.length === 0) {
+          const allClinics = await ClinicService.getActive();
+          setClinics(allClinics);
+        }
 
-        // Load this patient's appointments
-        const allApps = await pgAppointments.getAll();
-        const myApps = allApps.filter(a => a.patientId === patientUser.id && (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now());
-        setAppointments(myApps.sort((a, b) => a.date - b.date));
+        // Load only this patient's appointments (not ALL appointments)
+        const myApps = await pgAppointments.getByPatientId(patientUser.id);
+        const upcomingApps = myApps.filter(a => (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now());
+        setAppointments(upcomingApps.sort((a, b) => a.date - b.date));
       } catch (error) {
         console.error('[PatientDashboard] Error loading data:', error);
-        // Fallback to localStorage data
         setPatient(patientUser as Patient);
       } finally {
         setLoading(false);
@@ -94,10 +93,10 @@ const PatientDashboardView: React.FC = () => {
       });
 
       setBookingSuccess(true);
-      // Refresh appointments
-      const allApps = await pgAppointments.getAll();
-      const myApps = allApps.filter(a => a.patientId === patient.id && a.status === 'scheduled' && a.date >= Date.now());
-      setAppointments(myApps.sort((a, b) => a.date - b.date));
+      // Refresh appointments using optimized query
+      const myApps = await pgAppointments.getByPatientId(patient.id);
+      const upcomingApps = myApps.filter(a => (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now());
+      setAppointments(upcomingApps.sort((a, b) => a.date - b.date));
 
       setTimeout(() => {
         setShowBooking(false);

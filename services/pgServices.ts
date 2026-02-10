@@ -208,6 +208,53 @@ export const pgPatients = {
     return patients;
   },
 
+  getById: async (id: string): Promise<Patient | null> => {
+    const idInt = parseInt(id);
+    if (isNaN(idInt)) return null;
+    const result = await sql`SELECT * FROM patients WHERE id = ${idInt} LIMIT 1`;
+    if (result.length === 0) return null;
+    const row = result[0] as any;
+    let medicalProfile = row.medical_profile;
+    if (typeof medicalProfile === 'string') {
+      try { medicalProfile = JSON.parse(medicalProfile); } catch { medicalProfile = {}; }
+    }
+    let currentVisit = row.current_visit;
+    if (typeof currentVisit === 'string') {
+      try { currentVisit = JSON.parse(currentVisit); } catch { currentVisit = null; }
+    }
+    let history = row.history;
+    if (typeof history === 'string') {
+      try { history = JSON.parse(history); } catch { history = []; }
+    }
+    return {
+      id: String(row.id),
+      name: row.full_name,
+      age: row.age || 0,
+      gender: (row.gender || 'male') as 'male' | 'female',
+      phone: row.phone || '',
+      username: row.username || undefined,
+      email: row.email || undefined,
+      password: row.password || undefined,
+      hasAccess: row.has_access || false,
+      medicalProfile: medicalProfile && Object.keys(medicalProfile).length > 0 ? medicalProfile : {
+        allergies: { exists: false, details: '' },
+        chronicConditions: { exists: false, details: '' },
+        currentMedications: { exists: false, details: '' },
+        isPregnant: false,
+        notes: row.notes || ''
+      },
+      currentVisit: currentVisit && Object.keys(currentVisit).length > 0 ? currentVisit : {
+        visitId: '', clinicId: '', date: Date.now(), status: 'waiting' as const, priority: 'normal' as const, reasonForVisit: ''
+      },
+      history: Array.isArray(history) ? history : [],
+      createdAt: new Date(row.created_at || Date.now()).getTime(),
+      createdBy: row.created_by || 'system',
+      updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+      updatedBy: row.updated_by || 'system',
+      isArchived: row.is_archived || false
+    };
+  },
+
   create: async (patient: Omit<Patient, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
     const medicalProfileJson = JSON.stringify(patient.medicalProfile || {});
     const currentVisitJson = JSON.stringify(patient.currentVisit || {});
@@ -342,6 +389,27 @@ export const pgPatients = {
 export const pgAppointments = {
   getAll: async (): Promise<Appointment[]> => {
     const result = await sql`SELECT * FROM appointments ORDER BY start_time DESC`;
+    return result.map((row: any) => ({
+      id: String(row.id),
+      patientId: String(row.patient_id),
+      patientName: row.patient_name,
+      clinicId: String(row.clinic_id),
+      doctorId: row.doctor_id ? String(row.doctor_id) : undefined,
+      date: new Date(row.start_time).getTime(),
+      status: row.status,
+      reason: row.reason || '',
+      notes: '',
+      createdAt: new Date(row.created_at || Date.now()).getTime(),
+      createdBy: row.created_by || 'system',
+      updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
+      updatedBy: row.updated_by || 'system',
+      isArchived: row.is_archived || false
+    }));
+  },
+
+  getByPatientId: async (patientId: string): Promise<Appointment[]> => {
+    const patientIdInt = parseInt(patientId) || 0;
+    const result = await sql`SELECT * FROM appointments WHERE patient_id = ${patientIdInt} ORDER BY start_time DESC`;
     return result.map((row: any) => ({
       id: String(row.id),
       patientId: String(row.patient_id),
