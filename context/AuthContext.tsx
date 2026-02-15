@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Patient } from '../types';
 import { api } from '../src/api';
 import { pgUsers, pgPatients } from '../services/pgServices';
+import { getCurrentClientId } from './ClientContext';
 
 interface AuthContextType {
   user: User | null;
@@ -42,8 +43,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(false);
 
   const login = async (identifier: string, password: string) => {
+    // Get current client ID for multi-tenant filtering
+    const clientId = getCurrentClientId();
+    
     // Try staff login first (search by name OR email)
-    const allUsers = await pgUsers.getAll();
+    const allUsers = await pgUsers.getAll(clientId || undefined);
     const foundUser = allUsers.find(
       u => (u.name === identifier || u.email === identifier) && u.password === password
     );
@@ -53,14 +57,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('هذا الحساب غير مفعل');
       }
       
+      // Verify user belongs to this client (if client context exists)
+      if (clientId && foundUser.clientId && foundUser.clientId !== clientId) {
+        throw new Error('هذا الحساب لا ينتمي لهذا المركز');
+      }
+      
       // Save user to localStorage
       localStorage.setItem('user', JSON.stringify(foundUser));
       setUser(foundUser);
       return;
     }
     
-    // If not found in staff, try patient login (optimized single-row query)
-    const foundPatient = await pgPatients.findByLogin(identifier, password);
+    // If not found in staff, try patient login
+    const foundPatient = await pgPatients.findByLogin(identifier, password, clientId || undefined);
     
     if (foundPatient) {
       // Save patient to localStorage
@@ -74,8 +83,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const patientLogin = async (username: string, password: string) => {
-    // Optimized: single-row query instead of loading all patients
-    const foundPatient = await pgPatients.findByLogin(username, password);
+    const clientId = getCurrentClientId();
+    const foundPatient = await pgPatients.findByLogin(username, password, clientId || undefined);
     
     if (!foundPatient) {
       throw new Error('رقم الهاتف أو كلمة المرور غير صحيحة');
@@ -90,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('patientUser');
+    // Keep currentClientSlug and currentClientId for re-login
     setUser(null);
     setPatientUser(null);
   };

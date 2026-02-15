@@ -1,16 +1,160 @@
 import sql from './db';
-import { User, Patient, Clinic, Appointment, ClinicCategory } from '../types';
+import { User, Patient, Clinic, Appointment, ClinicCategory, Client, SuperAdmin } from '../types';
+import { getCurrentClientId } from '../context/ClientContext';
 
 /**
  * PostgreSQL Services - Direct connection to Neon Database
  * Using @neondatabase/serverless for browser compatibility via HTTP
+ * All queries filter by client_id for multi-tenant isolation
  */
+
+// ==================== SUPER ADMIN ====================
+
+export const pgSuperAdmin = {
+  login: async (username: string, password: string): Promise<SuperAdmin | null> => {
+    const result = await sql`
+      SELECT * FROM super_admins WHERE username = ${username} AND password = ${password} LIMIT 1
+    `;
+    if (result.length === 0) return null;
+    const row = result[0] as any;
+    return { id: row.id, username: row.username, name: row.name };
+  }
+};
+
+// ==================== CLIENTS (SaaS) ====================
+
+export const pgClientsService = {
+  getAll: async (): Promise<Client[]> => {
+    const result = await sql`SELECT * FROM clients ORDER BY created_at DESC`;
+    return result.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      logoUrl: row.logo_url || '',
+      phone: row.phone || '',
+      email: row.email || '',
+      address: row.address || '',
+      status: row.status,
+      trialEndsAt: row.trial_ends_at,
+      subscriptionEndsAt: row.subscription_ends_at,
+      ownerUserId: row.owner_user_id,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      isActive: row.is_active
+    }));
+  },
+
+  getBySlug: async (slug: string): Promise<Client | null> => {
+    const result = await sql`SELECT * FROM clients WHERE slug = ${slug} LIMIT 1`;
+    if (result.length === 0) return null;
+    const row = result[0] as any;
+    return {
+      id: row.id, name: row.name, slug: row.slug,
+      logoUrl: row.logo_url || '', phone: row.phone || '',
+      email: row.email || '', address: row.address || '',
+      status: row.status, trialEndsAt: row.trial_ends_at,
+      subscriptionEndsAt: row.subscription_ends_at,
+      ownerUserId: row.owner_user_id,
+      createdAt: row.created_at, updatedAt: row.updated_at,
+      isActive: row.is_active
+    };
+  },
+
+  getById: async (id: number): Promise<Client | null> => {
+    const result = await sql`SELECT * FROM clients WHERE id = ${id} LIMIT 1`;
+    if (result.length === 0) return null;
+    const row = result[0] as any;
+    return {
+      id: row.id, name: row.name, slug: row.slug,
+      logoUrl: row.logo_url || '', phone: row.phone || '',
+      email: row.email || '', address: row.address || '',
+      status: row.status, trialEndsAt: row.trial_ends_at,
+      subscriptionEndsAt: row.subscription_ends_at,
+      ownerUserId: row.owner_user_id,
+      createdAt: row.created_at, updatedAt: row.updated_at,
+      isActive: row.is_active
+    };
+  },
+
+  create: async (data: { name: string; slug: string; phone?: string; email?: string; address?: string }): Promise<number> => {
+    const result = await sql`
+      INSERT INTO clients (name, slug, phone, email, address, status, trial_ends_at, created_at, updated_at, is_active)
+      VALUES (${data.name}, ${data.slug}, ${data.phone || ''}, ${data.email || ''}, ${data.address || ''}, 
+              'trial', NOW() + INTERVAL '30 days', NOW(), NOW(), true)
+      RETURNING id
+    `;
+    return result[0].id as number;
+  },
+
+  // Create the admin user for a new client
+  createOwner: async (clientId: number, data: { name: string; email: string; password: string }): Promise<number> => {
+    const result = await sql`
+      INSERT INTO users (full_name, email, password, role, client_id, created_at, updated_at, created_by, updated_by, is_active, is_archived)
+      VALUES (${data.name}, ${data.email}, ${data.password}, 'admin', ${clientId}, NOW(), NOW(), 'super_admin', 'super_admin', true, false)
+      RETURNING id
+    `;
+    const userId = result[0].id as number;
+    // Update client with owner
+    await sql`UPDATE clients SET owner_user_id = ${userId} WHERE id = ${clientId}`;
+    return userId;
+  },
+
+  // Extend subscription by N days
+  extendSubscription: async (clientId: number, days: number): Promise<void> => {
+    await sql`
+      UPDATE clients 
+      SET status = 'active',
+          subscription_ends_at = COALESCE(
+            CASE WHEN subscription_ends_at > NOW() THEN subscription_ends_at ELSE NOW() END
+          , NOW()) + ${days + ' days'}::interval,
+          updated_at = NOW()
+      WHERE id = ${clientId}
+    `;
+  },
+
+  // Suspend a client
+  suspend: async (clientId: number): Promise<void> => {
+    await sql`UPDATE clients SET status = 'suspended', updated_at = NOW() WHERE id = ${clientId}`;
+  },
+
+  // Reactivate
+  activate: async (clientId: number): Promise<void> => {
+    await sql`UPDATE clients SET status = 'active', updated_at = NOW() WHERE id = ${clientId}`;
+  },
+
+  // Update client info
+  update: async (clientId: number, data: Partial<Pick<Client, 'name' | 'phone' | 'email' | 'address' | 'logoUrl'>>): Promise<void> => {
+    await sql`UPDATE clients SET updated_at = NOW() WHERE id = ${clientId}`;
+    if (data.name !== undefined) await sql`UPDATE clients SET name = ${data.name} WHERE id = ${clientId}`;
+    if (data.phone !== undefined) await sql`UPDATE clients SET phone = ${data.phone} WHERE id = ${clientId}`;
+    if (data.email !== undefined) await sql`UPDATE clients SET email = ${data.email} WHERE id = ${clientId}`;
+    if (data.address !== undefined) await sql`UPDATE clients SET address = ${data.address} WHERE id = ${clientId}`;
+    if (data.logoUrl !== undefined) await sql`UPDATE clients SET logo_url = ${data.logoUrl} WHERE id = ${clientId}`;
+  },
+
+  // Get stats for a client
+  getStats: async (clientId: number) => {
+    const [patients, users, appointments] = await Promise.all([
+      sql`SELECT COUNT(*)::int as count FROM patients WHERE client_id = ${clientId}`,
+      sql`SELECT COUNT(*)::int as count FROM users WHERE client_id = ${clientId}`,
+      sql`SELECT COUNT(*)::int as count FROM appointments WHERE client_id = ${clientId}`
+    ]);
+    return {
+      patientsCount: patients[0]?.count || 0,
+      usersCount: users[0]?.count || 0,
+      appointmentsCount: appointments[0]?.count || 0
+    };
+  }
+};
 
 // ==================== USERS ====================
 
 export const pgUsers = {
-  getAll: async (): Promise<User[]> => {
-    const result = await sql`SELECT * FROM users ORDER BY id`;
+  getAll: async (clientId?: number): Promise<User[]> => {
+    const cid = clientId || getCurrentClientId();
+    const result = cid 
+      ? await sql`SELECT * FROM users WHERE client_id = ${cid} ORDER BY id`
+      : await sql`SELECT * FROM users ORDER BY id`;
     
     const users = result.map((row: any) => {
       // Parse clinic_ids jsonb array
@@ -35,6 +179,7 @@ export const pgUsers = {
         name: row.full_name,
         role: row.role,
         clinicIds: clinicIds,
+        clientId: row.client_id || undefined,
         isActive: row.is_active !== false,
         createdAt: new Date(row.created_at || Date.now()).getTime(),
         createdBy: row.created_by || 'system',
@@ -48,11 +193,12 @@ export const pgUsers = {
   },
 
   create: async (user: Omit<User, 'uid' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
-    const clinicId = user.clinicIds.length > 0 ? parseInt(user.clinicIds[0]) : null;
+    const deptClinicId = user.clinicIds.length > 0 ? parseInt(user.clinicIds[0]) : null;
     const clinicIdsJson = JSON.stringify(user.clinicIds);
+    const cid = user.clientId || getCurrentClientId();
     const result = await sql`
-      INSERT INTO users (full_name, email, password, role, clinic_id, clinic_ids, created_at, updated_at, created_by, updated_by, is_active, is_archived) 
-      VALUES (${user.name}, ${user.email}, ${user.password || 'password123'}, ${user.role}, ${clinicId}, ${clinicIdsJson}::jsonb, NOW(), NOW(), 'system', 'system', TRUE, FALSE) 
+      INSERT INTO users (full_name, email, password, role, clinic_id, clinic_ids, client_id, created_at, updated_at, created_by, updated_by, is_active, is_archived) 
+      VALUES (${user.name}, ${user.email}, ${user.password || 'password123'}, ${user.role}, ${deptClinicId}, ${clinicIdsJson}::jsonb, ${cid}, NOW(), NOW(), 'system', 'system', TRUE, FALSE) 
       RETURNING id
     `;
     return String(result[0].id);
@@ -94,14 +240,18 @@ export const pgUsers = {
 // ==================== CLINICS ====================
 
 export const pgClinics = {
-  getAll: async (): Promise<Clinic[]> => {
-    const result = await sql`SELECT * FROM clinics ORDER BY id`;
+  getAll: async (clientId?: number): Promise<Clinic[]> => {
+    const cid = clientId || getCurrentClientId();
+    const result = cid
+      ? await sql`SELECT * FROM clinics WHERE client_id = ${cid} ORDER BY id`
+      : await sql`SELECT * FROM clinics ORDER BY id`;
     return result.map((row: any) => ({
       id: String(row.id),
       name: row.name,
       type: row.type || 'General',
       category: (row.category || 'clinic') as ClinicCategory,
       active: row.active !== false,
+      clientId: row.client_id || undefined,
       createdAt: new Date(row.created_at || Date.now()).getTime(),
       createdBy: row.created_by || 'system',
       updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
@@ -111,9 +261,10 @@ export const pgClinics = {
   },
 
   create: async (clinic: Omit<Clinic, 'id' | 'createdAt' | 'updatedAt' | 'createdBy' | 'updatedBy'>): Promise<string> => {
+    const cid = clinic.clientId || getCurrentClientId();
     const result = await sql`
-      INSERT INTO clinics (name, type, category, active, created_at, updated_at, created_by, updated_by, is_archived) 
-      VALUES (${clinic.name}, ${clinic.type}, ${clinic.category || 'clinic'}, ${clinic.active !== false}, NOW(), NOW(), 'system', 'system', FALSE) 
+      INSERT INTO clinics (name, type, category, active, client_id, created_at, updated_at, created_by, updated_by, is_archived) 
+      VALUES (${clinic.name}, ${clinic.type}, ${clinic.category || 'clinic'}, ${clinic.active !== false}, ${cid}, NOW(), NOW(), 'system', 'system', FALSE) 
       RETURNING id
     `;
     return String(result[0].id);
@@ -152,8 +303,11 @@ export const pgClinics = {
 // ==================== PATIENTS ====================
 
 export const pgPatients = {
-  getAll: async (): Promise<Patient[]> => {
-    const result = await sql`SELECT * FROM patients ORDER BY id DESC`;
+  getAll: async (clientId?: number): Promise<Patient[]> => {
+    const cid = clientId || getCurrentClientId();
+    const result = cid
+      ? await sql`SELECT * FROM patients WHERE client_id = ${cid} ORDER BY id DESC`
+      : await sql`SELECT * FROM patients ORDER BY id DESC`;
     const patients = result.map((row: any) => {
       // Parse JSON columns
       let medicalProfile = row.medical_profile;
@@ -208,14 +362,24 @@ export const pgPatients = {
     return patients;
   },
 
-  findByLogin: async (identifier: string, password: string): Promise<Patient | null> => {
-    const result = await sql`
-      SELECT * FROM patients 
-      WHERE (username = ${identifier} OR phone = ${identifier} OR full_name = ${identifier} OR email = ${identifier})
-        AND password = ${password}
-        AND has_access = true
-      LIMIT 1
-    `;
+  findByLogin: async (identifier: string, password: string, clientId?: number): Promise<Patient | null> => {
+    const cid = clientId || getCurrentClientId();
+    const result = cid
+      ? await sql`
+          SELECT * FROM patients 
+          WHERE (username = ${identifier} OR phone = ${identifier} OR full_name = ${identifier} OR email = ${identifier})
+            AND password = ${password}
+            AND has_access = true
+            AND client_id = ${cid}
+          LIMIT 1
+        `
+      : await sql`
+          SELECT * FROM patients 
+          WHERE (username = ${identifier} OR phone = ${identifier} OR full_name = ${identifier} OR email = ${identifier})
+            AND password = ${password}
+            AND has_access = true
+          LIMIT 1
+        `;
     if (result.length === 0) return null;
     const row = result[0] as any;
     let medicalProfile = row.medical_profile;
@@ -294,11 +458,12 @@ export const pgPatients = {
     const medicalProfileJson = JSON.stringify(patient.medicalProfile || {});
     const currentVisitJson = JSON.stringify(patient.currentVisit || {});
     const historyJson = JSON.stringify(patient.history || []);
+    const cid = patient.clientId || getCurrentClientId();
     
     const result = await sql`
       INSERT INTO patients (
         full_name, age, gender, phone, username, email, password, has_access, 
-        notes, medical_profile, current_visit, history, created_at, updated_at, created_by, updated_by, is_archived
+        notes, medical_profile, current_visit, history, client_id, created_at, updated_at, created_by, updated_by, is_archived
       ) 
       VALUES (
         ${patient.name}, 
@@ -313,6 +478,7 @@ export const pgPatients = {
         ${medicalProfileJson}::jsonb,
         ${currentVisitJson}::jsonb,
         ${historyJson}::jsonb,
+        ${cid},
         NOW(),
         NOW(),
         'system',
@@ -422,8 +588,11 @@ export const pgPatients = {
 // ==================== APPOINTMENTS ====================
 
 export const pgAppointments = {
-  getAll: async (): Promise<Appointment[]> => {
-    const result = await sql`SELECT * FROM appointments ORDER BY start_time DESC`;
+  getAll: async (clientId?: number): Promise<Appointment[]> => {
+    const cid = clientId || getCurrentClientId();
+    const result = cid
+      ? await sql`SELECT * FROM appointments WHERE client_id = ${cid} ORDER BY start_time DESC`
+      : await sql`SELECT * FROM appointments ORDER BY start_time DESC`;
     return result.map((row: any) => ({
       id: String(row.id),
       patientId: String(row.patient_id),
@@ -465,14 +634,14 @@ export const pgAppointments = {
 
   create: async (data: Pick<Appointment, 'id'|'patientId'|'patientName'|'clinicId'|'doctorId'|'date'|'reason'|'status'>): Promise<void> => {
     const startTime = new Date(data.date).toISOString();
-    // Add 1 hour for end_time (or use same time if not specified)
-    const endTime = new Date(data.date + 3600000).toISOString(); // +1 hour
+    const endTime = new Date(data.date + 3600000).toISOString();
     const patientIdInt = parseInt(data.patientId) || 0;
     const clinicIdInt = parseInt(data.clinicId) || 0;
     const doctorIdInt = data.doctorId ? parseInt(data.doctorId) : null;
+    const cid = getCurrentClientId();
     
     await sql`
-      INSERT INTO appointments (patient_id, patient_name, clinic_id, doctor_id, start_time, end_time, status, reason, created_at)
+      INSERT INTO appointments (patient_id, patient_name, clinic_id, doctor_id, start_time, end_time, status, reason, client_id, created_at)
       VALUES (
         ${patientIdInt},
         ${data.patientName},
@@ -482,6 +651,7 @@ export const pgAppointments = {
         ${endTime},
         ${data.status},
         ${data.reason},
+        ${cid},
         NOW()
       )
     `;
@@ -520,8 +690,11 @@ export const pgAppointments = {
 // ==================== INVOICES ====================
 
 export const pgInvoices = {
-  getAll: async (): Promise<any[]> => {
-    const result = await sql`SELECT * FROM invoices ORDER BY created_at DESC`;
+  getAll: async (clientId?: number): Promise<any[]> => {
+    const cid = clientId || getCurrentClientId();
+    const result = cid
+      ? await sql`SELECT * FROM invoices WHERE client_id = ${cid} ORDER BY created_at DESC`
+      : await sql`SELECT * FROM invoices ORDER BY created_at DESC`;
     return result.map((row: any) => ({
       id: row.id,
       visitId: row.visit_id,
@@ -542,16 +715,17 @@ export const pgInvoices = {
 
   create: async (data: any): Promise<void> => {
     const itemsJson = JSON.stringify(data.items);
+    const cid = getCurrentClientId();
     await sql`
       INSERT INTO invoices (
         id, visit_id, patient_id, patient_name, items, 
         total_amount, paid_amount, payment_method, status,
-        created_at, updated_at, created_by, updated_by, is_archived
+        client_id, created_at, updated_at, created_by, updated_by, is_archived
       )
       VALUES (
         ${data.id}, ${data.visitId}, ${data.patientId}, ${data.patientName},
         ${itemsJson}::jsonb, ${data.totalAmount}, ${data.paidAmount || 0},
-        ${data.paymentMethod || 'cash'}, ${data.status}, 
+        ${data.paymentMethod || 'cash'}, ${data.status}, ${cid},
         NOW(), NOW(), 'system', 'system', FALSE
       )
     `;

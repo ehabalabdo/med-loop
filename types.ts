@@ -1,11 +1,42 @@
 
+// =============================================
+// SaaS Client (المركز كزبون)
+// =============================================
+export type ClientStatus = 'trial' | 'active' | 'expired' | 'suspended';
+
+export interface Client {
+  id: number;
+  name: string;
+  slug: string;
+  logoUrl: string;
+  phone: string;
+  email: string;
+  address: string;
+  status: ClientStatus;
+  trialEndsAt: string | null;
+  subscriptionEndsAt: string | null;
+  ownerUserId: number | null;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+}
+
+export interface SuperAdmin {
+  id: number;
+  username: string;
+  name: string;
+}
+
+// =============================================
+// User Roles & Types
+// =============================================
 export enum UserRole {
   ADMIN = 'admin',
   SECRETARY = 'secretary',
   DOCTOR = 'doctor',
   LAB_TECH = 'lab_tech',
   IMPLANT_MANAGER = 'implant_manager',
-  COURSE_MANAGER = 'course_manager' // New Role
+  COURSE_MANAGER = 'course_manager'
 }
 
 // Base Entity for Audit Trails
@@ -23,18 +54,20 @@ export type ClinicCategory = 'clinic' | 'department';
 export interface Clinic extends AuditMetadata {
   id: string;
   name: string;
-  type: string;     // e.g. "Dental", "Laboratory" (Descriptive)
-  category: ClinicCategory; // NEW: Structural Classification
+  type: string;
+  category: ClinicCategory;
   active: boolean;
+  clientId?: number;
 }
 
 export interface User extends AuditMetadata {
   uid: string;
   email: string;
-  password?: string; // NEW - for login authentication
+  password?: string;
   name: string;
   role: UserRole;
-  clinicIds: string[]; 
+  clinicIds: string[];
+  clientId?: number; // SaaS: which client this user belongs to
   isActive: boolean;
 }
 
@@ -99,19 +132,22 @@ export interface VisitData {
 
 // The Main "Queue Item" effectively acts as the Patient + Current Visit
 export interface Patient extends AuditMetadata {
-  id: string; // Patient Profile ID (Unique per person)
+  id: string;
   
   // Demographics
   name: string;
-  age: number; // Or DOB in full system
+  age: number;
   gender: Gender;
   phone: string;
   
-  // Authentication (NEW - for patient portal access)
-  username?: string; // Username for patient login
+  // Authentication
+  username?: string;
   email?: string;
-  password?: string; // In real system, would be hashed
-  hasAccess?: boolean; // Whether patient has portal access
+  password?: string;
+  hasAccess?: boolean;
+  
+  // SaaS
+  clientId?: number;
   
   // Medical Profile (Sticky data)
   medicalProfile: MedicalIntake;
@@ -130,13 +166,14 @@ export type AppointmentStatus = 'pending' | 'scheduled' | 'checked-in' | 'comple
 export interface Appointment extends AuditMetadata {
   id: string;
   patientId: string;
-  patientName: string; // Denormalized for easier display
+  patientName: string;
   clinicId: string;
   doctorId?: string;
-  date: number; // Target timestamp
+  date: number;
   status: AppointmentStatus;
   reason: string;
   notes?: string;
+  clientId?: number;
 }
 
 // --- NEW: Billing & Notifications ---
@@ -148,9 +185,10 @@ export interface Invoice extends AuditMetadata {
   patientName: string;
   items: InvoiceItem[];
   totalAmount: number;
-  paidAmount: number; // For partial payments
+  paidAmount: number;
   paymentMethod: 'cash' | 'card' | 'insurance';
   status: 'unpaid' | 'paid' | 'partial';
+  clientId?: number;
 }
 
 export interface Notification extends AuditMetadata {
@@ -171,13 +209,14 @@ export interface LabCase extends AuditMetadata {
   id: string;
   visitId: string;
   patientId: string;
-  patientName: string; // Denormalized
+  patientName: string;
   doctorId: string;
-  doctorName: string; // Denormalized
-  caseType: string; // e.g. Zirconia Crown
+  doctorName: string;
+  caseType: string;
   notes?: string;
   status: LabCaseStatus;
   dueDate: number;
+  clientId?: number;
 }
 
 // --- NEW: Implant Company Types (Logistics Only) ---

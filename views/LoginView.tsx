@@ -1,17 +1,27 @@
 
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import DevModeSwitcher from '../components/DevModeSwitcher';
+
+// Try to import useClient - it may not be available in non-slug routes
+let useClientSafe: () => { client: any; isReadOnly: boolean } | null = () => null;
+try {
+  const { useClient } = require('../context/ClientContext');
+  useClientSafe = () => { try { return useClient(); } catch { return null; } };
+} catch {}
 
 const LoginView: React.FC = () => {
   const { login } = useAuth();
   const { t, toggleLanguage, language } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
+  const clientCtx = useClientSafe();
+  const client = clientCtx?.client;
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,21 +40,21 @@ const LoginView: React.FC = () => {
         const savedPatient = localStorage.getItem('patientUser');
         
         if (savedPatient) {
-          // Patient login - redirect to patient dashboard
-          navigate('/patient/dashboard', { replace: true });
+          navigate(slug ? `/${slug}/patient/dashboard` : '/patient/dashboard', { replace: true });
         } else if (savedUser) {
           try {
             const parsed = JSON.parse(savedUser);
             const role = parsed.role;
-            if (role === 'admin') navigate('/admin', { replace: true });
-            else if (role === 'secretary') navigate('/reception', { replace: true });
-            else if (role === 'doctor') navigate('/doctor', { replace: true });
-            else if (role === 'lab_tech') navigate('/dental-lab', { replace: true });
-            else if (role === 'implant_manager') navigate('/implant-company', { replace: true });
-            else if (role === 'course_manager') navigate('/academy', { replace: true });
-            else navigate('/', { replace: true });
+            const prefix = slug ? `/${slug}` : '';
+            if (role === 'admin') navigate(`${prefix}/admin`, { replace: true });
+            else if (role === 'secretary') navigate(`${prefix}/reception`, { replace: true });
+            else if (role === 'doctor') navigate(`${prefix}/doctor`, { replace: true });
+            else if (role === 'lab_tech') navigate(`${prefix}/dental-lab`, { replace: true });
+            else if (role === 'implant_manager') navigate(`${prefix}/implant-company`, { replace: true });
+            else if (role === 'course_manager') navigate(`${prefix}/academy`, { replace: true });
+            else navigate(`${prefix}/`, { replace: true });
           } catch {
-            navigate('/', { replace: true });
+            navigate(slug ? `/${slug}/` : '/', { replace: true });
           }
         }
       }, 100);
@@ -83,9 +93,13 @@ const LoginView: React.FC = () => {
       <div className="relative z-10 w-full max-w-md mx-auto bg-white/90 dark:bg-slate-900/90 rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700 backdrop-blur-xl p-8 flex flex-col items-center">
         <div className="flex flex-col items-center mb-8">
           <div className="h-16 w-16 bg-gradient-to-tr from-primary to-cyan-400 text-white rounded-2xl flex items-center justify-center mb-4 text-3xl shadow-lg">
-            <i className="fa-solid fa-heart-pulse animate-heartbeat"></i>
+            {client?.logoUrl ? (
+              <img src={client.logoUrl} alt={client.name} className="h-12 w-12 object-contain rounded-xl" />
+            ) : (
+              <i className="fa-solid fa-heart-pulse animate-heartbeat"></i>
+            )}
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">Medloop</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{client?.name || 'Medloop'}</h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sign_in_subtitle')}</p>
         </div>
         <form onSubmit={handleSubmit} className="w-full space-y-5">
