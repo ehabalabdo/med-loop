@@ -255,6 +255,16 @@ const AppRoutes: React.FC = () => {
         } 
       />
 
+      {/* Device Management - Admin Only */}
+      <Route 
+        path="/device-management" 
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
+            <DeviceManagementView />
+          </ProtectedRoute>
+        } 
+      />
+
       {/* Public Queue Display */}
       <Route 
         path="/queue-display" 
