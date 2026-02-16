@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Patient, VisitData, Appointment, Gender, Priority, PrescriptionItem, Attachment, InvoiceItem } from '../types';
 import { jsPDF } from "jspdf";
+import DeviceResultsTimeline from '../components/DeviceResultsTimeline';
 
 const DoctorView: React.FC = () => {
   const { user } = useAuth();
@@ -598,6 +599,16 @@ const DoctorView: React.FC = () => {
                                     </div>
                                 </div>
                             ))}
+                        </div>
+                    </section>
+
+                    {/* 5. Device Results (نتائج الأجهزة) */}
+                    <section>
+                         <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-md bg-violet-600 text-white flex items-center justify-center text-xs">5</span> نتائج الأجهزة (Device Results)
+                        </h3>
+                        <div className="bg-violet-50/30 rounded-xl border border-violet-100 p-4">
+                            <DeviceResultsTimeline patientId={selectedPatient.id} />
                         </div>
                     </section>
 
