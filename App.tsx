@@ -21,6 +21,7 @@ import PatientLoginView from './views/PatientLoginView';
 import PatientDashboardView from './views/PatientDashboardView';
 import ClinicHistoryView from './views/ClinicHistoryView';
 import DeviceResultsView from './views/DeviceResultsView';
+import DeviceManagementView from './views/DeviceManagementView';
 import SuperAdminView from './views/SuperAdminView';
 import DevModeSwitcher from './components/DevModeSwitcher';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -287,7 +288,7 @@ const ClientSlugRoutes: React.FC = () => {
 
   // Don't treat known routes as slugs
   const knownRoutes = ['login', 'admin', 'reception', 'doctor', 'patients', 'appointments', 
-    'dental-lab', 'implant-company', 'academy', 'clinic-history', 'device-results', 'queue-display', 
+    'dental-lab', 'implant-company', 'academy', 'clinic-history', 'device-results', 'device-management', 'queue-display', 
     'patient', 'super-admin'];
   if (slug && knownRoutes.includes(slug)) {
     return <RedirectHandler to={`/${slug}`} />;
@@ -310,6 +311,7 @@ const ClientSlugRoutes: React.FC = () => {
           <Route path="/academy" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.COURSE_MANAGER, UserRole.SECRETARY]}><CoursesView /></ProtectedRoute>} />
           <Route path="/clinic-history" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR]}><ClinicHistoryView /></ProtectedRoute>} />
           <Route path="/device-results" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}><DeviceResultsView /></ProtectedRoute>} />
+          <Route path="/device-management" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><DeviceManagementView /></ProtectedRoute>} />
           <Route path="/queue-display" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}><QueueDisplayView /></ProtectedRoute>} />
           <Route path="/patient/login" element={patientUser ? <RedirectHandler to={`/${slug}/patient/dashboard`} /> : <PatientLoginView />} />
           <Route path="/patient/dashboard" element={patientUser ? <PatientDashboardView /> : <RedirectHandler to={`/${slug}/patient/login`} />} />
