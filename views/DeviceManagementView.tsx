@@ -4,7 +4,8 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { api } from '../src/api';
-import { Device, DeviceType, DeviceConnectionType } from '../types';
+import { Device, DeviceType, DeviceConnectionType, Clinic } from '../types';
+import { ClinicService } from '../services/services';
 
 interface ApiKey {
   id: string;
@@ -47,6 +48,7 @@ const DeviceManagementView: React.FC = () => {
   // State
   const [devices, setDevices] = useState<Device[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'devices' | 'apikeys' | 'hl7' | 'guide'>('devices');
 
@@ -60,6 +62,7 @@ const DeviceManagementView: React.FC = () => {
     ipAddress: '',
     port: '',
     comPort: '',
+    clinicId: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -85,12 +88,14 @@ const DeviceManagementView: React.FC = () => {
   const loadData = useCallback(async () => {
     if (!user?.clientId) return;
     try {
-      const [devicesData, keysData] = await Promise.all([
+      const [devicesData, keysData, clinicsData] = await Promise.all([
         api.get(`/api/devices/${user.clientId}`),
         api.get(`/api/device-api-keys/${user.clientId}`),
+        ClinicService.getActive(),
       ]);
       setDevices(devicesData || []);
       setApiKeys(keysData || []);
+      setClinics(clinicsData || []);
     } catch (err) {
       console.error('Error loading devices:', err);
     } finally {
@@ -161,7 +166,7 @@ const DeviceManagementView: React.FC = () => {
   // --- Device CRUD ---
   const openAddDevice = () => {
     setEditingDevice(null);
-    setDeviceForm({ name: '', type: 'cbc', connectionType: 'lan', ipAddress: '', port: '', comPort: '' });
+    setDeviceForm({ name: '', type: 'cbc', connectionType: 'lan', ipAddress: '', port: '', comPort: '', clinicId: '' });
     setShowDeviceModal(true);
   };
 
@@ -174,6 +179,7 @@ const DeviceManagementView: React.FC = () => {
       ipAddress: d.ipAddress || '',
       port: d.port ? String(d.port) : '',
       comPort: d.comPort || '',
+      clinicId: d.clinicId || '',
     });
     setShowDeviceModal(true);
   };
@@ -187,6 +193,7 @@ const DeviceManagementView: React.FC = () => {
           name: deviceForm.name,
           type: deviceForm.type,
           connectionType: deviceForm.connectionType,
+          clinicId: deviceForm.clinicId || null,
           ipAddress: deviceForm.ipAddress || null,
           port: deviceForm.port ? parseInt(deviceForm.port) : null,
           comPort: deviceForm.comPort || null,
@@ -194,7 +201,7 @@ const DeviceManagementView: React.FC = () => {
       } else {
         await api.post('/api/devices', {
           clientId: user.clientId,
-          clinicId: '1',
+          clinicId: deviceForm.clinicId || '1',
           name: deviceForm.name,
           type: deviceForm.type,
           connectionType: deviceForm.connectionType,
@@ -367,6 +374,7 @@ const DeviceManagementView: React.FC = () => {
                           <div>
                             <h4 className="font-bold text-slate-800 text-base">{d.name}</h4>
                             <span className="text-xs text-slate-400">{typeInfo.label}</span>
+                            {d.clinicId && (() => { const c = clinics.find(cl => String(cl.id) === String(d.clinicId)); return c ? <span className="text-[10px] text-violet-500 font-bold block"><i className="fa-solid fa-hospital ml-0.5"></i> {c.name}</span> : null; })()}
                           </div>
                         </div>
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${getStatusColor(d)}`}>
@@ -798,6 +806,21 @@ const DeviceManagementView: React.FC = () => {
                     onChange={e => setDeviceForm({ ...deviceForm, name: e.target.value })}
                     className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-primary"
                   />
+                </div>
+
+                {/* Clinic */}
+                <div>
+                  <label className="text-sm font-bold text-slate-600 mb-1.5 block">العيادة</label>
+                  <select
+                    value={deviceForm.clinicId}
+                    onChange={e => setDeviceForm({ ...deviceForm, clinicId: e.target.value })}
+                    className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-primary bg-white"
+                  >
+                    <option value="">— اختر العيادة —</option>
+                    {clinics.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Type */}

@@ -475,7 +475,7 @@ router.post('/devices', async (req: Request, res: Response) => {
 router.put('/devices/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, type, connectionType, ipAddress, port, comPort, isActive } = req.body;
+    const { name, type, connectionType, ipAddress, port, comPort, isActive, clinicId } = req.body;
 
     await pool.query('UPDATE devices SET updated_at = NOW() WHERE id = $1', [id]);
     if (name !== undefined) await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]);
@@ -485,6 +485,7 @@ router.put('/devices/:id', async (req: Request, res: Response) => {
     if (port !== undefined) await pool.query('UPDATE devices SET port = $1 WHERE id = $2', [port, id]);
     if (comPort !== undefined) await pool.query('UPDATE devices SET com_port = $1 WHERE id = $2', [comPort, id]);
     if (isActive !== undefined) await pool.query('UPDATE devices SET is_active = $1 WHERE id = $2', [isActive, id]);
+    if (clinicId !== undefined) await pool.query('UPDATE devices SET clinic_id = $1 WHERE id = $2', [clinicId, id]);
 
     return res.json({ ok: true });
   } catch (err: any) {
