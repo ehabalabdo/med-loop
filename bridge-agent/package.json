@@ -1,0 +1,17 @@
+{
+  "name": "medloop-bridge-agent",
+  "version": "2.0.0",
+  "description": "MedLoop Clinic Bridge Agent - connects medical devices to MedLoop cloud (HTTP, HL7 MLLP, Serial, File Watcher)",
+  "main": "bridge-agent.js",
+  "scripts": {
+    "start": "node bridge-agent.js",
+    "start:dev": "node --watch bridge-agent.js",
+    "list-ports": "node -e \"require('./serial-listener').listSerialPorts().then(p => console.log(p))\""
+  },
+  "author": "MedLoop",
+  "license": "UNLICENSED",
+  "private": true,
+  "optionalDependencies": {
+    "serialport": "^12.0.0"
+  }
+}

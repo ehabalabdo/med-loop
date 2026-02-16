@@ -1,7 +1,7 @@
 
-import { Clinic, Patient, User, UserRole, AuditMetadata, VisitData, Appointment, Invoice, Notification, PrescriptionItem, Attachment, SystemSettings, ClinicCategory, LabCase, LabCaseStatus, ImplantItem, ImplantOrder, ImplantOrderStatus, Course, CourseStudent, CourseSession, CourseStatus } from '../types';
+import { Clinic, Patient, User, UserRole, AuditMetadata, VisitData, Appointment, Invoice, Notification, PrescriptionItem, Attachment, SystemSettings, ClinicCategory, LabCase, LabCaseStatus, ImplantItem, ImplantOrder, ImplantOrderStatus, Course, CourseStudent, CourseSession, CourseStatus, Device, DeviceResult, DeviceResultStatus, DeviceResultPayload } from '../types';
 import { mockDb } from './mockFirebase';
-import { pgUsers, pgClinics, pgPatients, pgAppointments, pgInvoices } from './pgServices';
+import { pgUsers, pgClinics, pgPatients, pgAppointments, pgInvoices, pgDevices, pgDeviceResults } from './pgServices';
 
 // Check if we should use PostgreSQL (production) or mockDb (development)
 // ✅ ENABLED: Database schema fixed + Neon-compatible queries
@@ -954,4 +954,108 @@ export const CourseService = {
         };
         await mockDb.writeDocument('course_sessions', session);
     }
+};
+
+// ==================== DEVICE INTEGRATION ====================
+
+export const DeviceService = {
+  /** Get all devices for the current client */
+  getDevices: async (user: User): Promise<Device[]> => {
+    if (!user.clientId && user.role !== UserRole.ADMIN) throw new Error('Unauthorized');
+    if (USE_POSTGRES) {
+      return await pgDevices.getAll(user.clientId);
+    }
+    return [];
+  },
+
+  /** Get devices for a specific clinic */
+  getDevicesByClinic: async (user: User, clinicId: string): Promise<Device[]> => {
+    if (USE_POSTGRES) {
+      return await pgDevices.getByClinic(clinicId, user.clientId);
+    }
+    return [];
+  },
+
+  /** Register a new device (admin only) */
+  createDevice: async (user: User, data: Omit<Device, 'id' | 'createdAt' | 'updatedAt' | 'lastSeenAt'>): Promise<string> => {
+    if (user.role !== UserRole.ADMIN) throw new Error('Only admins can register devices');
+    if (USE_POSTGRES) {
+      return await pgDevices.create({
+        ...data,
+        clientId: data.clientId || user.clientId || 0
+      });
+    }
+    throw new Error('Device management requires PostgreSQL');
+  },
+
+  /** Update device configuration */
+  updateDevice: async (user: User, deviceId: string, data: Partial<Device>): Promise<void> => {
+    if (user.role !== UserRole.ADMIN) throw new Error('Only admins can update devices');
+    if (USE_POSTGRES) {
+      await pgDevices.update(deviceId, data);
+    }
+  },
+
+  /** Delete a device */
+  deleteDevice: async (user: User, deviceId: string): Promise<void> => {
+    if (user.role !== UserRole.ADMIN) throw new Error('Only admins can delete devices');
+    if (USE_POSTGRES) {
+      await pgDevices.delete(deviceId);
+    }
+  },
+
+  /** Get pending device results for manual matching */
+  getPendingResults: async (user: User): Promise<DeviceResult[]> => {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SECRETARY) {
+      throw new Error('Only admin and reception can view pending results');
+    }
+    if (USE_POSTGRES && user.clientId) {
+      return await pgDeviceResults.getPending(user.clientId);
+    }
+    return [];
+  },
+
+  /** Get all results, optionally filtered by status */
+  getAllResults: async (user: User, statusFilter?: DeviceResultStatus): Promise<DeviceResult[]> => {
+    if (USE_POSTGRES && user.clientId) {
+      return await pgDeviceResults.getAll(user.clientId, statusFilter);
+    }
+    return [];
+  },
+
+  /** Get device results for a specific patient (for patient profile) */
+  getPatientResults: async (user: User, patientId: string): Promise<DeviceResult[]> => {
+    if (USE_POSTGRES) {
+      return await pgDeviceResults.getByPatientId(patientId, user.clientId);
+    }
+    return [];
+  },
+
+  /** Manual match: link a pending result to a patient */
+  matchResult: async (user: User, resultId: string, patientId: string): Promise<void> => {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SECRETARY) {
+      throw new Error('Only admin and reception can match results');
+    }
+    if (USE_POSTGRES) {
+      await pgDeviceResults.manualMatch(resultId, patientId, user.name || user.uid);
+    }
+  },
+
+  /** Reject a pending result */
+  rejectResult: async (user: User, resultId: string): Promise<void> => {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SECRETARY) {
+      throw new Error('Only admin and reception can reject results');
+    }
+    if (USE_POSTGRES) {
+      await pgDeviceResults.reject(resultId);
+    }
+  },
+
+  /** Get count of pending results (for notification badge) */
+  getPendingCount: async (user: User): Promise<number> => {
+    if (USE_POSTGRES && user.clientId) {
+      return await pgDeviceResults.getPendingCount(user.clientId);
+    }
+    return 0;
+  }
 };

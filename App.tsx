@@ -20,6 +20,7 @@ import CoursesView from './views/CoursesView';
 import PatientLoginView from './views/PatientLoginView';
 import PatientDashboardView from './views/PatientDashboardView';
 import ClinicHistoryView from './views/ClinicHistoryView';
+import DeviceResultsView from './views/DeviceResultsView';
 import SuperAdminView from './views/SuperAdminView';
 import DevModeSwitcher from './components/DevModeSwitcher';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -243,6 +244,16 @@ const AppRoutes: React.FC = () => {
         } 
       />
 
+      {/* Device Results - Admin & Receptionist */}
+      <Route 
+        path="/device-results" 
+        element={
+          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}>
+            <DeviceResultsView />
+          </ProtectedRoute>
+        } 
+      />
+
       {/* Public Queue Display */}
       <Route 
         path="/queue-display" 
@@ -276,7 +287,7 @@ const ClientSlugRoutes: React.FC = () => {
 
   // Don't treat known routes as slugs
   const knownRoutes = ['login', 'admin', 'reception', 'doctor', 'patients', 'appointments', 
-    'dental-lab', 'implant-company', 'academy', 'clinic-history', 'queue-display', 
+    'dental-lab', 'implant-company', 'academy', 'clinic-history', 'device-results', 'queue-display', 
     'patient', 'super-admin'];
   if (slug && knownRoutes.includes(slug)) {
     return <RedirectHandler to={`/${slug}`} />;
@@ -298,6 +309,7 @@ const ClientSlugRoutes: React.FC = () => {
           <Route path="/implant-company" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR, UserRole.IMPLANT_MANAGER]}><ImplantView /></ProtectedRoute>} />
           <Route path="/academy" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.COURSE_MANAGER, UserRole.SECRETARY]}><CoursesView /></ProtectedRoute>} />
           <Route path="/clinic-history" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR]}><ClinicHistoryView /></ProtectedRoute>} />
+          <Route path="/device-results" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}><DeviceResultsView /></ProtectedRoute>} />
           <Route path="/queue-display" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}><QueueDisplayView /></ProtectedRoute>} />
           <Route path="/patient/login" element={patientUser ? <RedirectHandler to={`/${slug}/patient/dashboard`} /> : <PatientLoginView />} />
           <Route path="/patient/dashboard" element={patientUser ? <PatientDashboardView /> : <RedirectHandler to={`/${slug}/patient/login`} />} />

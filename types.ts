@@ -304,6 +304,85 @@ export interface SystemSettings {
     phone: string;
 }
 
+// =============================================
+// Medical Device Integration Types
+// =============================================
+
+export type DeviceType = 'cbc' | 'ecg' | 'glucose' | 'chemistry' | 'xray' | 'other';
+export type DeviceConnectionType = 'lan' | 'serial' | 'hl7' | 'folder' | 'api';
+export type DeviceResultStatus = 'pending' | 'matched' | 'error' | 'rejected';
+
+export interface Device {
+  id: string;
+  clientId: number;
+  clinicId: string;
+  name: string;
+  type: DeviceType;
+  connectionType: DeviceConnectionType;
+  ipAddress?: string;
+  port?: number;
+  comPort?: string;
+  baudRate?: number;
+  config?: Record<string, any>;
+  isActive: boolean;
+  lastSeenAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DeviceResult {
+  id: string;
+  clientId: number;
+  deviceId: string;
+  deviceName?: string;        // Joined from devices table
+  deviceType?: DeviceType;    // Joined from devices table
+  patientIdentifier: string;
+  testCode: string;
+  testName?: string;
+  value: string;
+  unit?: string;
+  referenceRange?: string;
+  isAbnormal: boolean;
+  rawMessage?: string;
+  status: DeviceResultStatus;
+  matchedPatientId?: string;
+  matchedPatientName?: string; // Joined from patients table
+  matchedAt?: string;
+  matchedBy?: string;
+  errorMessage?: string;
+  createdAt: string;
+}
+
+/** Payload sent by the clinic bridge agent */
+export interface DeviceResultPayload {
+  clinicId: string;
+  deviceId: string;
+  patientIdentifier: string;
+  testCode: string;
+  testName?: string;
+  value: string;
+  unit?: string;
+  referenceRange?: string;
+  isAbnormal?: boolean;
+  rawMessage?: string;
+}
+
+/** Batch payload for sending multiple results at once */
+export interface DeviceResultBatchPayload {
+  clinicId: string;
+  deviceId: string;
+  patientIdentifier: string;
+  results: Array<{
+    testCode: string;
+    testName?: string;
+    value: string;
+    unit?: string;
+    referenceRange?: string;
+    isAbnormal?: boolean;
+  }>;
+  rawMessage?: string;
+}
+
 export interface AuthState {
   user: User | null;
   isLoading: boolean;

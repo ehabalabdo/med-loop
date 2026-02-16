@@ -1,5 +1,5 @@
 import sql from './db';
-import { User, Patient, Clinic, Appointment, ClinicCategory, Client, SuperAdmin } from '../types';
+import { User, Patient, Clinic, Appointment, ClinicCategory, Client, SuperAdmin, Device, DeviceResult, DeviceResultStatus } from '../types';
 import { getCurrentClientId } from '../context/ClientContext';
 
 /**
@@ -756,5 +756,282 @@ export const pgInvoices = {
     await sql`DELETE FROM invoices WHERE id = ${id}`;
   }
 };
+
+// ==================== DEVICES ====================
+
+export const pgDevices = {
+  getAll: async (clientId?: number): Promise<Device[]> => {
+    const cid = clientId || getCurrentClientId();
+    if (!cid) return [];
+    const result = await sql`
+      SELECT * FROM devices WHERE client_id = ${cid} ORDER BY created_at DESC
+    `;
+    return result.map((row: any) => ({
+      id: row.id,
+      clientId: row.client_id,
+      clinicId: String(row.clinic_id),
+      name: row.name,
+      type: row.type,
+      connectionType: row.connection_type,
+      ipAddress: row.ip_address || undefined,
+      port: row.port || undefined,
+      comPort: row.com_port || undefined,
+      baudRate: row.baud_rate || undefined,
+      config: row.config || {},
+      isActive: row.is_active,
+      lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).toISOString() : undefined,
+      createdAt: new Date(row.created_at).toISOString(),
+      updatedAt: new Date(row.updated_at).toISOString()
+    }));
+  },
+
+  getByClinic: async (clinicId: string, clientId?: number): Promise<Device[]> => {
+    const cid = clientId || getCurrentClientId();
+    if (!cid) return [];
+    const clinicIdInt = parseInt(clinicId) || 0;
+    const result = await sql`
+      SELECT * FROM devices 
+      WHERE client_id = ${cid} AND clinic_id = ${clinicIdInt} AND is_active = true
+      ORDER BY name
+    `;
+    return result.map((row: any) => ({
+      id: row.id,
+      clientId: row.client_id,
+      clinicId: String(row.clinic_id),
+      name: row.name,
+      type: row.type,
+      connectionType: row.connection_type,
+      ipAddress: row.ip_address || undefined,
+      port: row.port || undefined,
+      comPort: row.com_port || undefined,
+      baudRate: row.baud_rate || undefined,
+      config: row.config || {},
+      isActive: row.is_active,
+      lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).toISOString() : undefined,
+      createdAt: new Date(row.created_at).toISOString(),
+      updatedAt: new Date(row.updated_at).toISOString()
+    }));
+  },
+
+  create: async (data: Omit<Device, 'id' | 'createdAt' | 'updatedAt' | 'lastSeenAt'>): Promise<string> => {
+    const cid = data.clientId || getCurrentClientId();
+    const clinicIdInt = parseInt(data.clinicId) || 0;
+    const result = await sql`
+      INSERT INTO devices (client_id, clinic_id, name, type, connection_type, ip_address, port, com_port, baud_rate, config, is_active)
+      VALUES (${cid}, ${clinicIdInt}, ${data.name}, ${data.type}, ${data.connectionType}, 
+              ${data.ipAddress || null}, ${data.port || null}, ${data.comPort || null}, 
+              ${data.baudRate || null}, ${JSON.stringify(data.config || {})}::jsonb, ${data.isActive})
+      RETURNING id
+    `;
+    return result[0].id;
+  },
+
+  update: async (id: string, data: Partial<Device>): Promise<void> => {
+    await sql`UPDATE devices SET updated_at = NOW() WHERE id = ${id}::uuid`;
+    if (data.name !== undefined) await sql`UPDATE devices SET name = ${data.name} WHERE id = ${id}::uuid`;
+    if (data.type !== undefined) await sql`UPDATE devices SET type = ${data.type} WHERE id = ${id}::uuid`;
+    if (data.connectionType !== undefined) await sql`UPDATE devices SET connection_type = ${data.connectionType} WHERE id = ${id}::uuid`;
+    if (data.ipAddress !== undefined) await sql`UPDATE devices SET ip_address = ${data.ipAddress} WHERE id = ${id}::uuid`;
+    if (data.port !== undefined) await sql`UPDATE devices SET port = ${data.port} WHERE id = ${id}::uuid`;
+    if (data.comPort !== undefined) await sql`UPDATE devices SET com_port = ${data.comPort} WHERE id = ${id}::uuid`;
+    if (data.isActive !== undefined) await sql`UPDATE devices SET is_active = ${data.isActive} WHERE id = ${id}::uuid`;
+  },
+
+  updateLastSeen: async (id: string): Promise<void> => {
+    await sql`UPDATE devices SET last_seen_at = NOW() WHERE id = ${id}::uuid`;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await sql`DELETE FROM devices WHERE id = ${id}::uuid`;
+  }
+};
+
+// ==================== DEVICE RESULTS ====================
+
+export const pgDeviceResults = {
+  /** Insert a result and attempt auto-match by patient_identifier → patients.id within same client */
+  insert: async (clientId: number, data: {
+    deviceId: string;
+    patientIdentifier: string;
+    testCode: string;
+    testName?: string;
+    value: string;
+    unit?: string;
+    referenceRange?: string;
+    isAbnormal?: boolean;
+    rawMessage?: string;
+  }): Promise<{ id: string; status: DeviceResultStatus; matchedPatientId: number | null }> => {
+    // Step 1: Try auto-match by patient id or phone within same client
+    let matchedPatientId: number | null = null;
+    let status: DeviceResultStatus = 'pending';
+    const identifier = data.patientIdentifier.trim();
+
+    // Try matching by numeric patient ID first
+    const numericId = parseInt(identifier);
+    if (!isNaN(numericId)) {
+      const match = await sql`
+        SELECT id FROM patients WHERE id = ${numericId} AND client_id = ${clientId} LIMIT 1
+      `;
+      if (match.length > 0) {
+        matchedPatientId = match[0].id;
+        status = 'matched';
+      }
+    }
+
+    // Fallback: try matching by phone number
+    if (!matchedPatientId) {
+      const phoneMatch = await sql`
+        SELECT id FROM patients WHERE phone = ${identifier} AND client_id = ${clientId} LIMIT 1
+      `;
+      if (phoneMatch.length > 0) {
+        matchedPatientId = phoneMatch[0].id;
+        status = 'matched';
+      }
+    }
+
+    // Fallback: try matching by full_name (exact)
+    if (!matchedPatientId) {
+      const nameMatch = await sql`
+        SELECT id FROM patients WHERE full_name = ${identifier} AND client_id = ${clientId} LIMIT 1
+      `;
+      if (nameMatch.length > 0) {
+        matchedPatientId = nameMatch[0].id;
+        status = 'matched';
+      }
+    }
+
+    // Step 2: Insert the result
+    const result = await sql`
+      INSERT INTO device_results (
+        client_id, device_id, patient_identifier, test_code, test_name,
+        value, unit, reference_range, is_abnormal, raw_message,
+        status, matched_patient_id, matched_at, matched_by
+      )
+      VALUES (
+        ${clientId}, ${data.deviceId}::uuid, ${identifier}, ${data.testCode}, ${data.testName || null},
+        ${data.value}, ${data.unit || null}, ${data.referenceRange || null}, ${data.isAbnormal || false},
+        ${data.rawMessage || null},
+        ${status}, ${matchedPatientId}, ${matchedPatientId ? new Date().toISOString() : null},
+        ${matchedPatientId ? 'auto' : null}
+      )
+      RETURNING id
+    `;
+
+    return { id: result[0].id, status, matchedPatientId };
+  },
+
+  /** Get pending (unmatched) results for a clinic's client */
+  getPending: async (clientId: number): Promise<DeviceResult[]> => {
+    const result = await sql`
+      SELECT dr.*, d.name as device_name, d.type as device_type
+      FROM device_results dr
+      LEFT JOIN devices d ON d.id = dr.device_id
+      WHERE dr.client_id = ${clientId} AND dr.status = 'pending'
+      ORDER BY dr.created_at DESC
+    `;
+    return result.map(mapDeviceResultRow);
+  },
+
+  /** Get all results for a specific client with optional status filter */
+  getAll: async (clientId: number, statusFilter?: DeviceResultStatus): Promise<DeviceResult[]> => {
+    const result = statusFilter
+      ? await sql`
+          SELECT dr.*, d.name as device_name, d.type as device_type, p.full_name as patient_name
+          FROM device_results dr
+          LEFT JOIN devices d ON d.id = dr.device_id
+          LEFT JOIN patients p ON p.id = dr.matched_patient_id
+          WHERE dr.client_id = ${clientId} AND dr.status = ${statusFilter}
+          ORDER BY dr.created_at DESC
+          LIMIT 200
+        `
+      : await sql`
+          SELECT dr.*, d.name as device_name, d.type as device_type, p.full_name as patient_name
+          FROM device_results dr
+          LEFT JOIN devices d ON d.id = dr.device_id
+          LEFT JOIN patients p ON p.id = dr.matched_patient_id
+          WHERE dr.client_id = ${clientId}
+          ORDER BY dr.created_at DESC
+          LIMIT 200
+        `;
+    return result.map(mapDeviceResultRow);
+  },
+
+  /** Get results for a specific patient */
+  getByPatientId: async (patientId: string, clientId?: number): Promise<DeviceResult[]> => {
+    const cid = clientId || getCurrentClientId();
+    const patientIdInt = parseInt(patientId) || 0;
+    const result = cid
+      ? await sql`
+          SELECT dr.*, d.name as device_name, d.type as device_type
+          FROM device_results dr
+          LEFT JOIN devices d ON d.id = dr.device_id
+          WHERE dr.matched_patient_id = ${patientIdInt} AND dr.client_id = ${cid}
+          ORDER BY dr.created_at DESC
+        `
+      : await sql`
+          SELECT dr.*, d.name as device_name, d.type as device_type
+          FROM device_results dr
+          LEFT JOIN devices d ON d.id = dr.device_id
+          WHERE dr.matched_patient_id = ${patientIdInt}
+          ORDER BY dr.created_at DESC
+        `;
+    return result.map(mapDeviceResultRow);
+  },
+
+  /** Manual match: link a pending result to a patient */
+  manualMatch: async (resultId: string, patientId: string, matchedBy: string): Promise<void> => {
+    const patientIdInt = parseInt(patientId) || 0;
+    await sql`
+      UPDATE device_results
+      SET status = 'matched',
+          matched_patient_id = ${patientIdInt},
+          matched_at = NOW(),
+          matched_by = ${matchedBy}
+      WHERE id = ${resultId}::uuid AND status = 'pending'
+    `;
+  },
+
+  /** Reject a result (mark as rejected) */
+  reject: async (resultId: string): Promise<void> => {
+    await sql`
+      UPDATE device_results SET status = 'rejected' WHERE id = ${resultId}::uuid
+    `;
+  },
+
+  /** Get count of pending results for badge display */
+  getPendingCount: async (clientId: number): Promise<number> => {
+    const result = await sql`
+      SELECT COUNT(*)::int as count FROM device_results 
+      WHERE client_id = ${clientId} AND status = 'pending'
+    `;
+    return result[0]?.count || 0;
+  }
+};
+
+/** Helper to map a DB row to DeviceResult interface */
+function mapDeviceResultRow(row: any): DeviceResult {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    deviceId: row.device_id,
+    deviceName: row.device_name || undefined,
+    deviceType: row.device_type || undefined,
+    patientIdentifier: row.patient_identifier,
+    testCode: row.test_code,
+    testName: row.test_name || undefined,
+    value: row.value,
+    unit: row.unit || undefined,
+    referenceRange: row.reference_range || undefined,
+    isAbnormal: row.is_abnormal || false,
+    rawMessage: row.raw_message || undefined,
+    status: row.status,
+    matchedPatientId: row.matched_patient_id ? String(row.matched_patient_id) : undefined,
+    matchedPatientName: row.patient_name || undefined,
+    matchedAt: row.matched_at ? new Date(row.matched_at).toISOString() : undefined,
+    matchedBy: row.matched_by || undefined,
+    errorMessage: row.error_message || undefined,
+    createdAt: new Date(row.created_at).toISOString()
+  };
+}
 
 
