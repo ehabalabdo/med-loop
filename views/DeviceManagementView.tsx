@@ -31,6 +31,15 @@ const CONNECTION_TYPES: { value: DeviceConnectionType; label: string; icon: stri
   { value: 'api', label: 'API مباشر', icon: 'fa-code' },
 ];
 
+const SAMPLE_HL7 = `MSH|^~\\&|Mindray|Lab|MedLoop|Clinic|20260216120000||ORU^R01|MSG001|P|2.3
+PID|||12345||Ahmad^Mohammad||19850315|M
+OBR|1||LAB001|CBC^Complete Blood Count
+OBX|1|NM|WBC^White Blood Cells||7.2|10^3/uL|4.0-11.0|N|||F
+OBX|2|NM|RBC^Red Blood Cells||4.8|10^6/uL|4.5-5.5|N|||F
+OBX|3|NM|HGB^Hemoglobin||14.2|g/dL|13.0-17.0|N|||F
+OBX|4|NM|HCT^Hematocrit||42.1|%|38.0-50.0|N|||F
+OBX|5|NM|PLT^Platelets||245|10^3/uL|150-400|N|||F`;
+
 const DeviceManagementView: React.FC = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -39,7 +48,7 @@ const DeviceManagementView: React.FC = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'devices' | 'apikeys' | 'guide'>('devices');
+  const [activeTab, setActiveTab] = useState<'devices' | 'apikeys' | 'hl7' | 'guide'>('devices');
 
   // Add/Edit Device Modal
   const [showDeviceModal, setShowDeviceModal] = useState(false);
@@ -59,6 +68,16 @@ const DeviceManagementView: React.FC = () => {
   const [keyLabel, setKeyLabel] = useState('');
   const [generatedKey, setGeneratedKey] = useState('');
   const [keyCopied, setKeyCopied] = useState(false);
+
+  // HL7 State
+  const [hl7Status, setHl7Status] = useState<any>(null);
+  const [hl7Connections, setHl7Connections] = useState<any[]>([]);
+  const [hl7Loading, setHl7Loading] = useState(false);
+  const [bridgeUrl, setBridgeUrl] = useState(localStorage.getItem('bridge_url') || 'http://localhost:9090');
+  const [bridgeConnected, setBridgeConnected] = useState(false);
+  const [hl7TestMessage, setHl7TestMessage] = useState(SAMPLE_HL7);
+  const [hl7TestResult, setHl7TestResult] = useState<string>('');
+  const [hl7Sending, setHl7Sending] = useState(false);
 
   // Delete confirm
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -80,6 +99,64 @@ const DeviceManagementView: React.FC = () => {
   }, [user]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // --- HL7 Bridge Status ---
+  const checkBridgeStatus = async () => {
+    setHl7Loading(true);
+    try {
+      const res = await fetch(`${bridgeUrl}/health`, { signal: AbortSignal.timeout(5000) });
+      const data = await res.json();
+      setHl7Status(data);
+      setBridgeConnected(true);
+      localStorage.setItem('bridge_url', bridgeUrl);
+
+      // Also get HL7 connections
+      try {
+        const connRes = await fetch(`${bridgeUrl}/hl7/connections`, { signal: AbortSignal.timeout(3000) });
+        const connData = await connRes.json();
+        setHl7Connections(connData.connections || []);
+      } catch { setHl7Connections([]); }
+    } catch (err) {
+      setHl7Status(null);
+      setBridgeConnected(false);
+      setHl7Connections([]);
+    } finally {
+      setHl7Loading(false);
+    }
+  };
+
+  const sendTestHL7 = async () => {
+    if (!hl7TestMessage.trim()) return;
+    setHl7Sending(true);
+    setHl7TestResult('');
+    try {
+      const res = await fetch(`${bridgeUrl}/result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: devices[0]?.id || 'test-device',
+          patientIdentifier: 'TEST-001',
+          testCode: 'HL7-TEST',
+          testName: 'HL7 Test Message',
+          value: 'PASS',
+          unit: '',
+          referenceRange: '',
+          isAbnormal: false,
+          rawMessage: hl7TestMessage
+        })
+      });
+      const data = await res.json();
+      setHl7TestResult(`✅ تم الإرسال بنجاح — ID: ${data.id || 'OK'}`);
+    } catch (err: any) {
+      setHl7TestResult(`❌ فشل الإرسال: ${err.message}`);
+    } finally {
+      setHl7Sending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'hl7') checkBridgeStatus();
+  }, [activeTab]);
 
   // --- Device CRUD ---
   const openAddDevice = () => {
@@ -234,6 +311,7 @@ const DeviceManagementView: React.FC = () => {
         <div className="flex gap-2 bg-white rounded-2xl p-1.5 shadow-sm border border-slate-100 w-fit">
           {[
             { id: 'devices' as const, label: 'الأجهزة', icon: 'fa-microchip' },
+            { id: 'hl7' as const, label: 'HL7 / MLLP', icon: 'fa-file-medical' },
             { id: 'apikeys' as const, label: 'مفاتيح الربط', icon: 'fa-key' },
             { id: 'guide' as const, label: 'دليل الإعداد', icon: 'fa-book' },
           ].map(tab => (
@@ -344,6 +422,203 @@ const DeviceManagementView: React.FC = () => {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* === HL7 / MLLP TAB === */}
+        {activeTab === 'hl7' && (
+          <div className="space-y-4">
+
+            {/* Bridge Agent Connection */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i className="fa-solid fa-server text-violet-500"></i> اتصال Bridge Agent
+              </h3>
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="text-xs font-bold text-slate-500 mb-1 block">عنوان Bridge Agent</label>
+                  <input
+                    type="text"
+                    placeholder="http://localhost:9090"
+                    value={bridgeUrl}
+                    onChange={e => setBridgeUrl(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-slate-200 text-sm outline-none focus:border-primary font-mono"
+                    dir="ltr"
+                  />
+                </div>
+                <button
+                  onClick={checkBridgeStatus}
+                  disabled={hl7Loading}
+                  className="bg-slate-800 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-slate-700 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {hl7Loading ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-plug-circle-check"></i>}
+                  فحص الاتصال
+                </button>
+              </div>
+
+              {/* Status Result */}
+              {hl7Status && (
+                <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-xl p-4" dir="ltr">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="font-bold text-emerald-700">Bridge Agent متصل</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                      <div className="text-slate-400 font-medium mb-1">Status</div>
+                      <div className="font-bold text-emerald-600">{hl7Status.status}</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                      <div className="text-slate-400 font-medium mb-1">Uptime</div>
+                      <div className="font-bold text-slate-700">{Math.floor(hl7Status.uptime / 60)}m {Math.floor(hl7Status.uptime % 60)}s</div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                      <div className="text-slate-400 font-medium mb-1">HL7/MLLP</div>
+                      <div className="font-bold">
+                        {hl7Status.hl7?.enabled ? (
+                          <span className="text-emerald-600">Port {hl7Status.hl7.port} • {hl7Status.hl7.connections} conn</span>
+                        ) : (
+                          <span className="text-slate-400">Disabled</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                      <div className="text-slate-400 font-medium mb-1">Pending Queue</div>
+                      <div className={`font-bold ${hl7Status.pendingQueue > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{hl7Status.pendingQueue}</div>
+                    </div>
+                  </div>
+
+                  {/* Serial & File Watcher Status */}
+                  <div className="grid grid-cols-2 gap-3 mt-3 text-xs">
+                    <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                      <div className="text-slate-400 font-medium mb-1">Serial Port</div>
+                      <div className="font-bold">
+                        {hl7Status.serial?.enabled ? (
+                          <span className={hl7Status.serial.open ? 'text-emerald-600' : 'text-red-500'}>
+                            {hl7Status.serial.port} — {hl7Status.serial.open ? 'Open' : 'Closed'}
+                          </span>
+                        ) : <span className="text-slate-400">Disabled</span>}
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 border border-emerald-100">
+                      <div className="text-slate-400 font-medium mb-1">File Watcher</div>
+                      <div className="font-bold">
+                        {hl7Status.fileWatcher?.enabled ? (
+                          <span className="text-emerald-600">{hl7Status.fileWatcher.folder}</span>
+                        ) : <span className="text-slate-400">Disabled</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {bridgeConnected === false && hl7Status === null && !hl7Loading && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                  <i className="fa-solid fa-triangle-exclamation ml-1"></i>
+                  لم يتم الاتصال بعد. تأكد أن Bridge Agent يعمل على <code className="bg-white px-1 rounded font-mono" dir="ltr">{bridgeUrl}</code>
+                </div>
+              )}
+            </div>
+
+            {/* HL7 Active Connections */}
+            {hl7Connections.length > 0 && (
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-50 flex justify-between items-center">
+                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                    <i className="fa-solid fa-link text-blue-500"></i> اتصالات HL7 النشطة
+                  </h3>
+                  <span className="bg-blue-100 text-blue-600 text-xs font-bold px-2.5 py-1 rounded-full">{hl7Connections.length}</span>
+                </div>
+                <div className="divide-y divide-slate-50">
+                  {hl7Connections.map((conn: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between p-4 hover:bg-slate-50/50" dir="ltr">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-500 flex items-center justify-center">
+                          <i className="fa-solid fa-tower-broadcast text-sm"></i>
+                        </div>
+                        <div>
+                          <span className="font-mono text-sm font-bold text-slate-700">{conn.remoteAddr}</span>
+                          <div className="text-[11px] text-slate-400">Connected: {new Date(conn.connectedAt).toLocaleString()}</div>
+                        </div>
+                      </div>
+                      <div className="text-xs font-bold text-slate-500">
+                        {conn.messagesReceived || 0} messages
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* HL7 Test Tool */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i className="fa-solid fa-vial text-rose-500"></i> اختبار إرسال نتيجة
+              </h3>
+              <p className="text-sm text-slate-500 mb-3">أرسل نتيجة اختبارية عبر Bridge Agent للتأكد من سلامة الاتصال بين الجهاز والسيرفر.</p>
+              
+              <div className="bg-slate-800 rounded-xl overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-2 bg-slate-700/50 border-b border-slate-600">
+                  <span className="text-xs font-mono text-slate-300">HL7 v2.x Sample Message</span>
+                  <button onClick={() => setHl7TestMessage(SAMPLE_HL7)} className="text-[10px] text-slate-400 hover:text-emerald-300 font-bold">
+                    <i className="fa-solid fa-rotate-right mr-1"></i> Reset
+                  </button>
+                </div>
+                <textarea
+                  className="w-full p-4 bg-transparent text-emerald-400 font-mono text-xs outline-none resize-none"
+                  rows={10}
+                  value={hl7TestMessage}
+                  onChange={e => setHl7TestMessage(e.target.value)}
+                  dir="ltr"
+                  spellCheck={false}
+                />
+              </div>
+
+              <div className="flex items-center gap-3 mt-3">
+                <button
+                  onClick={sendTestHL7}
+                  disabled={hl7Sending || !bridgeConnected}
+                  className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm disabled:opacity-50 hover:from-rose-600 hover:to-pink-600 transition-all flex items-center gap-2"
+                >
+                  {hl7Sending ? <i className="fa-solid fa-spinner animate-spin"></i> : <i className="fa-solid fa-paper-plane"></i>}
+                  إرسال اختبار
+                </button>
+                {!bridgeConnected && <span className="text-xs text-slate-400">⚠️ اتصل بـ Bridge Agent أولاً</span>}
+              </div>
+
+              {hl7TestResult && (
+                <div className={`mt-3 p-3 rounded-xl text-sm font-bold ${hl7TestResult.startsWith('✅') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                  {hl7TestResult}
+                </div>
+              )}
+            </div>
+
+            {/* HL7 Quick Reference */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
+              <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <i className="fa-solid fa-circle-question text-blue-500"></i> مرجع سريع — بنية رسالة HL7
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" dir="ltr">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-600">
+                      <th className="text-right p-3 rounded-r-xl font-bold">Segment</th>
+                      <th className="text-right p-3 font-bold">الوصف</th>
+                      <th className="text-right p-3 rounded-l-xl font-bold">مثال</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    <tr><td className="p-3 font-mono font-bold text-violet-600">MSH</td><td className="p-3 text-slate-600">ترويسة الرسالة (المرسل، المستقبل، النوع)</td><td className="p-3 font-mono text-xs text-slate-400">MSH|^~\&|Lab|Clinic|...</td></tr>
+                    <tr><td className="p-3 font-mono font-bold text-blue-600">PID</td><td className="p-3 text-slate-600">بيانات المريض (الرقم، الاسم، الجنس)</td><td className="p-3 font-mono text-xs text-slate-400">PID|||12345||Ahmad^M...</td></tr>
+                    <tr><td className="p-3 font-mono font-bold text-emerald-600">OBR</td><td className="p-3 text-slate-600">طلب الفحص (اسم التحليل)</td><td className="p-3 font-mono text-xs text-slate-400">OBR|1||LAB001|CBC^...</td></tr>
+                    <tr><td className="p-3 font-mono font-bold text-rose-600">OBX</td><td className="p-3 text-slate-600">نتيجة التحليل (القيمة، الوحدة، المرجع)</td><td className="p-3 font-mono text-xs text-slate-400">OBX|1|NM|WBC||7.2|...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700">
+                <strong>MLLP Protocol:</strong> الأجهزة الطبية ترسل رسائل HL7 عبر TCP مغلفة بـ MLLP (Start: <code className="bg-white px-1 rounded">0x0B</code> • End: <code className="bg-white px-1 rounded">0x1C 0x0D</code>). Bridge Agent يستمع على Port <code className="bg-white px-1 rounded">2575</code> افتراضياً.
+              </div>
+            </div>
           </div>
         )}
 
