@@ -249,7 +249,7 @@ const AppRoutes: React.FC = () => {
       <Route 
         path="/device-results" 
         element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}>
+          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY, UserRole.DOCTOR]}>
             <DeviceResultsView />
           </ProtectedRoute>
         } 
@@ -320,7 +320,7 @@ const ClientSlugRoutes: React.FC = () => {
           <Route path="/implant-company" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR, UserRole.IMPLANT_MANAGER]}><ImplantView /></ProtectedRoute>} />
           <Route path="/academy" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.COURSE_MANAGER, UserRole.SECRETARY]}><CoursesView /></ProtectedRoute>} />
           <Route path="/clinic-history" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR]}><ClinicHistoryView /></ProtectedRoute>} />
-          <Route path="/device-results" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}><DeviceResultsView /></ProtectedRoute>} />
+          <Route path="/device-results" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY, UserRole.DOCTOR]}><DeviceResultsView /></ProtectedRoute>} />
           <Route path="/device-management" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><DeviceManagementView /></ProtectedRoute>} />
           <Route path="/queue-display" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}><QueueDisplayView /></ProtectedRoute>} />
           <Route path="/patient/login" element={patientUser ? <RedirectHandler to={`/${slug}/patient/dashboard`} /> : <PatientLoginView />} />

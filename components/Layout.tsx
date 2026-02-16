@@ -101,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                {role === UserRole.DOCTOR && <NavItem to="/doctor" icon="fa-solid fa-user-doctor" label={t('doctor_console')} />}
                <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label={t('appointments_nav')} />
                <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label={t('patients_registry')} />
-               {(role === UserRole.ADMIN || role === UserRole.SECRETARY) && <NavItem to="/device-results" icon="fa-solid fa-microscope" label="نتائج الأجهزة" />}
+               {(role === UserRole.ADMIN || role === UserRole.SECRETARY || role === UserRole.DOCTOR) && <NavItem to="/device-results" icon="fa-solid fa-microscope" label="نتائج الأجهزة" />}
                {role === UserRole.ADMIN && <NavItem to="/device-management" icon="fa-solid fa-microchip" label="إدارة الأجهزة" />}
                {(role === UserRole.ADMIN || role === UserRole.DOCTOR) && <NavItem to="/clinic-history" icon="fa-solid fa-chart-line" label={t('clinic_history_nav')} />}
              </>
