@@ -33,8 +33,8 @@ const PatientLoginView: React.FC = () => {
       <div className="max-w-md w-full">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <i className="fa-solid fa-user-injured text-white text-3xl"></i>
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hidden bg-white">
+            <img src="/logo.png" alt="MED LOOP" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-slate-800 mb-2">بوابة المريض</h1>
           <p className="text-slate-500 text-sm">MED LOOP Patient Portal</p>
