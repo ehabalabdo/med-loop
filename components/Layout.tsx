@@ -85,13 +85,8 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   // Device results visibility — Admin always sees + management, others only if enabled
   const showDeviceResults = role === UserRole.ADMIN || (features.device_results && (role === UserRole.SECRETARY || role === UserRole.DOCTOR));
 
-  // TEMP DEBUG - will remove
-  const _debugInfo = `role=${role} | feat=${JSON.stringify(features)} | showDev=${showDeviceResults} | showAcad=${showAcademyView} | ctx=${!!clientCtx} | client=${!!clientCtx?.client}`;
-
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
-      {/* TEMP DEBUG BAR */}
-      <div className="fixed top-0 left-0 right-0 z-[99999] bg-red-600 text-white text-[10px] p-1 font-mono overflow-x-auto whitespace-nowrap">{_debugInfo}</div>
       {/* Sidebar - Desktop Only */}
       <aside className="w-72 glass-sidebar text-white flex-shrink-0 hidden md:flex flex-col shadow-2xl relative z-20">
         <div className="p-8 pb-4">
