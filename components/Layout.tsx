@@ -175,7 +175,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
         </header>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-auto p-4 md:p-8 relative pb-24 md:pb-8">
+        <div className="flex-1 overflow-auto min-h-0 p-4 md:p-8 relative pb-24 md:pb-8">
            <div className="max-w-7xl mx-auto mb-6 md:mb-8 animate-fade-in-down px-2">
                 <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-white tracking-tight">{title}</h2>
                 <div className="h-1 w-16 bg-primary rounded-full mt-1.5"></div>
