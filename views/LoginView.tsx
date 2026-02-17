@@ -6,13 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import DevModeSwitcher from '../components/DevModeSwitcher';
-
-// Try to import useClient - it may not be available in non-slug routes
-let useClientSafe: () => { client: any; isReadOnly: boolean } | null = () => null;
-try {
-  const { useClient } = require('../context/ClientContext');
-  useClientSafe = () => { try { return useClient(); } catch { return null; } };
-} catch {}
+import { useClientSafe } from '../context/ClientContext';
 
 const LoginView: React.FC = () => {
   const { login } = useAuth();

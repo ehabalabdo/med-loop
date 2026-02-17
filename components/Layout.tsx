@@ -20,6 +20,14 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const location = useLocation();
 
+  // Detect slug from URL to prefix nav links
+  const knownTopRoutes = ['login', 'admin', 'reception', 'doctor', 'patients', 'appointments',
+    'dental-lab', 'implant-company', 'academy', 'clinic-history', 'device-results', 'device-management',
+    'queue-display', 'patient', 'super-admin'];
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const slug = pathParts[0] && !knownTopRoutes.includes(pathParts[0]) ? pathParts[0] : null;
+  const prefix = slug ? `/${slug}` : '';
+
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
       case UserRole.ADMIN: return 'bg-purple-500/20 text-purple-300 border border-purple-500/30';
@@ -33,10 +41,11 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   };
 
   const NavItem = ({ to, icon, label, mobile = false }: { to: string; icon: string; label: string, mobile?: boolean }) => {
-     const isActive = location.pathname.startsWith(to);
+     const fullPath = `${prefix}${to}`;
+     const isActive = location.pathname.startsWith(fullPath);
      if (mobile) {
          return (
-             <Link to={to} className={`flex flex-col items-center justify-center flex-1 py-2 ${isActive ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
+             <Link to={fullPath} className={`flex flex-col items-center justify-center flex-1 py-2 ${isActive ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`}>
                 <i className={`${icon} text-lg`}></i>
                 <span className="text-[10px] font-bold mt-1">{label}</span>
              </Link>
@@ -44,7 +53,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
      }
      return (
         <Link 
-            to={to} 
+            to={fullPath} 
             className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 text-sm font-semibold group relative overflow-hidden ${
                 isActive 
                 ? 'text-white bg-gradient-to-r from-primary to-secondary shadow-glow' 
