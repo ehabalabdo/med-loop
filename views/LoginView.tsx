@@ -73,20 +73,12 @@ const LoginView: React.FC = () => {
         <source src="/bg-video.mp4" type="video/mp4" />
       </video>
       {/* Overlay */}
-      <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/70 z-[1]"></div>
+      <div className="absolute inset-0 bg-slate-900/70 z-[1]"></div>
       {/* زر اللغة والوضع الليلي في الزاوية */}
       <div className="absolute top-6 right-6 flex flex-col gap-2 z-20">
         <button
-          onClick={toggleTheme}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-primary text-lg shadow-md hover:scale-110 hover:bg-primary/60 transition-all duration-300 animate-bounce-slow"
-          style={{fontWeight: 'bold'}}
-          aria-label="Toggle dark mode"
-        >
-          <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-        </button>
-        <button
           onClick={toggleLanguage}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/30 text-primary text-lg shadow-md hover:scale-110 hover:bg-secondary/60 transition-all duration-300 animate-bounce-slow"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-white/20 text-white text-lg shadow-md hover:scale-110 hover:bg-white/30 transition-all duration-300"
           style={{fontWeight: 'bold'}}
           aria-label="Toggle language"
         >
@@ -95,43 +87,43 @@ const LoginView: React.FC = () => {
       </div>
 
       {/* نموذج مركزي */}
-      <div className="relative z-10 w-full max-w-md mx-auto bg-white/90 dark:bg-slate-900/90 rounded-3xl shadow-2xl border border-white/40 dark:border-slate-700 backdrop-blur-xl p-8 flex flex-col items-center">
+      <div className="relative z-10 w-full max-w-md mx-auto bg-slate-900/85 rounded-3xl shadow-2xl border border-slate-700 backdrop-blur-xl p-8 flex flex-col items-center">
         <div className="flex flex-col items-center mb-8">
           <img src={client?.logoUrl || "/logo.png"} alt={client?.name || "MED LOOP"} className="h-16 w-16 object-contain mb-4" />
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{client?.name || 'Medloop'}</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">{t('sign_in_subtitle')}</p>
+          <h1 className="text-2xl font-bold text-white mb-1">{client?.name || 'Medloop'}</h1>
+          <p className="text-slate-400 text-sm">{t('sign_in_subtitle')}</p>
         </div>
         <form onSubmit={handleSubmit} className="w-full space-y-5">
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">الاسم / البريد الإلكتروني / اسم المستخدم</label>
+            <label className="block text-xs font-bold text-slate-300 mb-1">الاسم / البريد الإلكتروني / اسم المستخدم</label>
             <div className="relative">
               <i className="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
               <input
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
+                className="w-full pl-11 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-white hover:bg-slate-800 transition"
                 placeholder="أدخل الاسم أو البريد أو اسم المستخدم"
                 required
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{t('password_label')}</label>
+            <label className="block text-xs font-bold text-slate-300 mb-1">{t('password_label')}</label>
             <div className="relative">
               <i className="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-slate-800 dark:text-white hover:bg-white dark:hover:bg-slate-900 transition"
+                className="w-full pl-11 pr-4 py-3 bg-slate-800/60 border border-slate-700 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-sm font-medium text-white hover:bg-slate-800 transition"
                 placeholder="••••••••"
                 required
               />
             </div>
           </div>
           {error && (
-            <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-600 dark:text-red-300 text-sm flex items-center gap-2 animate-pulse">
+            <div className="p-3 rounded-xl bg-red-900/20 border border-red-800 text-red-300 text-sm flex items-center gap-2 animate-pulse">
               <i className="fa-solid fa-circle-exclamation"></i>
               {error}
             </div>
@@ -148,10 +140,10 @@ const LoginView: React.FC = () => {
             ) : t('sign_in_btn')}
           </button>
         </form>
-        <div className="mt-6 text-center text-xs text-slate-400 font-medium">
+        <div className="mt-6 text-center text-xs text-slate-500 font-medium">
           <i className="fa-solid fa-shield-halved mr-1"></i> {t('protected_msg')}
         </div>
-        <div className="mt-6 text-xs text-slate-400 text-center">© 2026 Medloop</div>
+        <div className="mt-6 text-xs text-slate-500 text-center">© 2026 Medloop</div>
       </div>
     </div>
   );
