@@ -290,19 +290,11 @@ export const PatientService = {
       const allPatients = await pgPatients.getAll();
       const patient = allPatients.find(p => p.id === id);
       if (!patient || patient.isArchived) return null;
-      if (user.role === UserRole.DOCTOR) {
-        const isAssigned = user.clinicIds.includes(patient.currentVisit.clinicId);
-        if (!isAssigned) throw new Error("Access Denied");
-      }
       return patient;
     } else {
       const allPatients = mockDb.getCollection<Patient>('patients');
       const patient = allPatients.find(p => p.id === id);
       if (!patient || patient.isArchived) return null;
-      if (user.role === UserRole.DOCTOR) {
-        const isAssigned = user.clinicIds.includes(patient.currentVisit.clinicId);
-        if (!isAssigned) throw new Error("Access Denied");
-      }
       return patient;
     }
   },
