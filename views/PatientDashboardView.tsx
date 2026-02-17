@@ -148,18 +148,16 @@ const PatientDashboardView: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50" dir={dir}>
+    <div className="min-h-screen bg-slate-50" dir={dir}>
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-              <i className="fa-solid fa-user-injured text-white text-xl"></i>
-            </div>
+            <img src="/logo.png" alt="MED LOOP" className="w-10 h-10 object-contain" />
             <div>
               <h1 className="text-xl font-bold text-slate-800">
                 بوابة المريض
-                {refreshing && <i className="fa-solid fa-sync fa-spin text-blue-400 text-sm mr-2"></i>}
+                {refreshing && <i className="fa-solid fa-sync fa-spin text-primary text-sm mr-2"></i>}
               </h1>
               <p className="text-xs text-slate-500">MED LOOP Patient Portal</p>
             </div>
@@ -177,14 +175,14 @@ const PatientDashboardView: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-xl p-8 mb-8 text-white">
+        <div className="bg-gradient-to-r from-primary to-secondary rounded-2xl shadow-xl p-8 mb-8 text-white">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-4xl">
               <i className="fa-solid fa-user"></i>
             </div>
             <div className="flex-1">
               <h2 className="text-3xl font-bold mb-2">مرحباً، {patient.name}</h2>
-              <p className="text-blue-100 text-sm">نتمنى لك صحة وعافية دائمة</p>
+              <p className="text-white/70 text-sm">نتمنى لك صحة وعافية دائمة</p>
             </div>
           </div>
         </div>
@@ -251,7 +249,7 @@ const PatientDashboardView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 text-xl">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary text-xl">
                 <i className="fa-solid fa-calendar-check"></i>
               </div>
               <div>
@@ -263,7 +261,7 @@ const PatientDashboardView: React.FC = () => {
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600 text-xl">
+              <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 text-xl">
                 <i className="fa-solid fa-file-medical"></i>
               </div>
               <div>
@@ -292,7 +290,7 @@ const PatientDashboardView: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <i className="fa-solid fa-id-card text-blue-500"></i>
+                <i className="fa-solid fa-id-card text-primary"></i>
                 المعلومات الشخصية
               </h3>
             </div>
@@ -331,7 +329,7 @@ const PatientDashboardView: React.FC = () => {
             {patient.history && patient.history.length > 0 ? (
               <div className="space-y-4">
                 {patient.history.slice(0, 3).map((visit, idx) => (
-                  <div key={idx} className="border-l-4 border-blue-500 pl-4 py-2">
+                  <div key={idx} className="border-l-4 border-primary pl-4 py-2">
                     <div className="text-sm font-bold text-slate-800">
                       {new Date(visit.date).toLocaleDateString('ar-EG')}
                     </div>
@@ -390,7 +388,7 @@ const PatientDashboardView: React.FC = () => {
               </h3>
             </div>
             <div className="space-y-3">
-              <button onClick={() => setShowBooking(true)} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium py-3 rounded-lg transition-all flex items-center justify-center gap-2">
+              <button onClick={() => setShowBooking(true)} className="w-full bg-primary/10 hover:bg-primary/20 text-primary font-medium py-3 rounded-lg transition-all flex items-center justify-center gap-2">
                 <i className="fa-solid fa-calendar-plus"></i>
                 حجز موعد جديد
               </button>
@@ -411,15 +409,15 @@ const PatientDashboardView: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                <i className="fa-solid fa-calendar-check text-blue-500"></i>
+                <i className="fa-solid fa-calendar-check text-primary"></i>
                 المواعيد القادمة
               </h3>
             </div>
             <div className="space-y-3">
               {appointments.map(app => (
-                <div key={app.id} className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <div key={app.id} className="flex items-center justify-between bg-primary/5 border border-primary/10 rounded-xl p-4">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
                       <i className="fa-solid fa-calendar-day text-xl"></i>
                     </div>
                     <div>
@@ -436,7 +434,7 @@ const PatientDashboardView: React.FC = () => {
                       {app.reason && <div className="text-xs text-slate-400 mt-1">{app.reason}</div>}
                     </div>
                   </div>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${app.status === 'pending' ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'}`}>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${app.status === 'pending' ? 'bg-amber-500 text-white' : 'bg-primary text-white'}`}>
                     {app.status === 'pending' ? 'بانتظار التأكيد' : 'مؤكد'}
                   </span>
                 </div>
@@ -462,7 +460,7 @@ const PatientDashboardView: React.FC = () => {
               <>
                 <div className="p-6 border-b border-gray-100 flex items-center justify-between">
                   <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <i className="fa-solid fa-calendar-plus text-blue-500"></i>
+                    <i className="fa-solid fa-calendar-plus text-primary"></i>
                     حجز موعد جديد
                   </h3>
                   <button onClick={() => setShowBooking(false)} className="text-slate-400 hover:text-slate-600 text-xl">
@@ -484,7 +482,7 @@ const PatientDashboardView: React.FC = () => {
                       <select
                         value={bookingClinic}
                         onChange={e => setBookingClinic(e.target.value)}
-                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                       >
                         <option value="">اختر العيادة...</option>
                         {clinics.map(c => (
@@ -504,7 +502,7 @@ const PatientDashboardView: React.FC = () => {
                       value={bookingDate}
                       onChange={e => setBookingDate(e.target.value)}
                       min={new Date().toISOString().split('T')[0]}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
 
@@ -517,7 +515,7 @@ const PatientDashboardView: React.FC = () => {
                       type="time"
                       value={bookingTime}
                       onChange={e => setBookingTime(e.target.value)}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
                     />
                   </div>
 
@@ -531,7 +529,7 @@ const PatientDashboardView: React.FC = () => {
                       onChange={e => setBookingReason(e.target.value)}
                       placeholder="مثلاً: فحص دوري، ألم في الأسنان..."
                       rows={3}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
                     />
                   </div>
                 </div>
@@ -546,7 +544,7 @@ const PatientDashboardView: React.FC = () => {
                   <button
                     onClick={handleBookAppointment}
                     disabled={bookingLoading || !bookingClinic || !bookingDate || !bookingTime}
-                    className="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {bookingLoading ? (
                       <i className="fa-solid fa-spinner fa-spin"></i>

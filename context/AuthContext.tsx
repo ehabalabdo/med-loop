@@ -45,15 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (identifier: string, password: string) => {
     // Get current client ID for multi-tenant filtering
     const clientId = getCurrentClientId();
-    console.log('[LOGIN DEBUG] identifier:', identifier, 'clientId:', clientId);
     
     // Try staff login first (search by name OR email)
     const allUsers = await pgUsers.getAll(clientId || undefined);
-    console.log('[LOGIN DEBUG] staff users found:', allUsers.length);
     const foundUser = allUsers.find(
       u => (u.name === identifier || u.email === identifier) && u.password === password
     );
-    console.log('[LOGIN DEBUG] staff match:', foundUser ? foundUser.name : 'none');
     
     if (foundUser) {
       if (!foundUser.isActive) {
@@ -73,7 +70,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // If not found in staff, try patient login
     const foundPatient = await pgPatients.findByLogin(identifier, password, clientId || undefined);
-    console.log('[LOGIN DEBUG] patient match:', foundPatient ? foundPatient.name : 'none');
     
     if (foundPatient) {
       // Save patient to localStorage
