@@ -61,7 +61,19 @@ const LoginView: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-slate-100 to-secondary/10 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300 relative p-2">
+    <div className="min-h-screen flex items-center justify-center relative p-2 overflow-hidden">
+      {/* Background Video */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover z-0"
+      >
+        <source src="/bg-video.mp4" type="video/mp4" />
+      </video>
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/70 z-[1]"></div>
       {/* زر اللغة والوضع الليلي في الزاوية */}
       <div className="absolute top-6 right-6 flex flex-col gap-2 z-20">
         <button
