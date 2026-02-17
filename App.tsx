@@ -141,13 +141,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
 // --- Helper to Determine Home Page ---
 const getHomeRoute = (user: User): string => {
-  if (user.role === UserRole.ADMIN) return "/admin";
-  if (user.role === UserRole.SECRETARY) return "/reception";
-  if (user.role === UserRole.DOCTOR) return "/doctor";
-  if (user.role === UserRole.LAB_TECH) return "/dental-lab";
-  if (user.role === UserRole.IMPLANT_MANAGER) return "/implant-company";
-  if (user.role === UserRole.COURSE_MANAGER) return "/academy";
-  return "/login";
+  const slug = localStorage.getItem('currentClientSlug');
+  const prefix = slug ? `/${slug}` : '';
+  if (user.role === UserRole.ADMIN) return `${prefix}/admin`;
+  if (user.role === UserRole.SECRETARY) return `${prefix}/reception`;
+  if (user.role === UserRole.DOCTOR) return `${prefix}/doctor`;
+  if (user.role === UserRole.LAB_TECH) return `${prefix}/dental-lab`;
+  if (user.role === UserRole.IMPLANT_MANAGER) return `${prefix}/implant-company`;
+  if (user.role === UserRole.COURSE_MANAGER) return `${prefix}/academy`;
+  return slug ? `/${slug}/login` : '/login';
+};
+
+// --- Slug Redirect: redirects bare /path to /{slug}/path ---
+const SlugRedirect: React.FC<{ path: string }> = ({ path }) => {
+  const slug = localStorage.getItem('currentClientSlug');
+  if (slug) {
+    return <RedirectHandler to={`/${slug}${path}`} />;
+  }
+  return <RedirectHandler to="/login" />;
 };
 
 // --- App Router ---
@@ -172,135 +183,20 @@ const AppRoutes: React.FC = () => {
         element={patientUser ? <PatientDashboardView /> : <RedirectHandler to="/patient/login" />} 
       />
 
-      {/* Admin Routes */}
-      <Route 
-        path="/admin" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
-            <AdminView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Secretary Routes */}
-      <Route 
-        path="/reception" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.SECRETARY]}>
-            <ReceptionView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Doctor Routes */}
-      <Route 
-        path="/doctor" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.DOCTOR]}>
-            <DoctorView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Shared: Patient Registry */}
-      <Route 
-        path="/patients" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY, UserRole.DOCTOR]}>
-            <PatientsRegistryView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Shared: Patient Profile */}
-      <Route 
-        path="/patients/:id" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY, UserRole.DOCTOR]}>
-            <PatientProfileView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* New: Appointments (Path 1) */}
-      <Route 
-        path="/appointments" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY, UserRole.DOCTOR]}>
-            <AppointmentsView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Dental Lab */}
-      <Route 
-        path="/dental-lab" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR, UserRole.LAB_TECH]}>
-            <DentalLabView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Implant Company */}
-      <Route 
-        path="/implant-company" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR, UserRole.IMPLANT_MANAGER]}>
-            <ImplantView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Beauty Academy - NEW - Added Secretary Access */}
-      <Route 
-        path="/academy" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.COURSE_MANAGER, UserRole.SECRETARY]}>
-            <CoursesView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Clinic History - Admin & Doctors */}
-      <Route 
-        path="/clinic-history" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.DOCTOR]}>
-            <ClinicHistoryView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Device Results - Admin & Receptionist */}
-      <Route 
-        path="/device-results" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY, UserRole.DOCTOR]}>
-            <DeviceResultsView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Device Management - Admin Only */}
-      <Route 
-        path="/device-management" 
-        element={
-          <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
-            <DeviceManagementView />
-          </ProtectedRoute>
-        } 
-      />
-
-      {/* Public Queue Display */}
-      <Route 
-        path="/queue-display" 
-        element={
-           <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.SECRETARY]}>
-             <QueueDisplayView />
-           </ProtectedRoute>
-        } 
-      />
+      {/* Legacy bare routes → redirect to slug versions */}
+      <Route path="/admin" element={<SlugRedirect path="/admin" />} />
+      <Route path="/reception" element={<SlugRedirect path="/reception" />} />
+      <Route path="/doctor" element={<SlugRedirect path="/doctor" />} />
+      <Route path="/patients/:id" element={<SlugRedirect path="/patients" />} />
+      <Route path="/patients" element={<SlugRedirect path="/patients" />} />
+      <Route path="/appointments" element={<SlugRedirect path="/appointments" />} />
+      <Route path="/dental-lab" element={<SlugRedirect path="/dental-lab" />} />
+      <Route path="/implant-company" element={<SlugRedirect path="/implant-company" />} />
+      <Route path="/academy" element={<SlugRedirect path="/academy" />} />
+      <Route path="/clinic-history" element={<SlugRedirect path="/clinic-history" />} />
+      <Route path="/device-results" element={<SlugRedirect path="/device-results" />} />
+      <Route path="/device-management" element={<SlugRedirect path="/device-management" />} />
+      <Route path="/queue-display" element={<SlugRedirect path="/queue-display" />} />
 
       {/* Root Redirect Logic */}
       <Route 

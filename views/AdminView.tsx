@@ -8,7 +8,7 @@ import { api } from '../src/api';
 import { Clinic, User, UserRole, Invoice, SystemSettings, ClinicCategory, ClientFeatures } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { useClient } from '../context/ClientContext';
+import { useClientSafe } from '../context/ClientContext';
 
 interface AdminViewProps {
     user?: User;
@@ -17,7 +17,9 @@ interface AdminViewProps {
 const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
     const { t, language } = useLanguage();
     const { user: authUser, simulateLogin } = useAuth();
-    const { client, refreshClient } = useClient();
+    const clientCtx = useClientSafe();
+    const client = clientCtx?.client || null;
+    const refreshClient = clientCtx?.refreshClient || (async () => {});
     const navigate = useNavigate();
     // Prefer propUser if provided, otherwise fallback to context
     const currentUser = propUser || authUser;

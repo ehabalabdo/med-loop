@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { ClinicService, PatientService, AppointmentService, NotificationService, BillingService, SettingsService, CourseService } from '../services/services';
 import { api } from '../src/api';
 import { useAuth } from '../context/AuthContext';
-import { useClient } from '../context/ClientContext';
+import { useClientSafe } from '../context/ClientContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Clinic, Patient, Gender, Priority, Appointment, Notification, Invoice } from '../types';
 import { jsPDF } from "jspdf";
@@ -14,7 +14,7 @@ interface ReceptionViewProps {
 }
 
 const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
-    const { client } = useClient();
+    const client = useClientSafe()?.client || null;
     const { user: authUser } = useAuth();
     const user = propUser || authUser;
     const { t, language } = useLanguage();
