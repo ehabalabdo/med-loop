@@ -65,7 +65,7 @@ const PatientDashboardView: React.FC = () => {
         const myApps = await pgAppointments.getByPatientId(patientUser.id);
         if (isMounted) {
           const upcomingApps = myApps.filter(a => 
-            (a.status === 'scheduled' || a.status === 'pending') && a.date >= Date.now()
+            (a.status === 'scheduled' || a.status === 'pending' || a.status === 'suggested') && (a.status === 'suggested' || a.date >= Date.now())
           );
           setAppointments(upcomingApps.sort((a, b) => a.date - b.date));
         }
@@ -136,6 +136,38 @@ const PatientDashboardView: React.FC = () => {
       alert('خطأ في الحجز: ' + (e.message || 'حدث خطأ غير متوقع'));
     } finally {
       setBookingLoading(false);
+    }
+  };
+
+  // Handle accepting a suggested alternative appointment
+  const handleAcceptSuggestion = async (app: Appointment) => {
+    if (!app.suggestedDate) return;
+    try {
+      // Update appointment: move suggested date to main date, set status to scheduled
+      await pgAppointments.update(app.id, { 
+        date: app.suggestedDate, 
+        status: 'scheduled' 
+      });
+      // Refresh appointments
+      if (patient) {
+        const myApps = await pgAppointments.getByPatientId(patient.id);
+        const upcomingApps = myApps.filter(a => 
+          (a.status === 'scheduled' || a.status === 'pending' || a.status === 'suggested') && (a.status === 'suggested' || a.date >= Date.now())
+        );
+        setAppointments(upcomingApps.sort((a, b) => a.date - b.date));
+      }
+    } catch (e: any) {
+      alert('خطأ: ' + (e.message || 'حدث خطأ'));
+    }
+  };
+
+  // Handle rejecting a suggested alternative appointment
+  const handleRejectSuggestion = async (appId: string) => {
+    try {
+      await pgAppointments.update(appId, { status: 'cancelled' });
+      setAppointments(prev => prev.filter(a => a.id !== appId));
+    } catch (e: any) {
+      alert('خطأ: ' + (e.message || 'حدث خطأ'));
     }
   };
 
@@ -415,28 +447,73 @@ const PatientDashboardView: React.FC = () => {
             </div>
             <div className="space-y-3">
               {appointments.map(app => (
-                <div key={app.id} className="flex items-center justify-between bg-primary/5 border border-primary/10 rounded-xl p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
-                      <i className="fa-solid fa-calendar-day text-xl"></i>
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-800">
-                        {new Date(app.date).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <div key={app.id} className={`rounded-xl p-4 border ${app.status === 'suggested' ? 'bg-blue-50/50 border-blue-200' : 'bg-primary/5 border-primary/10'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${app.status === 'suggested' ? 'bg-blue-100 text-blue-600' : 'bg-primary/10 text-primary'}`}>
+                        <i className={`text-xl ${app.status === 'suggested' ? 'fa-solid fa-calendar-plus' : 'fa-solid fa-calendar-day'}`}></i>
                       </div>
-                      <div className="text-sm text-slate-500 mt-0.5">
-                        <i className="fa-solid fa-clock ml-1"></i>
-                        {new Date(app.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                        {' — '}
-                        <i className="fa-solid fa-hospital ml-1"></i>
-                        {getClinicName(app.clinicId)}
+                      <div>
+                        {app.status === 'suggested' ? (
+                          <>
+                            <div className="text-xs text-red-500 line-through mb-1">
+                              الموعد الأصلي: {new Date(app.date).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} - {new Date(app.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div className="font-bold text-blue-800">
+                              <i className="fa-solid fa-arrow-left ml-1 text-xs"></i>
+                              الموعد المقترح: {app.suggestedDate ? new Date(app.suggestedDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}
+                            </div>
+                            <div className="text-sm text-blue-600 mt-0.5">
+                              <i className="fa-solid fa-clock ml-1"></i>
+                              {app.suggestedDate ? new Date(app.suggestedDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : ''}
+                              {' — '}
+                              <i className="fa-solid fa-hospital ml-1"></i>
+                              {getClinicName(app.clinicId)}
+                            </div>
+                            {app.suggestedNotes && <div className="text-xs text-blue-500 mt-1 bg-blue-50 p-2 rounded"><i className="fa-solid fa-message ml-1"></i> {app.suggestedNotes}</div>}
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-bold text-slate-800">
+                              {new Date(app.date).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </div>
+                            <div className="text-sm text-slate-500 mt-0.5">
+                              <i className="fa-solid fa-clock ml-1"></i>
+                              {new Date(app.date).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                              {' — '}
+                              <i className="fa-solid fa-hospital ml-1"></i>
+                              {getClinicName(app.clinicId)}
+                            </div>
+                            {app.reason && <div className="text-xs text-slate-400 mt-1">{app.reason}</div>}
+                          </>
+                        )}
                       </div>
-                      {app.reason && <div className="text-xs text-slate-400 mt-1">{app.reason}</div>}
                     </div>
+                    {app.status !== 'suggested' && (
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${app.status === 'pending' ? 'bg-amber-500 text-white' : 'bg-primary text-white'}`}>
+                        {app.status === 'pending' ? 'بانتظار التأكيد' : 'مؤكد'}
+                      </span>
+                    )}
                   </div>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${app.status === 'pending' ? 'bg-amber-500 text-white' : 'bg-primary text-white'}`}>
-                    {app.status === 'pending' ? 'بانتظار التأكيد' : 'مؤكد'}
-                  </span>
+                  {/* Accept/Reject buttons for suggested appointments */}
+                  {app.status === 'suggested' && (
+                    <div className="flex gap-2 mt-4 pt-3 border-t border-blue-200">
+                      <button 
+                        onClick={() => handleAcceptSuggestion(app)}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2"
+                      >
+                        <i className="fa-solid fa-check"></i>
+                        موافق على الموعد المقترح
+                      </button>
+                      <button 
+                        onClick={() => handleRejectSuggestion(app.id)}
+                        className="px-4 py-2.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                      >
+                        <i className="fa-solid fa-xmark"></i>
+                        رفض
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

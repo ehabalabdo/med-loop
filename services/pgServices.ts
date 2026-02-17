@@ -669,6 +669,8 @@ export const pgAppointments = {
       status: row.status,
       reason: row.reason || '',
       notes: '',
+      suggestedDate: row.suggested_date ? new Date(row.suggested_date).getTime() : undefined,
+      suggestedNotes: row.suggested_notes || undefined,
       createdAt: new Date(row.created_at || Date.now()).getTime(),
       createdBy: row.created_by || 'system',
       updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
@@ -690,6 +692,8 @@ export const pgAppointments = {
       status: row.status,
       reason: row.reason || '',
       notes: '',
+      suggestedDate: row.suggested_date ? new Date(row.suggested_date).getTime() : undefined,
+      suggestedNotes: row.suggested_notes || undefined,
       createdAt: new Date(row.created_at || Date.now()).getTime(),
       createdBy: row.created_by || 'system',
       updatedAt: new Date(row.updated_at || row.created_at || Date.now()).getTime(),
@@ -723,7 +727,7 @@ export const pgAppointments = {
     `;
   },
 
-  update: async (id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'|'status'>>): Promise<void> => {
+  update: async (id: string, data: Partial<Pick<Appointment, 'clinicId'|'doctorId'|'date'|'reason'|'status'|'suggestedDate'|'suggestedNotes'>>): Promise<void> => {
     const idInt = parseInt(id);
     await sql`UPDATE appointments SET updated_at = NOW() WHERE id = ${idInt}`;
     
@@ -744,6 +748,13 @@ export const pgAppointments = {
     }
     if (data.status !== undefined) {
       await sql`UPDATE appointments SET status = ${data.status} WHERE id = ${idInt}`;
+    }
+    if (data.suggestedDate !== undefined) {
+      const suggestedDateStr = new Date(data.suggestedDate).toISOString();
+      await sql`UPDATE appointments SET suggested_date = ${suggestedDateStr} WHERE id = ${idInt}`;
+    }
+    if (data.suggestedNotes !== undefined) {
+      await sql`UPDATE appointments SET suggested_notes = ${data.suggestedNotes} WHERE id = ${idInt}`;
     }
   },
 

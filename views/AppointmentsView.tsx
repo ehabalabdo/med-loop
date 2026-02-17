@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { ClinicService, PatientService, AppointmentService } from '../services/services';
-import { pgUsers } from '../services/pgServices';
+import { pgUsers, pgAppointments } from '../services/pgServices';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Appointment, Clinic, Patient, UserRole, User, Gender } from '../types';
@@ -31,6 +31,13 @@ const AppointmentsView: React.FC = () => {
   
   // Patient Mode: 'existing' or 'new'
   const [patientMode, setPatientMode] = useState<'existing' | 'new'>('existing');
+
+  // Suggest Alternative Modal State
+  const [isSuggestModalOpen, setIsSuggestModalOpen] = useState(false);
+  const [suggestingAppId, setSuggestingAppId] = useState<string | null>(null);
+  const [suggestDate, setSuggestDate] = useState('');
+  const [suggestTime, setSuggestTime] = useState('');
+  const [suggestNotes, setSuggestNotes] = useState('');
 
   const [formData, setFormData] = useState({
       // Appointment Info
@@ -82,9 +89,9 @@ const AppointmentsView: React.FC = () => {
 
   // -- FILTER LOGIC --
   const filteredAppointments = appointments.filter(app => {
-      if (activeTab === 'pending') return app.status === 'pending';
+      if (activeTab === 'pending') return app.status === 'pending' || app.status === 'suggested';
       if (activeTab === 'scheduled') return app.status === 'scheduled';
-      return app.status !== 'scheduled' && app.status !== 'pending';
+      return app.status !== 'scheduled' && app.status !== 'pending' && app.status !== 'suggested';
   });
 
   // -- FORM HANDLERS --
@@ -234,6 +241,34 @@ const AppointmentsView: React.FC = () => {
       }
   };
 
+  const openSuggestModal = (appId: string) => {
+      setSuggestingAppId(appId);
+      setSuggestDate('');
+      setSuggestTime('');
+      setSuggestNotes('');
+      setIsSuggestModalOpen(true);
+  };
+
+  const handleSuggestAlternative = async () => {
+      if (!user || !suggestingAppId || !suggestDate || !suggestTime) return;
+      const timestamp = new Date(`${suggestDate}T${suggestTime}`).getTime();
+      if (isNaN(timestamp)) { alert('تاريخ غير صالح'); return; }
+      
+      setAppointments(prev => prev.map(a => a.id === suggestingAppId ? { ...a, status: 'suggested' as any, suggestedDate: timestamp, suggestedNotes: suggestNotes } : a));
+      setIsSuggestModalOpen(false);
+      
+      try {
+          await pgAppointments.update(suggestingAppId, { 
+              status: 'suggested', 
+              suggestedDate: timestamp, 
+              suggestedNotes: suggestNotes || 'موعد مقترح من العيادة'
+          });
+      } catch (e: any) {
+          alert("Error: " + e.message);
+          fetchData();
+      }
+  };
+
   const handleDelete = async (appId: string) => {
       if (!user) return;
       if (!window.confirm(t('cancel_btn') + "?")) return; 
@@ -268,7 +303,7 @@ const AppointmentsView: React.FC = () => {
                     onClick={() => setActiveTab('pending')}
                     className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${activeTab === 'pending' ? 'bg-white shadow text-amber-700' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                    <i className="fa-solid fa-clock mr-1"></i> بانتظار التأكيد ({appointments.filter(a => a.status === 'pending').length})
+                    <i className="fa-solid fa-clock mr-1"></i> بانتظار التأكيد ({appointments.filter(a => a.status === 'pending' || a.status === 'suggested').length})
                 </button>
                 <button 
                     onClick={() => setActiveTab('scheduled')}
@@ -322,12 +357,14 @@ const AppointmentsView: React.FC = () => {
                                   {(activeTab === 'history' || activeTab === 'pending') && (
                                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase text-center ${
                                          app.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                         app.status === 'suggested' ? 'bg-blue-100 text-blue-700' :
                                          app.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
                                          app.status === 'checked-in' ? 'bg-green-100 text-green-700' :
                                          app.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                                          'bg-gray-100 text-gray-500'
                                      }`}>
                                          {app.status === 'pending' ? 'بانتظار التأكيد' :
+                                          app.status === 'suggested' ? 'تم اقتراح موعد بديل' :
                                           app.status === 'scheduled' ? t('status_scheduled') : 
                                           app.status === 'checked-in' ? t('status_checked_in') : 
                                           app.status === 'cancelled' ? t('cancel_btn') :
@@ -336,7 +373,7 @@ const AppointmentsView: React.FC = () => {
                                   )}
 
                                   {/* Action Buttons for PENDING */}
-                                  {user?.role !== UserRole.DOCTOR && activeTab === 'pending' && (
+                                  {user?.role !== UserRole.DOCTOR && activeTab === 'pending' && app.status === 'pending' && (
                                       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                                           <button 
                                             onClick={() => handleApprove(app.id)} 
@@ -346,12 +383,29 @@ const AppointmentsView: React.FC = () => {
                                               <span>تأكيد الموعد</span>
                                           </button>
                                           <button 
+                                            onClick={() => openSuggestModal(app.id)} 
+                                            className="bg-white border border-blue-200 text-blue-600 hover:border-blue-500 hover:bg-blue-50 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                                          >
+                                              <i className="fa-solid fa-calendar-plus"></i>
+                                              <span>اقتراح موعد آخر</span>
+                                          </button>
+                                          <button 
                                             onClick={() => handleReject(app.id)} 
                                             className="bg-white border border-gray-200 text-red-500 hover:border-red-500 hover:bg-red-50 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
                                           >
                                               <i className="fa-solid fa-xmark"></i>
                                               <span>رفض</span>
                                           </button>
+                                      </div>
+                                  )}
+
+                                  {/* Info for SUGGESTED status */}
+                                  {app.status === 'suggested' && app.suggestedDate && (
+                                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                                          <div className="text-blue-800 font-bold mb-1"><i className="fa-solid fa-calendar-check mr-1"></i> الموعد المقترح:</div>
+                                          <div className="text-blue-700">{new Date(app.suggestedDate).toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} - {new Date(app.suggestedDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</div>
+                                          {app.suggestedNotes && <div className="text-blue-600 text-xs mt-1">{app.suggestedNotes}</div>}
+                                          <div className="text-xs text-blue-500 mt-2"><i className="fa-solid fa-hourglass-half mr-1"></i> بانتظار موافقة المريض</div>
                                       </div>
                                   )}
 
@@ -597,6 +651,71 @@ const AppointmentsView: React.FC = () => {
                                 {isEditing ? t('save_changes') : t('schedule_btn')}
                             </button>
                         </form>
+                      </div>
+                  </div>
+              </div>
+          )}
+
+          {/* Suggest Alternative Modal */}
+          {isSuggestModalOpen && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setIsSuggestModalOpen(false)}>
+                  <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-fade-in" onClick={e => e.stopPropagation()}>
+                      <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white">
+                          <h3 className="font-bold text-lg flex items-center gap-2">
+                              <i className="fa-solid fa-calendar-plus"></i>
+                              اقتراح موعد بديل
+                          </h3>
+                          <p className="text-blue-100 text-sm mt-1">سيتم إرسال الموعد المقترح للمريض للموافقة عليه</p>
+                      </div>
+                      <div className="p-6 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">التاريخ المقترح</label>
+                                  <input 
+                                      type="date" 
+                                      className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                      value={suggestDate} 
+                                      onChange={e => setSuggestDate(e.target.value)} 
+                                      required 
+                                  />
+                              </div>
+                              <div>
+                                  <label className="block text-xs font-bold text-slate-500 uppercase mb-2">الوقت المقترح</label>
+                                  <input 
+                                      type="time" 
+                                      className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" 
+                                      value={suggestTime} 
+                                      onChange={e => setSuggestTime(e.target.value)} 
+                                      required 
+                                  />
+                              </div>
+                          </div>
+                          <div>
+                              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">ملاحظات (اختياري)</label>
+                              <textarea 
+                                  className="w-full p-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none" 
+                                  rows={3}
+                                  placeholder="مثلاً: الطبيب متاح في هذا الوقت فقط..."
+                                  value={suggestNotes} 
+                                  onChange={e => setSuggestNotes(e.target.value)} 
+                              />
+                          </div>
+                          <div className="flex gap-3 pt-2">
+                              <button 
+                                  onClick={handleSuggestAlternative}
+                                  disabled={!suggestDate || !suggestTime}
+                                  className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+                              >
+                                  <i className="fa-solid fa-paper-plane"></i>
+                                  إرسال الاقتراح
+                              </button>
+                              <button 
+                                  onClick={() => setIsSuggestModalOpen(false)}
+                                  className="px-6 py-3 border border-gray-200 text-slate-600 rounded-lg font-medium hover:bg-gray-50 transition-all"
+                              >
+                                  إلغاء
+                              </button>
+                          </div>
                       </div>
                   </div>
               </div>
