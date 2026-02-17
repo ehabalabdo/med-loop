@@ -73,10 +73,6 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const isImplantMgr = role === UserRole.IMPLANT_MANAGER;
   const isCourseMgr = role === UserRole.COURSE_MANAGER;
   
-  // DEBUG: Remove after fixing
-  console.log('[Layout] clientCtx:', clientCtx);
-  console.log('[Layout] features:', features);
-  console.log('[Layout] role:', role);
   
   // Clinical Views: Admin, Doctor, Secretary
   const showClinicalViews = !isLabTech && !isImplantMgr && !isCourseMgr; 

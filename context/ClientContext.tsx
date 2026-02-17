@@ -123,9 +123,19 @@ export const ClientProvider: React.FC<{ children: React.ReactNode; slug?: string
   );
 };
 
-export const useClient = () => {
+export const useClient = (): ClientContextType => {
   const context = useContext(ClientContext);
-  if (!context) throw new Error('useClient must be used within a ClientProvider');
+  if (!context) {
+    // Return safe defaults instead of crashing
+    return {
+      client: null,
+      loading: false,
+      error: null,
+      isExpired: false,
+      isReadOnly: false,
+      refreshClient: async () => {},
+    };
+  }
   return context;
 };
 
