@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Client } from '../types';
+import { Client, ClientFeatures } from '../types';
 import sql from '../services/db';
 
 interface ClientContextType {
@@ -51,7 +51,8 @@ async function fetchClientBySlug(slug: string): Promise<Client | null> {
       ownerUserId: row.owner_user_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      isActive: row.is_active
+      isActive: row.is_active,
+      enabledFeatures: row.enabled_features || { dental_lab: false, implant_company: false, academy: false, device_results: false }
     };
   } catch (err) {
     console.error('[ClientContext] Error fetching client:', err);

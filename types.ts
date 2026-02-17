@@ -4,6 +4,13 @@
 // =============================================
 export type ClientStatus = 'trial' | 'active' | 'expired' | 'suspended';
 
+export interface ClientFeatures {
+  dental_lab: boolean;
+  implant_company: boolean;
+  academy: boolean;
+  device_results: boolean;
+}
+
 export interface Client {
   id: number;
   name: string;
@@ -19,6 +26,7 @@ export interface Client {
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
+  enabledFeatures: ClientFeatures;
 }
 
 export interface SuperAdmin {

@@ -40,7 +40,8 @@ export const pgClientsService = {
       ownerUserId: row.owner_user_id,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      isActive: row.is_active
+      isActive: row.is_active,
+      enabledFeatures: row.enabled_features || { dental_lab: false, implant_company: false, academy: false, device_results: false }
     }));
   },
 
@@ -56,7 +57,8 @@ export const pgClientsService = {
       subscriptionEndsAt: row.subscription_ends_at,
       ownerUserId: row.owner_user_id,
       createdAt: row.created_at, updatedAt: row.updated_at,
-      isActive: row.is_active
+      isActive: row.is_active,
+      enabledFeatures: row.enabled_features || { dental_lab: false, implant_company: false, academy: false, device_results: false }
     };
   },
 
@@ -72,7 +74,8 @@ export const pgClientsService = {
       subscriptionEndsAt: row.subscription_ends_at,
       ownerUserId: row.owner_user_id,
       createdAt: row.created_at, updatedAt: row.updated_at,
-      isActive: row.is_active
+      isActive: row.is_active,
+      enabledFeatures: row.enabled_features || { dental_lab: false, implant_company: false, academy: false, device_results: false }
     };
   },
 
@@ -143,6 +146,11 @@ export const pgClientsService = {
   // Reactivate
   activate: async (clientId: number): Promise<void> => {
     await sql`UPDATE clients SET status = 'active', updated_at = NOW() WHERE id = ${clientId}`;
+  },
+
+  // Update enabled features
+  updateFeatures: async (clientId: number, features: Record<string, boolean>): Promise<void> => {
+    await sql`UPDATE clients SET enabled_features = ${JSON.stringify(features)}::jsonb, updated_at = NOW() WHERE id = ${clientId}`;
   },
 
   // Delete a client and all related data

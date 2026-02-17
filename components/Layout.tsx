@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useClient } from '../context/ClientContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { UserRole } from '../types';
@@ -13,6 +14,9 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   const { user, logout } = useAuth();
+  let clientCtx: any = null;
+  try { clientCtx = useClient(); } catch {}
+  const features = clientCtx?.client?.enabledFeatures || { dental_lab: false, implant_company: false, academy: false, device_results: false };
   const { language, toggleLanguage, t } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
   const location = useLocation();
@@ -64,11 +68,13 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
   // Clinical Views: Admin, Doctor, Secretary
   const showClinicalViews = !isLabTech && !isImplantMgr && !isCourseMgr; 
 
-  // Department Visibility
-  const showLabView = role === UserRole.ADMIN || role === UserRole.DOCTOR || role === UserRole.LAB_TECH;
-  const showImplantView = role === UserRole.ADMIN || role === UserRole.DOCTOR || role === UserRole.IMPLANT_MANAGER;
-  // UPDATE: Secretary can also see Academy now (View Schedule)
-  const showAcademyView = role === UserRole.ADMIN || role === UserRole.COURSE_MANAGER || role === UserRole.SECRETARY;
+  // Department Visibility — Admin always sees, others only if feature enabled
+  const showLabView = role === UserRole.ADMIN || role === UserRole.LAB_TECH || (features.dental_lab && role === UserRole.DOCTOR);
+  const showImplantView = role === UserRole.ADMIN || role === UserRole.IMPLANT_MANAGER || (features.implant_company && role === UserRole.DOCTOR);
+  const showAcademyView = role === UserRole.ADMIN || role === UserRole.COURSE_MANAGER || (features.academy && (role === UserRole.SECRETARY || role === UserRole.DOCTOR));
+
+  // Device results visibility — Admin always sees + management, others only if enabled
+  const showDeviceResults = role === UserRole.ADMIN || (features.device_results && (role === UserRole.SECRETARY || role === UserRole.DOCTOR));
 
   return (
     <div className="flex flex-col md:flex-row h-screen overflow-hidden">
@@ -101,7 +107,7 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                {role === UserRole.DOCTOR && <NavItem to="/doctor" icon="fa-solid fa-user-doctor" label={t('doctor_console')} />}
                <NavItem to="/appointments" icon="fa-regular fa-calendar-check" label={t('appointments_nav')} />
                <NavItem to="/patients" icon="fa-solid fa-users-viewfinder" label={t('patients_registry')} />
-               {(role === UserRole.ADMIN || role === UserRole.SECRETARY || role === UserRole.DOCTOR) && <NavItem to="/device-results" icon="fa-solid fa-microscope" label="نتائج الأجهزة" />}
+               {showDeviceResults && <NavItem to="/device-results" icon="fa-solid fa-microscope" label="نتائج الأجهزة" />}
                {role === UserRole.ADMIN && <NavItem to="/device-management" icon="fa-solid fa-microchip" label="إدارة الأجهزة" />}
                {(role === UserRole.ADMIN || role === UserRole.DOCTOR) && <NavItem to="/clinic-history" icon="fa-solid fa-chart-line" label={t('clinic_history_nav')} />}
              </>

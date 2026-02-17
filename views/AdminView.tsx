@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ClinicService, AuthService } from '../services/services';
-import { pgUsers } from '../services/pgServices';
+import { pgUsers, pgClientsService } from '../services/pgServices';
 import { api } from '../src/api';
-import { Clinic, User, UserRole, Invoice, SystemSettings, ClinicCategory } from '../types';
+import { Clinic, User, UserRole, Invoice, SystemSettings, ClinicCategory, ClientFeatures } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useClient } from '../context/ClientContext';
 
 interface AdminViewProps {
     user?: User;
@@ -15,8 +16,9 @@ interface AdminViewProps {
 
 const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
     const { t, language } = useLanguage();
-    const { user: authUser, simulateLogin } = useAuth(); // Use context for simulation
-    const navigate = useNavigate(); // Hook for navigation
+    const { user: authUser, simulateLogin } = useAuth();
+    const { client, refreshClient } = useClient();
+    const navigate = useNavigate();
     // Prefer propUser if provided, otherwise fallback to context
     const currentUser = propUser || authUser;
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -448,6 +450,51 @@ const AdminView: React.FC<AdminViewProps> = ({ user: propUser }) => {
                   </div>
                   <button type="submit" className="bg-primary text-white px-8 py-3 rounded-xl font-bold hover:bg-primary/90 shadow-lg">Save Settings</button>
               </form>
+          </div>
+
+          {/* Feature Toggles Section */}
+          <div className="bg-white rounded-[2rem] shadow-soft p-8 max-w-2xl mt-6 animate-fade-in-down">
+              <h2 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-3">
+                  <i className="fa-solid fa-toggle-on text-primary"></i> الأقسام والميزات
+              </h2>
+              <p className="text-slate-400 text-sm mb-6">فعّل الأقسام اللي بدك تظهر للموظفين والدكتور</p>
+              {[
+                { key: 'dental_lab' as keyof ClientFeatures, label: 'مختبر الأسنان', icon: 'fa-solid fa-tooth', desc: 'إدارة طلبات مختبر الأسنان' },
+                { key: 'implant_company' as keyof ClientFeatures, label: 'شركة الزراعات', icon: 'fa-solid fa-box-open', desc: 'إدارة طلبات الزراعات' },
+                { key: 'academy' as keyof ClientFeatures, label: 'الأكاديمية', icon: 'fa-solid fa-graduation-cap', desc: 'إدارة الدورات والتدريب' },
+                { key: 'device_results' as keyof ClientFeatures, label: 'نتائج الأجهزة', icon: 'fa-solid fa-microscope', desc: 'عرض نتائج الأجهزة الطبية للموظفين والمرضى' }
+              ].map(feature => {
+                const features = client?.enabledFeatures || { dental_lab: false, implant_company: false, academy: false, device_results: false };
+                const isOn = features[feature.key];
+                return (
+                  <div key={feature.key} className="flex items-center justify-between py-4 border-b border-slate-100 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isOn ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-400'}`}>
+                        <i className={feature.icon}></i>
+                      </div>
+                      <div>
+                        <p className={`font-bold text-sm ${isOn ? 'text-slate-800' : 'text-slate-400'}`}>{feature.label}</p>
+                        <p className="text-xs text-slate-400">{feature.desc}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!client) return;
+                        const updated = { ...features, [feature.key]: !isOn };
+                        try {
+                          await pgClientsService.updateFeatures(client.id, updated);
+                          await refreshClient();
+                        } catch (err: any) {
+                          alert('خطأ: ' + err.message);
+                        }
+                      }}
+                      className={`relative w-14 h-7 rounded-full transition-colors duration-300 ${isOn ? 'bg-primary' : 'bg-slate-200'}`}
+                    >
+                      <div className={`absolute top-0.5 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${isOn ? 'right-0.5' : 'left-0.5'}`}></div>
+                    </button>
+                  </div>
+                );
+              })}
           </div>
       ) : (
         <>
