@@ -23,6 +23,7 @@ import ClinicHistoryView from './views/ClinicHistoryView';
 import DeviceResultsView from './views/DeviceResultsView';
 import DeviceManagementView from './views/DeviceManagementView';
 import SuperAdminView from './views/SuperAdminView';
+import LandingView from './views/LandingView';
 import DevModeSwitcher from './components/DevModeSwitcher';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -200,12 +201,10 @@ const AppRoutes: React.FC = () => {
       <Route path="/device-management" element={<SlugRedirect path="/device-management" />} />
       <Route path="/queue-display" element={<SlugRedirect path="/queue-display" />} />
 
-      {/* Root Redirect Logic */}
+      {/* Root - Landing Page */}
       <Route 
         path="/" 
-        element={
-          user ? <RedirectHandler to={getHomeRoute(user)} /> : <SlugRedirect path="/login" />
-        } 
+        element={<LandingView />} 
       />
 
       {/* Slug-based routes: /:slug/login, /:slug/admin, etc. */}
