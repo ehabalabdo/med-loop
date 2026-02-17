@@ -301,7 +301,7 @@ const PatientDashboardView: React.FC = () => {
               </div>
               <div className="flex justify-between border-b border-gray-50 pb-3">
                 <span className="text-slate-500 text-sm">العمر</span>
-                <span className="font-medium text-slate-800">{patient.age} سنة</span>
+                <span className="font-medium text-slate-800">{patient.age} سنة{patient.dateOfBirth ? ` (مواليد ${patient.dateOfBirth})` : ''}</span>
               </div>
               <div className="flex justify-between border-b border-gray-50 pb-3">
                 <span className="text-slate-500 text-sm">الجنس</span>

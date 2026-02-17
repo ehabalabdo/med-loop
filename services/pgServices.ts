@@ -348,6 +348,20 @@ export const pgClinics = {
 
 // ==================== PATIENTS ====================
 
+// Helper: calculate age from date of birth
+function calculateAge(dateOfBirth: string | null | undefined): number {
+  if (!dateOfBirth) return 0;
+  const dob = new Date(dateOfBirth);
+  if (isNaN(dob.getTime())) return 0;
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
+}
+
 export const pgPatients = {
   getAll: async (clientId?: number): Promise<Patient[]> => {
     const cid = clientId || getCurrentClientId();
@@ -374,7 +388,8 @@ export const pgPatients = {
       return {
         id: String(row.id),
         name: row.full_name,
-        age: row.age || 0,
+        age: row.date_of_birth ? calculateAge(row.date_of_birth) : (row.age || 0),
+        dateOfBirth: row.date_of_birth || undefined,
         gender: (row.gender || 'male') as 'male' | 'female',
         phone: row.phone || '',
         username: row.username || undefined,
@@ -435,7 +450,8 @@ export const pgPatients = {
     let history = row.history;
     if (typeof history === 'string') { try { history = JSON.parse(history); } catch { history = []; } }
     return {
-      id: String(row.id), name: row.full_name, age: row.age || 0,
+      id: String(row.id), name: row.full_name, age: row.date_of_birth ? calculateAge(row.date_of_birth) : (row.age || 0),
+      dateOfBirth: row.date_of_birth || undefined,
       gender: (row.gender || 'male') as 'male' | 'female', phone: row.phone || '',
       username: row.username || undefined, email: row.email || undefined,
       password: row.password || undefined, hasAccess: row.has_access || false,
@@ -474,7 +490,8 @@ export const pgPatients = {
     return {
       id: String(row.id),
       name: row.full_name,
-      age: row.age || 0,
+      age: row.date_of_birth ? calculateAge(row.date_of_birth) : (row.age || 0),
+      dateOfBirth: row.date_of_birth || undefined,
       gender: (row.gender || 'male') as 'male' | 'female',
       phone: row.phone || '',
       username: row.username || undefined,
@@ -508,12 +525,13 @@ export const pgPatients = {
     
     const result = await sql`
       INSERT INTO patients (
-        full_name, age, gender, phone, username, email, password, has_access, 
+        full_name, age, date_of_birth, gender, phone, username, email, password, has_access, 
         notes, medical_profile, current_visit, history, client_id, created_at, updated_at, created_by, updated_by, is_archived
       ) 
       VALUES (
         ${patient.name}, 
-        ${patient.age || 0}, 
+        ${patient.dateOfBirth ? calculateAge(patient.dateOfBirth) : (patient.age || 0)}, 
+        ${patient.dateOfBirth || null},
         ${patient.gender || 'male'}, 
         ${patient.phone || ''}, 
         ${patient.username || null}, 
@@ -552,7 +570,9 @@ export const pgPatients = {
       if (data.name !== undefined) {
         await sql`UPDATE patients SET full_name = ${data.name} WHERE id = ${patientId}`;
       }
-      if (data.age !== undefined) {
+      if (data.dateOfBirth !== undefined) {
+        await sql`UPDATE patients SET date_of_birth = ${data.dateOfBirth}, age = ${calculateAge(data.dateOfBirth)} WHERE id = ${patientId}`;
+      } else if (data.age !== undefined) {
         await sql`UPDATE patients SET age = ${data.age} WHERE id = ${patientId}`;
       }
       if (data.gender !== undefined) {

@@ -56,6 +56,8 @@ const translations = {
     
     full_name: "Full Name",
     age: "Age",
+    date_of_birth: "Date of Birth",
+    years_old: "years old",
     phone: "Phone",
     gender: "Gender",
     male: "Male",
@@ -218,6 +220,8 @@ const translations = {
 
     full_name: "الاسم الكامل",
     age: "العمر",
+    date_of_birth: "تاريخ الميلاد",
+    years_old: "سنة",
     phone: "الهاتف",
     gender: "الجنس",
     male: "ذكر",

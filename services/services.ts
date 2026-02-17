@@ -299,7 +299,7 @@ export const PatientService = {
     }
   },
 
-  add: async (user: User, data: Pick<Patient, 'name'|'age'|'phone'|'gender'|'medicalProfile'|'currentVisit'|'username'|'email'|'password'>): Promise<string> => {
+  add: async (user: User, data: Pick<Patient, 'name'|'age'|'dateOfBirth'|'phone'|'gender'|'medicalProfile'|'currentVisit'|'username'|'email'|'password'>): Promise<string> => {
     if (USE_POSTGRES) {
       const patientId = await pgPatients.create({
         ...data,
@@ -324,7 +324,7 @@ export const PatientService = {
     }
   },
 
-  update: async (user: User, patientId: string, data: Partial<Pick<Patient, 'name'|'age'|'phone'|'gender'|'username'|'email'|'password'|'hasAccess'>>): Promise<void> => {
+  update: async (user: User, patientId: string, data: Partial<Pick<Patient, 'name'|'age'|'dateOfBirth'|'phone'|'gender'|'username'|'email'|'password'|'hasAccess'>>): Promise<void> => {
     if (USE_POSTGRES) {
       // Remove password from update if it's empty (keep existing password)
       const updateData = { ...data };

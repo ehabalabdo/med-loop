@@ -145,6 +145,7 @@ export interface Patient extends AuditMetadata {
   // Demographics
   name: string;
   age: number;
+  dateOfBirth?: string; // ISO date string YYYY-MM-DD
   gender: Gender;
   phone: string;
   

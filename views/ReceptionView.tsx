@@ -36,7 +36,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const [formData, setFormData] = useState({
-    name: '', age: '', phone: '', gender: 'male' as Gender,
+    name: '', dateOfBirth: '', phone: '', gender: 'male' as Gender,
     allergiesExists: false, allergiesDetail: '',
     chronicExists: false, chronicDetail: '',
     medsExists: false, medsDetail: '',
@@ -226,7 +226,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         try {
             await PatientService.add(user, {
                 name: formData.name,
-                age: parseInt(formData.age) || 0,
+                dateOfBirth: formData.dateOfBirth || undefined,
+                age: formData.dateOfBirth ? 0 : 0,
                 phone: formData.phone,
                 username: formData.phone, // رقم الهاتف هو username
                 email: undefined,
@@ -256,7 +257,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
             const patientPhone = formData.phone;
             const patientPassword = generatedPassword;
             
-            setFormData(prev => ({ ...prev, name: '', age: '', phone: '', reasonForVisit: '' }));
+            setFormData(prev => ({ ...prev, name: '', dateOfBirth: '', phone: '', reasonForVisit: '' }));
             setIsFormOpen(false);
             // No need to manually fetch - PatientService.subscribe will auto-update
             
@@ -570,7 +571,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                             <h3 className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-2 mb-2"><span className="w-1 h-4 bg-primary rounded-full"></span> {t('personal_info')}</h3>
                             <input type="text" placeholder={t('full_name')} className="input-modern" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
                             <div className="grid grid-cols-2 gap-4">
-                                 <input type="number" placeholder={t('age')} className="input-modern" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} required />
+                                 <input type="date" placeholder={t('date_of_birth')} className="input-modern" value={formData.dateOfBirth} onChange={e => setFormData({...formData, dateOfBirth: e.target.value})} required />
                                  <select className="input-modern" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as Gender})}><option value="male">{t('male')}</option><option value="female">{t('female')}</option></select>
                             </div>
                             <input type="tel" placeholder={t('phone')} className="input-modern" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required />

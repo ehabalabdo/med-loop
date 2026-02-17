@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS patients (
     -- Demographics
     name VARCHAR(255) NOT NULL,
     age INTEGER,
+    date_of_birth DATE,
     gender VARCHAR(10) CHECK (gender IN ('male', 'female')),
     phone VARCHAR(50),
     

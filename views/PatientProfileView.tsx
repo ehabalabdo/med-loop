@@ -29,6 +29,7 @@ const PatientProfileView: React.FC = () => {
   const [isEditingBasic, setIsEditingBasic] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAge, setEditAge] = useState(0);
+  const [editDateOfBirth, setEditDateOfBirth] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editUsername, setEditUsername] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -137,6 +138,7 @@ const PatientProfileView: React.FC = () => {
     if (!patient) return;
     setEditName(patient.name);
     setEditAge(patient.age);
+    setEditDateOfBirth(patient.dateOfBirth || '');
     setEditPhone(patient.phone);
     setEditUsername(patient.username || '');
     setEditEmail(patient.email || '');
@@ -155,6 +157,7 @@ const PatientProfileView: React.FC = () => {
     try {
       await PatientService.update(user, patient.id, {
         name: editName,
+        dateOfBirth: editDateOfBirth || undefined,
         age: editAge,
         phone: editPhone,
         username: editUsername || undefined,
@@ -248,7 +251,7 @@ const PatientProfileView: React.FC = () => {
                </div>
                
                <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-slate-500">
-                   <span className="flex items-center gap-1"><i className="fa-solid fa-cake-candles"></i> {patient.age} {t('years')}</span>
+                   <span className="flex items-center gap-1"><i className="fa-solid fa-cake-candles"></i> {patient.age} {t('years_old')}</span>
                    <span className="flex items-center gap-1"><i className="fa-solid fa-phone"></i> {patient.phone}</span>
                    <span className="flex items-center gap-1"><i className="fa-solid fa-hospital"></i> {getClinicName(patient.currentVisit.clinicId)}</span>
                </div>
@@ -298,8 +301,12 @@ const PatientProfileView: React.FC = () => {
                                    <span className="font-medium capitalize">{patient.gender}</span>
                                </div>
                                <div className="flex justify-between border-b border-gray-50 pb-2">
+                                   <span className="text-slate-500">{t('date_of_birth')}</span>
+                                   <span className="font-medium">{patient.dateOfBirth || '—'}</span>
+                               </div>
+                               <div className="flex justify-between border-b border-gray-50 pb-2">
                                    <span className="text-slate-500">{t('age')}</span>
-                                   <span className="font-medium">{patient.age}</span>
+                                   <span className="font-medium">{patient.age} {t('years_old')}</span>
                                </div>
                                <div className="flex justify-between border-b border-gray-50 pb-2">
                                    <span className="text-slate-500">{t('phone')}</span>
@@ -332,11 +339,11 @@ const PatientProfileView: React.FC = () => {
                                    />
                                </div>
                                <div>
-                                   <label className="block text-xs font-bold text-slate-600 mb-1">{t('age')}</label>
+                                   <label className="block text-xs font-bold text-slate-600 mb-1">{t('date_of_birth')}</label>
                                    <input
-                                       type="number"
-                                       value={editAge}
-                                       onChange={e => setEditAge(parseInt(e.target.value))}
+                                       type="date"
+                                       value={editDateOfBirth}
+                                       onChange={e => setEditDateOfBirth(e.target.value)}
                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
                                    />
                                </div>
