@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { HrMeProfile, HrMonthlyReport } from '../types';
-import { hrMeService, hrPinService, hrWebAuthnService, hrAttendanceService, hrReportsService } from '../services/hrApiServices';
+import { hrMeService, hrWebAuthnService, hrAttendanceService, hrReportsService } from '../services/hrApiServices';
 import { useLanguage } from '../context/LanguageContext';
 
 // ───────── helpers ─────────
@@ -34,15 +34,8 @@ const HrEmployeeMeView: React.FC = () => {
   const coordsRef = useRef<{ lat: number; lng: number } | null>(null);
   const curMonth = new Date().toISOString().slice(0, 7);
 
-  // PIN state
-  const [pin, setPin] = useState('');
-  const [newPin, setNewPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [showPinSetup, setShowPinSetup] = useState(false);
-  // Auth mode: 'bio' or 'pin'
-  const [authMode, setAuthMode] = useState<'bio' | 'pin'>('bio');
   // WebAuthn support detection
-  const [webAuthnSupported, setWebAuthnSupported] = useState<boolean | null>(null); // null = checking
+  const [webAuthnSupported, setWebAuthnSupported] = useState<boolean | null>(null);
 
   // ── Detect WebAuthn + platform authenticator on mount ──
   useEffect(() => {
@@ -60,11 +53,9 @@ const HrEmployeeMeView: React.FC = () => {
         const available = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
         console.log('[WebAuthn] Platform authenticator available:', available);
         setWebAuthnSupported(available);
-        if (!available) setAuthMode('pin');
       } catch (e) {
         console.warn('[WebAuthn] Detection error:', e);
         setWebAuthnSupported(false);
-        setAuthMode('pin');
       }
     })();
   }, []);
@@ -79,16 +70,12 @@ const HrEmployeeMeView: React.FC = () => {
       ]);
       setProfile(p);
       setMonthlyReport(r);
-      // Default auth mode based on what's available + browser support
-      if (p?.bioRegistered && webAuthnSupported) setAuthMode('bio');
-      else if (p?.pinSet) setAuthMode('pin');
-      else setAuthMode('pin');
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [curMonth, webAuthnSupported]);
+  }, [curMonth]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -104,7 +91,7 @@ const HrEmployeeMeView: React.FC = () => {
           setGpsStatus('ok');
           resolve(c);
         },
-        err => {
+        () => {
           setGpsStatus('err');
           reject(new Error(isAr ? 'فشل تحديد الموقع. يرجى تفعيل GPS' : 'Location unavailable. Enable GPS.'));
         },
@@ -139,83 +126,50 @@ const HrEmployeeMeView: React.FC = () => {
     }
   };
 
-  // ── WebAuthn Authentication (returns true/false) ──
-  const authenticateBio = async (): Promise<boolean> => {
+  // ── WebAuthn Authentication → returns bioToken from server ──
+  const authenticateBio = async (): Promise<string | null> => {
     try {
       const { startAuthentication } = await import('@simplewebauthn/browser');
       const options = await hrWebAuthnService.getAuthenticateOptions();
       const assertion = await startAuthentication(options);
       const result = await hrWebAuthnService.verifyAuthentication(assertion);
-      return result.verified;
+      if (result.verified && result.bioToken) {
+        return result.bioToken;
+      }
+      return null;
     } catch (e: any) {
       console.error('Bio auth failed:', e);
       if (e?.name === 'NotAllowedError') {
         setMsg({ text: isAr ? 'تم إلغاء عملية البصمة' : 'Biometric cancelled by user', type: 'err' });
       }
-      return false;
-    }
-  };
-
-  // ── Set PIN ──
-  const handleSetPin = async () => {
-    if (!newPin || newPin.length < 4) {
-      setMsg({ text: isAr ? 'الرمز يجب أن يكون 4 أرقام على الأقل' : 'PIN must be at least 4 digits', type: 'err' });
-      return;
-    }
-    if (newPin !== confirmPin) {
-      setMsg({ text: isAr ? 'الرمز غير متطابق' : 'PINs do not match', type: 'err' });
-      return;
-    }
-    setActionLoading(true);
-    setMsg(null);
-    try {
-      await hrPinService.setPin(newPin);
-      setMsg({ text: isAr ? 'تم حفظ رمز PIN بنجاح ✓' : 'PIN set successfully ✓', type: 'ok' });
-      setNewPin('');
-      setConfirmPin('');
-      setShowPinSetup(false);
-      refresh();
-    } catch (e: any) {
-      setMsg({ text: e?.message || (isAr ? 'خطأ في حفظ الرمز' : 'Failed to set PIN'), type: 'err' });
-    } finally {
-      setActionLoading(false);
+      return null;
     }
   };
 
   // ── Check In ──
   const handleCheckIn = async () => {
-    const effectiveMode = (authMode === 'bio' && webAuthnSupported) ? 'bio' : 'pin';
-    if (effectiveMode === 'pin' && (!pin || pin.length < 4)) {
-      setMsg({ text: isAr ? 'أدخل رمز PIN أولاً' : 'Enter your PIN first', type: 'err' });
-      return;
-    }
     setActionLoading(true);
     setMsg(null);
     try {
       // 1) GPS
       const coords = await getGps();
 
-      // 2) Biometric or PIN
-      let bio_verified = false;
-      if (effectiveMode === 'bio') {
-        const ok = await authenticateBio();
-        if (!ok) {
-          setMsg({ text: isAr ? 'فشل التحقق من البصمة' : 'Biometric verification failed', type: 'err' });
-          setActionLoading(false);
-          return;
-        }
-        bio_verified = true;
+      // 2) Biometric verification → get bioToken
+      const bioToken = await authenticateBio();
+      if (!bioToken) {
+        setMsg({ text: isAr ? 'فشل التحقق من البصمة' : 'Biometric verification failed', type: 'err' });
+        setActionLoading(false);
+        return;
       }
 
-      // 3) Send check-in
+      // 3) Send check-in with bioToken
       const result = await hrAttendanceService.checkIn({
         latitude: coords.lat,
         longitude: coords.lng,
-        ...(bio_verified ? { bio_verified: true } : { pin }),
+        bioToken,
         device_info: navigator.userAgent.slice(0, 120),
       });
       setMsg({ text: `${result.message} — ${result.clinicName}`, type: 'ok' });
-      setPin('');
       refresh();
     } catch (e: any) {
       setMsg({ text: e?.message || (isAr ? 'خطأ في تسجيل الحضور' : 'Check-in error'), type: 'err' });
@@ -226,38 +180,28 @@ const HrEmployeeMeView: React.FC = () => {
 
   // ── Check Out ──
   const handleCheckOut = async () => {
-    const effectiveMode = (authMode === 'bio' && webAuthnSupported) ? 'bio' : 'pin';
-    if (effectiveMode === 'pin' && (!pin || pin.length < 4)) {
-      setMsg({ text: isAr ? 'أدخل رمز PIN أولاً' : 'Enter your PIN first', type: 'err' });
-      return;
-    }
     setActionLoading(true);
     setMsg(null);
     try {
       const coords = await getGps();
 
-      let bio_verified = false;
-      if (effectiveMode === 'bio') {
-        const ok = await authenticateBio();
-        if (!ok) {
-          setMsg({ text: isAr ? 'فشل التحقق من البصمة' : 'Biometric verification failed', type: 'err' });
-          setActionLoading(false);
-          return;
-        }
-        bio_verified = true;
+      const bioToken = await authenticateBio();
+      if (!bioToken) {
+        setMsg({ text: isAr ? 'فشل التحقق من البصمة' : 'Biometric verification failed', type: 'err' });
+        setActionLoading(false);
+        return;
       }
 
       const result = await hrAttendanceService.checkOut({
         latitude: coords.lat,
         longitude: coords.lng,
-        ...(bio_verified ? { bio_verified: true } : { pin }),
+        bioToken,
         device_info: navigator.userAgent.slice(0, 120),
       });
       setMsg({
         text: `${result.message} — ${fmtMinutes(result.totalMinutes)} ${isAr ? 'عمل' : 'worked'}`,
         type: 'ok',
       });
-      setPin('');
       refresh();
     } catch (e: any) {
       setMsg({ text: e?.message || (isAr ? 'خطأ في تسجيل المغادرة' : 'Check-out error'), type: 'err' });
@@ -272,10 +216,8 @@ const HrEmployeeMeView: React.FC = () => {
   const checkedOut = !!today?.checkOut;
   const sched = profile?.schedule;
   const summary = monthlyReport?.summary;
-  const canUseBio = webAuthnSupported && profile?.bioRegistered;
-  const hasAnyAuth = canUseBio || profile?.pinSet;
 
-  if (loading) {
+  if (loading || webAuthnSupported === null) {
     return (
       <Layout title={isAr ? 'بوابة الموظف' : 'Employee Portal'}>
         <div className="p-12 text-center text-slate-400"><i className="fa-solid fa-circle-notch fa-spin text-3xl"></i></div>
@@ -287,6 +229,31 @@ const HrEmployeeMeView: React.FC = () => {
     return (
       <Layout title={isAr ? 'بوابة الموظف' : 'Employee Portal'}>
         <div className="p-12 text-center text-red-400 font-bold">{isAr ? 'فشل تحميل الملف الشخصي' : 'Failed to load profile'}</div>
+      </Layout>
+    );
+  }
+
+  // ── WebAuthn NOT supported ──
+  if (!webAuthnSupported) {
+    return (
+      <Layout title={isAr ? 'بوابة الموظف' : 'Employee Portal'}>
+        <div className="max-w-md mx-auto text-center py-16 px-6">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-100 flex items-center justify-center">
+            <i className="fa-solid fa-fingerprint text-red-400 text-4xl"></i>
+          </div>
+          <h2 className="text-xl font-extrabold text-slate-800 mb-3">
+            {isAr ? 'المتصفح لا يدعم البصمة' : 'Biometric Not Supported'}
+          </h2>
+          <p className="text-slate-500 mb-6 leading-relaxed">
+            {isAr
+              ? 'هذا المتصفح لا يدعم تسجيل الحضور بالبصمة. يرجى فتح الموقع من Chrome أو Safari مباشرة (مش من رابط واتساب أو فيسبوك).'
+              : 'This browser does not support biometric attendance. Please open the site directly from Chrome or Safari (not from WhatsApp or Facebook links).'}
+          </p>
+          <div className="bg-slate-50 rounded-2xl p-4 text-sm text-slate-500 space-y-2 text-start">
+            <p><i className="fa-brands fa-chrome text-emerald-500 me-2"></i> <strong>Android:</strong> {isAr ? 'افتح Chrome واكتب' : 'Open Chrome, type'} <span className="font-mono text-indigo-600">med.loopjo.com</span></p>
+            <p><i className="fa-brands fa-safari text-blue-500 me-2"></i> <strong>iPhone:</strong> {isAr ? 'افتح Safari واكتب' : 'Open Safari, type'} <span className="font-mono text-indigo-600">med.loopjo.com</span></p>
+          </div>
+        </div>
       </Layout>
     );
   }
@@ -340,26 +307,14 @@ const HrEmployeeMeView: React.FC = () => {
           </div>
 
           {/* ── BIOMETRIC SECTION ── */}
-          {webAuthnSupported === false && (
-            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-                <i className="fa-solid fa-fingerprint text-slate-400 text-lg"></i>
-              </div>
-              <div>
-                <p className="font-bold text-slate-500 text-sm">{isAr ? 'البصمة غير متاحة على هذا المتصفح' : 'Biometric not available on this browser'}</p>
-                <p className="text-xs text-slate-400">{isAr ? 'استخدم Chrome أو Safari من الموبايل مباشرة — أو استخدم PIN' : 'Use Chrome or Safari directly on mobile — or use PIN'}</p>
-              </div>
-            </div>
-          )}
-
-          {webAuthnSupported && !profile.bioRegistered && (
+          {!profile.bioRegistered && (
             <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-dashed border-indigo-300 p-6 text-center">
               <i className="fa-solid fa-fingerprint text-5xl text-indigo-500 mb-3"></i>
               <h3 className="text-lg font-extrabold text-indigo-800 mb-1">
-                {isAr ? 'سجّل بصمتك الآن' : 'Register Biometric'}
+                {isAr ? 'سجّل بصمتك الآن' : 'Register Your Biometric'}
               </h3>
               <p className="text-sm text-indigo-600 mb-4">
-                {isAr ? 'استخدم البصمة أو Face ID لتسجيل الحضور بسرعة' : 'Use fingerprint or Face ID for fast attendance'}
+                {isAr ? 'سجّل البصمة أو Face ID عشان تقدر تسجل حضور' : 'Register fingerprint or Face ID to enable attendance'}
               </p>
               <button
                 onClick={handleRegisterBiometric}
@@ -372,14 +327,14 @@ const HrEmployeeMeView: React.FC = () => {
             </div>
           )}
 
-          {webAuthnSupported && profile.bioRegistered && (
+          {profile.bioRegistered && (
             <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
                 <i className="fa-solid fa-fingerprint text-emerald-600 text-xl"></i>
               </div>
               <div className="flex-1">
                 <p className="font-bold text-emerald-700">{isAr ? 'البصمة مسجلة' : 'Biometric Registered'}</p>
-                <p className="text-xs text-emerald-500">{profile.bioCount} {isAr ? 'أجهزة مسجلة' : 'device(s) registered'}</p>
+                <p className="text-xs text-emerald-500">{profile.bioCount} {isAr ? 'جهاز مسجل' : 'device(s) registered'}</p>
               </div>
               <button
                 onClick={handleRegisterBiometric}
@@ -387,99 +342,6 @@ const HrEmployeeMeView: React.FC = () => {
                 className="text-sm text-emerald-600 hover:text-emerald-800 font-bold px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-colors"
               >
                 <i className="fa-solid fa-plus me-1"></i> {isAr ? 'إضافة جهاز' : 'Add Device'}
-              </button>
-            </div>
-          )}
-
-          {/* ── PIN SECTION ── */}
-          {!profile.pinSet && !showPinSetup && (
-            <div className={`rounded-2xl border-2 border-dashed p-5 text-center ${!webAuthnSupported ? 'bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-300' : 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300'}`}>
-              <i className={`fa-solid fa-lock text-4xl mb-2 ${!webAuthnSupported ? 'text-indigo-500' : 'text-amber-500'}`}></i>
-              <h3 className={`text-base font-extrabold mb-1 ${!webAuthnSupported ? 'text-indigo-800' : 'text-amber-800'}`}>
-                {!webAuthnSupported
-                  ? (isAr ? 'أنشئ رمز PIN للحضور' : 'Set PIN for Attendance')
-                  : (isAr ? 'أنشئ رمز PIN احتياطي' : 'Set Backup PIN')}
-              </h3>
-              <p className={`text-xs mb-3 ${!webAuthnSupported ? 'text-indigo-600' : 'text-amber-600'}`}>
-                {!webAuthnSupported
-                  ? (isAr ? 'PIN هو الطريقة الوحيدة المتاحة على هذا المتصفح' : 'PIN is the only auth method available on this browser')
-                  : (isAr ? 'استخدم PIN كبديل عن البصمة' : 'Use PIN as an alternative to biometric')}
-              </p>
-              <button
-                onClick={() => setShowPinSetup(true)}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2.5 rounded-2xl font-extrabold text-sm transition-colors shadow-lg shadow-amber-200"
-              >
-                <i className="fa-solid fa-key me-2"></i>
-                {isAr ? 'إنشاء رمز PIN' : 'Create PIN'}
-              </button>
-            </div>
-          )}
-
-          {showPinSetup && (
-            <div className="bg-white rounded-2xl shadow-soft border border-indigo-200 p-6">
-              <h3 className="font-extrabold text-slate-700 mb-4">
-                <i className="fa-solid fa-key text-indigo-500 me-2"></i>
-                {isAr ? (profile.pinSet ? 'تغيير رمز PIN' : 'إنشاء رمز PIN') : (profile.pinSet ? 'Change PIN' : 'Create PIN Code')}
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">{isAr ? 'رمز PIN (4-6 أرقام)' : 'PIN (4-6 digits)'}</label>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={newPin}
-                    onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}
-                    placeholder="• • • •"
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-center text-2xl tracking-[0.5em] font-mono focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">{isAr ? 'تأكيد الرمز' : 'Confirm PIN'}</label>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={confirmPin}
-                    onChange={e => setConfirmPin(e.target.value.replace(/\D/g, ''))}
-                    placeholder="• • • •"
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-center text-2xl tracking-[0.5em] font-mono focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={handleSetPin}
-                    disabled={actionLoading}
-                    className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-3 rounded-xl font-extrabold text-sm transition-colors disabled:opacity-50"
-                  >
-                    {actionLoading ? <i className="fa-solid fa-circle-notch fa-spin me-2"></i> : <i className="fa-solid fa-check me-2"></i>}
-                    {isAr ? 'حفظ' : 'Save'}
-                  </button>
-                  <button
-                    onClick={() => { setShowPinSetup(false); setNewPin(''); setConfirmPin(''); }}
-                    className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm transition-colors"
-                  >
-                    {isAr ? 'إلغاء' : 'Cancel'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {profile.pinSet && !showPinSetup && (
-            <div className="bg-amber-50 rounded-2xl border border-amber-200 p-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
-                <i className="fa-solid fa-lock text-amber-600 text-xl"></i>
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-amber-700">{isAr ? 'رمز PIN مفعّل' : 'PIN Code Active'}</p>
-                <p className="text-xs text-amber-500">{isAr ? 'بديل عن البصمة' : 'Alternative to biometric'}</p>
-              </div>
-              <button
-                onClick={() => setShowPinSetup(true)}
-                className="text-sm text-amber-600 hover:text-amber-800 font-bold px-3 py-1.5 rounded-xl hover:bg-amber-100 transition-colors"
-              >
-                <i className="fa-solid fa-pen me-1"></i> {isAr ? 'تغيير' : 'Change'}
               </button>
             </div>
           )}
@@ -493,58 +355,22 @@ const HrEmployeeMeView: React.FC = () => {
               {gpsStatus === 'err' && <span className="text-xs text-red-500"><i className="fa-solid fa-location-crosshairs"></i> GPS Error</span>}
             </div>
 
-            {/* Auth Mode Toggle — show only if BOTH bio and pin are available AND this browser supports WebAuthn */}
-            {canUseBio && profile.pinSet && !checkedOut && (
-              <div className="flex rounded-xl bg-slate-100 p-1 mb-4">
-                <button
-                  onClick={() => { setAuthMode('bio'); setPin(''); }}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${authMode === 'bio' ? 'bg-white shadow text-indigo-700' : 'text-slate-400'}`}
-                >
-                  <i className="fa-solid fa-fingerprint me-1.5"></i> {isAr ? 'بصمة' : 'Biometric'}
-                </button>
-                <button
-                  onClick={() => setAuthMode('pin')}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${authMode === 'pin' ? 'bg-white shadow text-amber-700' : 'text-slate-400'}`}
-                >
-                  <i className="fa-solid fa-lock me-1.5"></i> PIN
-                </button>
-              </div>
-            )}
-
-            {/* PIN Input — show if pin mode, or if WebAuthn not supported and pin is set */}
-            {(authMode === 'pin' || !webAuthnSupported) && profile.pinSet && !checkedOut && (
-              <div className="mb-4">
-                <label className="text-xs font-bold text-slate-400 mb-1.5 block">
-                  <i className="fa-solid fa-lock me-1"></i> {isAr ? 'رمز PIN' : 'Enter PIN'}
-                </label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={pin}
-                  onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="• • • •"
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-center text-2xl tracking-[0.5em] font-mono focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none"
-                />
-              </div>
-            )}
-
-            {/* Biometric info label when bio mode */}
-            {authMode === 'bio' && canUseBio && !checkedOut && (
-              <div className="mb-4 p-3 bg-indigo-50 rounded-xl text-center">
-                <p className="text-sm text-indigo-600 font-bold">
+            {/* Must register biometric first */}
+            {!profile.bioRegistered && (
+              <div className="mb-4 p-4 bg-amber-50 rounded-xl text-center border border-amber-200">
+                <p className="text-sm text-amber-700 font-bold">
                   <i className="fa-solid fa-fingerprint me-1"></i>
-                  {isAr ? 'سيُطلب منك البصمة عند الضغط' : 'Biometric will be prompted on tap'}
+                  {isAr ? 'سجّل بصمتك أولاً عشان تقدر تسجل حضور' : 'Register your biometric first to check in'}
                 </p>
               </div>
             )}
 
-            {/* No auth setup warning */}
-            {!hasAnyAuth && (
-              <div className="mb-4 p-4 bg-red-50 rounded-xl text-center border border-red-200">
-                <p className="text-sm text-red-600 font-bold">
-                  <i className="fa-solid fa-triangle-exclamation me-1"></i>
-                  {isAr ? (webAuthnSupported ? 'سجّل البصمة أو أنشئ رمز PIN أولاً' : 'أنشئ رمز PIN أولاً') : (webAuthnSupported ? 'Register biometric or set PIN first' : 'Set a PIN first')}
+            {/* Biometric info when registered */}
+            {profile.bioRegistered && !checkedOut && (
+              <div className="mb-4 p-3 bg-indigo-50 rounded-xl text-center">
+                <p className="text-sm text-indigo-600 font-bold">
+                  <i className="fa-solid fa-fingerprint me-1"></i>
+                  {isAr ? 'سيُطلب منك البصمة عند الضغط' : 'You will be prompted for biometric on tap'}
                 </p>
               </div>
             )}
@@ -553,9 +379,9 @@ const HrEmployeeMeView: React.FC = () => {
               {/* Check In */}
               <button
                 onClick={handleCheckIn}
-                disabled={actionLoading || checkedIn || !hasAnyAuth}
+                disabled={actionLoading || checkedIn || !profile.bioRegistered}
                 className={`p-6 rounded-2xl font-extrabold text-lg transition-all flex flex-col items-center gap-2 ${
-                  checkedIn || !hasAnyAuth
+                  checkedIn || !profile.bioRegistered
                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     : 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-200 active:scale-95'
                 }`}
@@ -563,7 +389,7 @@ const HrEmployeeMeView: React.FC = () => {
                 {actionLoading ? (
                   <i className="fa-solid fa-circle-notch fa-spin text-3xl"></i>
                 ) : (
-                  <i className={`fa-solid fa-right-to-bracket text-3xl ${checkedIn || !hasAnyAuth ? '' : 'animate-pulse'}`}></i>
+                  <i className={`fa-solid fa-right-to-bracket text-3xl ${checkedIn || !profile.bioRegistered ? '' : 'animate-pulse'}`}></i>
                 )}
                 {checkedIn ? (
                   <span className="text-sm">{isAr ? 'تم الدخول' : 'Checked In'} ✓</span>
@@ -698,15 +524,8 @@ const HrEmployeeMeView: React.FC = () => {
           {/* Quick Info */}
           <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-2 text-xs text-slate-500">
             <p><i className="fa-solid fa-location-dot text-emerald-400 me-1"></i> {isAr ? 'يجب تفعيل GPS لتسجيل الحضور' : 'GPS must be enabled for attendance'}</p>
-            {canUseBio && (
-              <p><i className="fa-solid fa-fingerprint text-indigo-400 me-1"></i> {isAr ? 'البصمة مسجلة — يمكنك استخدامها للحضور' : 'Biometric registered — use it for attendance'}</p>
-            )}
-            {profile.pinSet && (
-              <p><i className="fa-solid fa-lock text-amber-400 me-1"></i> {isAr ? 'رمز PIN متاح' : 'PIN available'}</p>
-            )}
-            {!canUseBio && !profile.pinSet && (
-              <p><i className="fa-solid fa-triangle-exclamation text-red-400 me-1"></i> {isAr ? 'أنشئ رمز PIN للبدء' : 'Set a PIN to start'}</p>
-            )}
+            <p><i className="fa-solid fa-fingerprint text-indigo-400 me-1"></i> {isAr ? 'البصمة مطلوبة للتحقق من هويتك' : 'Biometric required to verify your identity'}</p>
+            <p><i className="fa-solid fa-shield-halved text-emerald-400 me-1"></i> {isAr ? 'البيانات مشفرة ومحمية' : 'Data is encrypted and secure'}</p>
           </div>
         </div>
       </div>

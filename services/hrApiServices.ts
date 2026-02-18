@@ -144,14 +144,6 @@ export const hrMeService = {
   },
 };
 
-// ==================== PIN CODE ====================
-
-export const hrPinService = {
-  setPin: async (pin: string): Promise<{ success: boolean; message: string }> => {
-    return await api.post('/hr/me/set-pin', { pin });
-  },
-};
-
 // ==================== WEBAUTHN ====================
 
 export const hrWebAuthnService = {
@@ -167,7 +159,7 @@ export const hrWebAuthnService = {
     return await api.post('/hr/webauthn/authenticate/options', {});
   },
 
-  verifyAuthentication: async (body: any): Promise<{ verified: boolean }> => {
+  verifyAuthentication: async (body: any): Promise<{ verified: boolean; bioToken: string }> => {
     return await api.post('/hr/webauthn/authenticate/verify', body);
   },
 };
@@ -178,8 +170,7 @@ export const hrAttendanceService = {
   checkIn: async (data: {
     latitude: number;
     longitude: number;
-    pin?: string;
-    bio_verified?: boolean;
+    bioToken: string;
     device_info?: string;
   }): Promise<{ message: string; time: string; clinicName: string }> => {
     return await api.post('/hr/attendance/check-in', data);
@@ -188,8 +179,7 @@ export const hrAttendanceService = {
   checkOut: async (data: {
     latitude: number;
     longitude: number;
-    pin?: string;
-    bio_verified?: boolean;
+    bioToken: string;
     device_info?: string;
   }): Promise<{
     message: string;
