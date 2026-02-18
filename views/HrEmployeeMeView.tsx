@@ -143,13 +143,13 @@ const HrEmployeeMeView: React.FC = () => {
   };
 
   // ── WebAuthn Authentication → returns bioToken from server ──
-  // If no passkey on this device, auto-register then retry
-  const authenticateBio = async (autoRetry = true): Promise<string | null> => {
+  const authenticateBio = async (): Promise<string | null> => {
     try {
       const { startAuthentication } = await import('@simplewebauthn/browser');
       console.log('[Bio Auth] Getting authenticate options...');
       const options = await hrWebAuthnService.getAuthenticateOptions();
       console.log('[Bio Auth] Got options, allowCredentials:', (options as any).allowCredentials?.length);
+      console.log('[Bio Auth] Credential IDs:', (options as any).allowCredentials?.map((c: any) => c.id?.slice(0, 20)));
       const assertion = await startAuthentication(options);
       console.log('[Bio Auth] startAuthentication done, verifying...');
       const result = await hrWebAuthnService.verifyAuthentication(assertion);
@@ -157,51 +157,50 @@ const HrEmployeeMeView: React.FC = () => {
       if (result.verified && result.bioToken) {
         return result.bioToken;
       }
-      setMsg({ text: isAr ? 'فشل التحقق من البصمة (سيرفر)' : 'Biometric verify failed (server)', type: 'err' });
+      setMsg({ text: isAr ? 'فشل التحقق من البصمة' : 'Biometric verify failed', type: 'err' });
       return null;
     } catch (e: any) {
       console.error('Bio auth failed:', e);
-
-      // If no passkey found on this device → auto-register then retry
-      const isNoPasskey = e?.name === 'NotAllowedError' ||
-        (e?.message || '').toLowerCase().includes('no credentials') ||
-        (e?.message || '').toLowerCase().includes('not allowed') ||
-        (e?.message || '').toLowerCase().includes('no passkey') ||
-        (e?.message || '').toLowerCase().includes('abort');
-
-      if (isNoPasskey && autoRetry) {
-        console.log('[Bio Auth] No passkey on this device, auto-registering...');
-        setMsg({ text: isAr ? 'جاري تسجيل البصمة على هالجهاز...' : 'Registering biometric on this device...', type: 'ok' });
-
-        try {
-          const { startRegistration } = await import('@simplewebauthn/browser');
-          const regOptions = await hrWebAuthnService.getRegisterOptions();
-          const attResp = await startRegistration(regOptions);
-          const regResult = await hrWebAuthnService.verifyRegistration(attResp);
-
-          if (regResult.verified) {
-            localStorage.setItem('hr_bio_device', 'yes');
-            setDeviceRegistered(true);
-            setMsg({ text: isAr ? 'تم تسجيل البصمة ✓ جاري التحقق...' : 'Biometric registered ✓ Verifying...', type: 'ok' });
-            // Now retry authentication (no more auto-retry to prevent infinite loop)
-            return await authenticateBio(false);
-          }
-        } catch (regErr: any) {
-          console.error('Auto-register failed:', regErr);
-          setMsg({
-            text: isAr
-              ? 'البصمة مش مسجلة على هالجهاز. اضغط "تسجيل البصمة" أولاً'
-              : 'No biometric on this device. Tap "Register Biometric" first',
-            type: 'err',
-          });
-          return null;
-        }
+      if (e?.name === 'NotAllowedError') {
+        // No matching passkey on device — need to reset and re-register
+        setShowResetFlow(true);
+        setMsg({
+          text: isAr
+            ? 'لا توجد بصمة مطابقة على هذا الجهاز. اتبع خطوات إعادة التعيين ↓'
+            : 'No matching biometric on this device. Follow reset steps below ↓',
+          type: 'err',
+        });
+      } else {
+        setMsg({ text: e?.message || (isAr ? 'خطأ في البصمة' : 'Biometric error'), type: 'err' });
       }
-
-      const errMsg = e?.message || e?.error || (isAr ? 'خطأ في البصمة' : 'Biometric error');
-      setMsg({ text: errMsg, type: 'err' });
       return null;
     }
+  };
+
+  // ── Reset Biometric (clear server + instructions) ──
+  const [showResetFlow, setShowResetFlow] = useState(false);
+  const [resetStep, setResetStep] = useState(0); // 0=intro, 1=deleted from server, 2=ready to register
+
+  const handleResetBiometric = async () => {
+    setActionLoading(true);
+    try {
+      await hrWebAuthnService.resetAll();
+      localStorage.removeItem('hr_bio_device');
+      setDeviceRegistered(false);
+      setResetStep(1);
+      setMsg({ text: isAr ? 'تم مسح البصمات من السيرفر ✓' : 'Server biometrics cleared ✓', type: 'ok' });
+      refresh();
+    } catch (e: any) {
+      setMsg({ text: e?.message || 'Reset error', type: 'err' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAfterDeviceCleared = () => {
+    setResetStep(2);
+    setShowResetFlow(false);
+    setMsg({ text: isAr ? 'الحين سجّل بصمة جديدة ↓' : 'Now register a new biometric ↓', type: 'ok' });
   };
 
   // ── Check In ──
@@ -410,7 +409,7 @@ const HrEmployeeMeView: React.FC = () => {
           )}
 
           {/* Case 3: This device is registered */}
-          {profile.bioRegistered && deviceRegistered && (
+          {profile.bioRegistered && deviceRegistered && !showResetFlow && (
             <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
                 <i className="fa-solid fa-fingerprint text-emerald-600 text-xl"></i>
@@ -419,6 +418,68 @@ const HrEmployeeMeView: React.FC = () => {
                 <p className="font-bold text-emerald-700">{isAr ? 'البصمة مسجلة ✓' : 'Biometric Ready ✓'}</p>
                 <p className="text-xs text-emerald-500">{isAr ? 'جاهز لتسجيل الحضور' : 'Ready for attendance'}</p>
               </div>
+            </div>
+          )}
+
+          {/* ── RESET BIOMETRIC FLOW ── */}
+          {showResetFlow && (
+            <div className="bg-red-50 rounded-2xl border-2 border-red-300 p-6 space-y-4">
+              <div className="text-center">
+                <i className="fa-solid fa-triangle-exclamation text-4xl text-red-400 mb-2"></i>
+                <h3 className="text-lg font-extrabold text-red-700">
+                  {isAr ? 'إعادة تعيين البصمة' : 'Reset Biometric'}
+                </h3>
+                <p className="text-sm text-red-600 mt-1">
+                  {isAr
+                    ? 'البصمات القديمة على الجهاز ما تطابق السيرفر. لازم نمسح ونسجل من جديد.'
+                    : 'Old passkeys on device don\'t match server. Need to clear and re-register.'}
+                </p>
+              </div>
+
+              {resetStep === 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-bold text-red-700">
+                    {isAr ? 'الخطوة 1: مسح البصمات من السيرفر' : 'Step 1: Clear biometrics from server'}
+                  </p>
+                  <button
+                    onClick={handleResetBiometric}
+                    disabled={actionLoading}
+                    className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50"
+                  >
+                    {actionLoading ? <i className="fa-solid fa-circle-notch fa-spin me-2"></i> : <i className="fa-solid fa-trash me-2"></i>}
+                    {isAr ? 'مسح البصمات من السيرفر' : 'Clear Server Biometrics'}
+                  </button>
+                </div>
+              )}
+
+              {resetStep === 1 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-bold text-red-700">
+                    {isAr ? 'الخطوة 2: امسح الباسكيز من الجهاز' : 'Step 2: Delete passkeys from device'}
+                  </p>
+                  <div className="bg-white rounded-xl p-4 space-y-3 text-sm">
+                    <p className="font-bold text-slate-700">
+                      <i className="fa-brands fa-apple me-1"></i> {isAr ? 'آيفون:' : 'iPhone:'}
+                    </p>
+                    <p className="text-slate-500 ps-4">
+                      Settings → Passwords → {isAr ? 'ابحث' : 'Search'} "loopjo" → {isAr ? 'امسح' : 'Delete'} <strong>{isAr ? 'كل' : 'ALL'}</strong> {isAr ? 'النتائج' : 'results'}
+                    </p>
+                    <p className="font-bold text-slate-700">
+                      <i className="fa-brands fa-android me-1"></i> {isAr ? 'أندرويد:' : 'Android:'}
+                    </p>
+                    <p className="text-slate-500 ps-4">
+                      Settings → Google → Password Manager → {isAr ? 'ابحث' : 'Search'} "loopjo" → {isAr ? 'امسح' : 'Delete'} <strong>{isAr ? 'كل' : 'ALL'}</strong>
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleAfterDeviceCleared}
+                    className="w-full bg-indigo-500 hover:bg-indigo-600 text-white py-3 rounded-xl font-bold text-sm"
+                  >
+                    <i className="fa-solid fa-check me-2"></i>
+                    {isAr ? 'تم المسح من الجهاز — سجل بصمة جديدة' : 'Done — Register New Biometric'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

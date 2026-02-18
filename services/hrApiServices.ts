@@ -179,6 +179,10 @@ export const hrWebAuthnService = {
   verifyAuthentication: async (body: any): Promise<{ verified: boolean; bioToken: string }> => {
     return await api.post('/hr/webauthn/authenticate/verify', body);
   },
+
+  resetAll: async (): Promise<{ cleared: number }> => {
+    return await api.del('/hr/webauthn/reset');
+  },
 };
 
 // ==================== ATTENDANCE ====================
