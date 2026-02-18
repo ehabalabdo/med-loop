@@ -144,6 +144,23 @@ export const hrMeService = {
   },
 };
 
+// ==================== DEBUG ====================
+
+export const hrDebugService = {
+  getWebAuthnDiag: async (): Promise<{
+    NODE_ENV: string;
+    rpID: string;
+    expectedOrigin: string;
+    rpName: string;
+    yourEmployeeId: number | null;
+    savedCredentials: number;
+    pendingChallenges: { type: string; cnt: string }[];
+    serverTime: string;
+  }> => {
+    return await api.get('/hr/webauthn/debug');
+  },
+};
+
 // ==================== WEBAUTHN ====================
 
 export const hrWebAuthnService = {

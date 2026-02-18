@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { HrMeProfile, HrMonthlyReport } from '../types';
-import { hrMeService, hrWebAuthnService, hrAttendanceService, hrReportsService } from '../services/hrApiServices';
+import { hrMeService, hrWebAuthnService, hrAttendanceService, hrReportsService, hrDebugService } from '../services/hrApiServices';
 import { useLanguage } from '../context/LanguageContext';
 
 // ───────── helpers ─────────
@@ -36,6 +36,8 @@ const HrEmployeeMeView: React.FC = () => {
 
   // WebAuthn support detection
   const [webAuthnSupported, setWebAuthnSupported] = useState<boolean | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   // ── Detect WebAuthn + platform authenticator on mount ──
   useEffect(() => {
@@ -536,6 +538,33 @@ const HrEmployeeMeView: React.FC = () => {
             <p><i className="fa-solid fa-shield-halved text-emerald-400 me-1"></i> {isAr ? 'البيانات مشفرة ومحمية' : 'Data is encrypted and secure'}</p>
           </div>
         </div>
+      </div>
+
+      {/* ── DEBUG PANEL (collapsible) ── */}
+      <div className="mt-6">
+        <button
+          onClick={async () => {
+            if (!showDebug) {
+              try {
+                const d = await hrDebugService.getWebAuthnDiag();
+                setDebugInfo(d);
+              } catch (e: any) {
+                setDebugInfo({ error: e?.message || 'Failed to load debug info' });
+              }
+            }
+            setShowDebug(!showDebug);
+          }}
+          className="text-xs text-slate-400 hover:text-slate-600 font-mono underline"
+        >
+          {showDebug ? 'Hide Debug Info' : 'Show Debug Info'}
+        </button>
+        {showDebug && debugInfo && (
+          <div className="mt-2 bg-slate-900 text-green-400 rounded-xl p-4 font-mono text-xs overflow-x-auto whitespace-pre-wrap">
+            {JSON.stringify(debugInfo, null, 2)}
+            {'\n\n'}
+            {`-- Client Side --\nUserAgent: ${navigator.userAgent}\nOrigin: ${window.location.origin}\nHostname: ${window.location.hostname}`}
+          </div>
+        )}
       </div>
     </Layout>
   );
