@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { useClientSafe } from '../context/ClientContext';
+import { hrAuthService } from '../services/hrApiServices';
 
 const LoginView: React.FC = () => {
   const { login } = useAuth();
@@ -19,12 +20,24 @@ const LoginView: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginMode, setLoginMode] = useState<'staff' | 'hr'>('staff');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
     try {
+      if (loginMode === 'hr') {
+        // HR Employee Login
+        const result = await hrAuthService.login(identifier, password, client?.id || 0);
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('hrEmployee', JSON.stringify(result.employee));
+        localStorage.removeItem('user');
+        localStorage.removeItem('patientUser');
+        navigate(slug ? `/${slug}/hr/me` : '/hr/me', { replace: true });
+        return;
+      }
+
       await login(identifier, password);
       // Login successful - redirect based on user type
       // localStorage is already set synchronously by login() before it returns
@@ -95,6 +108,32 @@ const LoginView: React.FC = () => {
           <h1 className="text-2xl font-bold text-white mb-1">{client?.name || 'Medloop'}</h1>
           <p className="text-slate-400 text-sm">{t('sign_in_subtitle')}</p>
         </div>
+        {/* Login Mode Toggle */}
+        <div className="flex rounded-xl overflow-hidden border border-slate-700 mb-4">
+          <button
+            type="button"
+            onClick={() => { setLoginMode('staff'); setError(''); }}
+            className={`flex-1 py-2.5 text-xs font-bold transition-all ${
+              loginMode === 'staff'
+                ? 'bg-primary text-white'
+                : 'bg-slate-800/50 text-slate-400 hover:text-white'
+            }`}
+          >
+            <i className="fa-solid fa-shield-halved me-1"></i> تسجيل دخول النظام
+          </button>
+          <button
+            type="button"
+            onClick={() => { setLoginMode('hr'); setError(''); }}
+            className={`flex-1 py-2.5 text-xs font-bold transition-all ${
+              loginMode === 'hr'
+                ? 'bg-indigo-500 text-white'
+                : 'bg-slate-800/50 text-slate-400 hover:text-white'
+            }`}
+          >
+            <i className="fa-solid fa-id-badge me-1"></i> بوابة الموظفين
+          </button>
+        </div>
+
         <form onSubmit={handleSubmit} className="w-full space-y-5">
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1">الاسم / البريد الإلكتروني / اسم المستخدم</label>

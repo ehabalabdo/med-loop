@@ -28,7 +28,7 @@ import HrEmployeesView from './views/HrEmployeesView';
 import HrAttendanceView from './views/HrAttendanceView';
 import HrReportsView from './views/HrReportsView';
 import HrEmployeeMeView from './views/HrEmployeeMeView';
-import HrLoginView from './views/HrLoginView';
+// HrLoginView removed — HR login integrated into main LoginView
 import DevModeSwitcher from './components/DevModeSwitcher';
 import ErrorBoundary from './components/ErrorBoundary';
 
@@ -150,10 +150,10 @@ const HrEmployeeGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const pathParts = window.location.pathname.split('/').filter(Boolean);
   const slug = pathParts[0] || '';
   const hrData = localStorage.getItem('hrEmployee');
-  if (!hrData) return <RedirectHandler to={`/${slug}/hr/login`} />;
+  if (!hrData) return <RedirectHandler to={`/${slug}/login`} />;
   try {
     const parsed = JSON.parse(hrData);
-    if (!parsed.id) return <RedirectHandler to={`/${slug}/hr/login`} />;
+    if (!parsed.id) return <RedirectHandler to={`/${slug}/login`} />;
   } catch {
     return <RedirectHandler to={`/${slug}/hr/login`} />;
   }
@@ -286,8 +286,7 @@ const ClientSlugRoutes: React.FC = () => {
           <Route path="/hr/attendance" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><HrAttendanceView /></ProtectedRoute>} />
           <Route path="/hr/reports" element={<ProtectedRoute allowedRoles={[UserRole.ADMIN]}><HrReportsView /></ProtectedRoute>} />
           
-          {/* HR Employee Portal (separate auth) */}
-          <Route path="/hr/login" element={<HrLoginView />} />
+          {/* HR Employee Portal */}
           <Route path="/hr/me" element={<HrEmployeeGuard><HrEmployeeMeView /></HrEmployeeGuard>} />
           
           <Route path="/patient/login" element={patientUser ? <RedirectHandler to={`/${slug}/patient/dashboard`} /> : <PatientLoginView />} />

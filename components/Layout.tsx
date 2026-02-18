@@ -129,6 +129,16 @@ const Layout: React.FC<LayoutProps> = ({ children, title }) => {
                    {showAcademyView && <NavItem to="/academy" icon="fa-solid fa-graduation-cap" label="Beauty Academy" />}
                </>
            )}
+
+           {/* HR Section (Admin Only) */}
+           {role === UserRole.ADMIN && (
+               <>
+                   <div className="px-4 pb-2 mt-6 text-xs font-bold uppercase text-slate-600 tracking-wider">HR</div>
+                   <NavItem to="/hr/employees" icon="fa-solid fa-id-badge" label={language === 'ar' ? 'إدارة الموظفين' : 'HR Employees'} />
+                   <NavItem to="/hr/attendance" icon="fa-solid fa-fingerprint" label={language === 'ar' ? 'سجل الحضور' : 'Attendance'} />
+                   <NavItem to="/hr/reports" icon="fa-solid fa-chart-column" label={language === 'ar' ? 'تقارير HR' : 'HR Reports'} />
+               </>
+           )}
            
            <div className="my-6 border-t border-white/10 mx-4"></div>
            
