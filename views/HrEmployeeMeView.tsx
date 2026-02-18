@@ -38,6 +38,14 @@ const HrEmployeeMeView: React.FC = () => {
   const [webAuthnSupported, setWebAuthnSupported] = useState<boolean | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [showDebug, setShowDebug] = useState(false);
+  // Per-device registration tracking
+  const [deviceRegistered, setDeviceRegistered] = useState<boolean>(false);
+
+  // Check if THIS device has registered
+  useEffect(() => {
+    const flag = localStorage.getItem('hr_bio_device');
+    setDeviceRegistered(flag === 'yes');
+  }, []);
 
   // ── Detect WebAuthn + platform authenticator on mount ──
   useEffect(() => {
@@ -116,6 +124,8 @@ const HrEmployeeMeView: React.FC = () => {
       const result = await hrWebAuthnService.verifyRegistration(attResp);
       console.log('[Bio] Verify result:', result);
       if (result.verified) {
+        localStorage.setItem('hr_bio_device', 'yes');
+        setDeviceRegistered(true);
         setMsg({ text: isAr ? 'تم تسجيل البصمة بنجاح ✓' : 'Biometric registered successfully ✓', type: 'ok' });
         refresh();
       } else {
@@ -317,6 +327,7 @@ const HrEmployeeMeView: React.FC = () => {
           </div>
 
           {/* ── BIOMETRIC SECTION ── */}
+          {/* Case 1: No biometric on server at all */}
           {!profile.bioRegistered && (
             <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border-2 border-dashed border-indigo-300 p-6 text-center">
               <i className="fa-solid fa-fingerprint text-5xl text-indigo-500 mb-3"></i>
@@ -337,22 +348,39 @@ const HrEmployeeMeView: React.FC = () => {
             </div>
           )}
 
-          {profile.bioRegistered && (
+          {/* Case 2: Biometric exists on server BUT this device not registered */}
+          {profile.bioRegistered && !deviceRegistered && (
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border-2 border-dashed border-amber-400 p-6 text-center">
+              <i className="fa-solid fa-mobile-screen text-5xl text-amber-500 mb-3"></i>
+              <h3 className="text-lg font-extrabold text-amber-800 mb-1">
+                {isAr ? 'سجّل البصمة على هذا الجهاز' : 'Register Biometric on THIS Device'}
+              </h3>
+              <p className="text-sm text-amber-700 mb-4">
+                {isAr
+                  ? 'البصمة مسجلة على جهاز ثاني. لازم تسجّل على هالموبايل كمان عشان تقدر تسجل حضور منه.'
+                  : 'Biometric is registered on another device. You need to register on THIS phone too.'}
+              </p>
+              <button
+                onClick={handleRegisterBiometric}
+                disabled={actionLoading}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-8 py-3 rounded-2xl font-extrabold text-sm transition-colors shadow-lg shadow-amber-200 disabled:opacity-50"
+              >
+                {actionLoading ? <i className="fa-solid fa-circle-notch fa-spin me-2"></i> : <i className="fa-solid fa-fingerprint me-2"></i>}
+                {isAr ? 'تسجيل البصمة على هالجهاز' : 'Register on This Device'}
+              </button>
+            </div>
+          )}
+
+          {/* Case 3: This device is registered */}
+          {profile.bioRegistered && deviceRegistered && (
             <div className="bg-emerald-50 rounded-2xl border border-emerald-200 p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
                 <i className="fa-solid fa-fingerprint text-emerald-600 text-xl"></i>
               </div>
               <div className="flex-1">
-                <p className="font-bold text-emerald-700">{isAr ? 'البصمة مسجلة' : 'Biometric Registered'}</p>
-                <p className="text-xs text-emerald-500">{profile.bioCount} {isAr ? 'جهاز مسجل' : 'device(s) registered'}</p>
+                <p className="font-bold text-emerald-700">{isAr ? 'البصمة مسجلة ✓' : 'Biometric Ready ✓'}</p>
+                <p className="text-xs text-emerald-500">{isAr ? 'جاهز لتسجيل الحضور' : 'Ready for attendance'}</p>
               </div>
-              <button
-                onClick={handleRegisterBiometric}
-                disabled={actionLoading}
-                className="text-sm text-emerald-600 hover:text-emerald-800 font-bold px-3 py-1.5 rounded-xl hover:bg-emerald-100 transition-colors"
-              >
-                <i className="fa-solid fa-plus me-1"></i> {isAr ? 'إضافة جهاز' : 'Add Device'}
-              </button>
             </div>
           )}
 
@@ -366,17 +394,17 @@ const HrEmployeeMeView: React.FC = () => {
             </div>
 
             {/* Must register biometric first */}
-            {!profile.bioRegistered && (
+            {(!profile.bioRegistered || !deviceRegistered) && (
               <div className="mb-4 p-4 bg-amber-50 rounded-xl text-center border border-amber-200">
                 <p className="text-sm text-amber-700 font-bold">
                   <i className="fa-solid fa-fingerprint me-1"></i>
-                  {isAr ? 'سجّل بصمتك أولاً عشان تقدر تسجل حضور' : 'Register your biometric first to check in'}
+                  {isAr ? 'سجّل بصمتك على هالجهاز أولاً ↑' : 'Register biometric on this device first ↑'}
                 </p>
               </div>
             )}
 
             {/* Biometric info when registered */}
-            {profile.bioRegistered && !checkedOut && (
+            {deviceRegistered && !checkedOut && (
               <div className="mb-4 p-3 bg-indigo-50 rounded-xl text-center">
                 <p className="text-sm text-indigo-600 font-bold">
                   <i className="fa-solid fa-fingerprint me-1"></i>
@@ -389,9 +417,9 @@ const HrEmployeeMeView: React.FC = () => {
               {/* Check In */}
               <button
                 onClick={handleCheckIn}
-                disabled={actionLoading || checkedIn || !profile.bioRegistered}
+                disabled={actionLoading || checkedIn || !deviceRegistered}
                 className={`p-6 rounded-2xl font-extrabold text-lg transition-all flex flex-col items-center gap-2 ${
-                  checkedIn || !profile.bioRegistered
+                  checkedIn || !deviceRegistered
                     ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                     : 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 shadow-lg shadow-emerald-200 active:scale-95'
                 }`}
@@ -399,7 +427,7 @@ const HrEmployeeMeView: React.FC = () => {
                 {actionLoading ? (
                   <i className="fa-solid fa-circle-notch fa-spin text-3xl"></i>
                 ) : (
-                  <i className={`fa-solid fa-right-to-bracket text-3xl ${checkedIn || !profile.bioRegistered ? '' : 'animate-pulse'}`}></i>
+                  <i className={`fa-solid fa-right-to-bracket text-3xl ${checkedIn || !deviceRegistered ? '' : 'animate-pulse'}`}></i>
                 )}
                 {checkedIn ? (
                   <span className="text-sm">{isAr ? 'تم الدخول' : 'Checked In'} ✓</span>
