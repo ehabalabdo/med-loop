@@ -327,7 +327,7 @@ export const hrPayrollService = {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Download failed' }));
-      throw new Error(err.error || 'Download failed');
+      throw new Error(err.detail || err.error || 'Download failed');
     }
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
