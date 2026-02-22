@@ -118,8 +118,10 @@ const HrPayrollView: React.FC = () => {
     if (!selectedPayslip) return;
     setActionLoading(true);
     try {
-      const updated = await hrPayrollService.updatePayslip(selectedPayslip.id, editData);
-      setSelectedPayslip(updated);
+      await hrPayrollService.updatePayslip(selectedPayslip.id, editData);
+      // Re-fetch full payslip to get complete data
+      const fresh = await hrPayrollService.getPayslip(selectedPayslip.id);
+      setSelectedPayslip(fresh);
       setEditMode(false);
       setMsg({ text: isAr ? 'تم حفظ التعديلات' : 'Changes saved', type: 'ok' });
       fetchRun();
@@ -134,8 +136,9 @@ const HrPayrollView: React.FC = () => {
     if (!selectedPayslip) return;
     setActionLoading(true);
     try {
-      const updated = await hrPayrollService.approvePayslip(selectedPayslip.id);
-      setSelectedPayslip(updated);
+      await hrPayrollService.approvePayslip(selectedPayslip.id);
+      const fresh = await hrPayrollService.getPayslip(selectedPayslip.id);
+      setSelectedPayslip(fresh);
       setMsg({ text: isAr ? 'تم اعتماد القسيمة' : 'Payslip approved', type: 'ok' });
       fetchRun();
     } catch (e: any) {
@@ -149,8 +152,9 @@ const HrPayrollView: React.FC = () => {
     if (!selectedPayslip) return;
     setActionLoading(true);
     try {
-      const updated = await hrPayrollService.rejectPayslip(selectedPayslip.id, rejectReason);
-      setSelectedPayslip(updated);
+      await hrPayrollService.rejectPayslip(selectedPayslip.id, rejectReason);
+      const fresh = await hrPayrollService.getPayslip(selectedPayslip.id);
+      setSelectedPayslip(fresh);
       setShowRejectModal(false);
       setRejectReason('');
       setMsg({ text: isAr ? 'تم رفض القسيمة' : 'Payslip rejected', type: 'ok' });
