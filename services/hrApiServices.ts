@@ -288,7 +288,7 @@ export const hrSocialSecurityService = {
 
 export const hrPayrollService = {
   generate: async (month: string): Promise<HrPayrollRun> => {
-    return await api.post(`/hr/payroll/generate?month=${month}`, {});
+    return await api.post(`/hr/payroll/generate`, { month });
   },
 
   getRun: async (month: string): Promise<HrPayrollRun & { payslips: HrPayslip[] }> => {
@@ -317,7 +317,7 @@ export const hrPayrollService = {
   },
 
   closeMonth: async (month: string): Promise<HrPayrollRun> => {
-    return await api.post(`/hr/payroll/close?month=${month}`, {});
+    return await api.post(`/hr/payroll/close-month`, { month });
   },
 
   downloadPdf: (id: number): string => {

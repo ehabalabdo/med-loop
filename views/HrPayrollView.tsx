@@ -59,7 +59,7 @@ const HrPayrollView: React.FC = () => {
   const fetchRun = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await hrPayrollService.getRun(`${month}-01`);
+      const data = await hrPayrollService.getRun(month);
       setRun(data);
     } catch {
       setRun(null);
@@ -74,7 +74,7 @@ const HrPayrollView: React.FC = () => {
     setGenerating(true);
     setMsg(null);
     try {
-      await hrPayrollService.generate(`${month}-01`);
+      await hrPayrollService.generate(month);
       setMsg({ text: isAr ? 'تم إنشاء مسودة الرواتب بنجاح' : 'Draft payroll generated successfully', type: 'ok' });
       fetchRun();
     } catch (e: any) {
@@ -88,7 +88,7 @@ const HrPayrollView: React.FC = () => {
     if (!confirm(isAr ? 'هل أنت متأكد من إغلاق الشهر؟ لا يمكن التراجع.' : 'Are you sure you want to close this month? This cannot be undone.')) return;
     setClosing(true);
     try {
-      await hrPayrollService.closeMonth(`${month}-01`);
+      await hrPayrollService.closeMonth(month);
       setMsg({ text: isAr ? 'تم إغلاق الشهر بنجاح' : 'Month closed successfully', type: 'ok' });
       fetchRun();
     } catch (e: any) {
