@@ -5,9 +5,12 @@ import { ClinicService, PatientService, AppointmentService, SettingsService } fr
 import { api } from '../src/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Patient, VisitData, Appointment, Gender, Priority, PrescriptionItem, Attachment, InvoiceItem } from '../types';
+import { Patient, VisitData, Appointment, Gender, Priority, PrescriptionItem, Attachment, InvoiceItem, VitalSigns, LabOrder, ImagingOrder } from '../types';
 import { jsPDF } from "jspdf";
 import DeviceResultsTimeline from '../components/DeviceResultsTimeline';
+
+// ===================== SOAP TAB TYPES =====================
+type SoapTab = 'chief' | 'history' | 'exam' | 'assessment' | 'plan' | 'billing' | 'devices';
 
 const DoctorView: React.FC = () => {
   const { user } = useAuth();
@@ -19,7 +22,33 @@ const DoctorView: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // EMR Form State
+  // ======= SOAP FORM STATE =======
+  // 1. Chief Complaint
+  const [chiefComplaint, setChiefComplaint] = useState('');
+
+  // 2. History
+  const [presentIllness, setPresentIllness] = useState('');
+  const [pastMedicalHistory, setPastMedicalHistory] = useState('');
+  const [surgicalHistory, setSurgicalHistory] = useState('');
+  const [currentMedications, setCurrentMedications] = useState('');
+  const [allergiesText, setAllergiesText] = useState('');
+  const [familyHistory, setFamilyHistory] = useState('');
+  const [socialHistory, setSocialHistory] = useState('');
+
+  // 3. Examination
+  const [generalExamination, setGeneralExamination] = useState('');
+  const [systemicExamination, setSystemicExamination] = useState('');
+  const [vitalSigns, setVitalSigns] = useState<VitalSigns>({});
+
+  // 4. Assessment
+  const [preliminaryDiagnosis, setPreliminaryDiagnosis] = useState('');
+  const [differentialDiagnosis, setDifferentialDiagnosis] = useState('');
+
+  // 5. Plan — Lab Orders & Imaging
+  const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
+  const [imagingOrders, setImagingOrders] = useState<ImagingOrder[]>([]);
+
+  // Legacy fields (kept for backward compat)
   const [diagnosis, setDiagnosis] = useState('');
   const [notes, setNotes] = useState('');
   const [prescriptions, setPrescriptions] = useState<PrescriptionItem[]>([]);
@@ -32,9 +61,18 @@ const DoctorView: React.FC = () => {
   // Prescription Input State
   const [newRx, setNewRx] = useState({ name: '', dose: '', freq: '', dur: '' });
 
-  // Mobile Tabs Logic
+  // Lab & Imaging Input State
+  const [newLab, setNewLab] = useState({ testName: '', notes: '' });
+  const [newImaging, setNewImaging] = useState({ imagingType: 'X-ray' as ImagingOrder['imagingType'], bodyPart: '', notes: '' });
+
+  // UI State
   const [mobileTab, setMobileTab] = useState<'queue' | 'emr'>('queue');
+  const [activeTab, setActiveTab] = useState<SoapTab>('chief');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const labFileInputRef = useRef<HTMLInputElement>(null);
+  const imagingFileInputRef = useRef<HTMLInputElement>(null);
+  const [attachingLabId, setAttachingLabId] = useState<string | null>(null);
+  const [attachingImagingId, setAttachingImagingId] = useState<string | null>(null);
   
   // Track previous count for doctor notifications
   const prevWaitingCountRef = useRef(0);
@@ -143,19 +181,38 @@ const DoctorView: React.FC = () => {
 
   useEffect(() => {
     if (selectedPatient) {
-        // Load data from DB
-        setDiagnosis(selectedPatient.currentVisit.diagnosis || '');
-        setNotes(selectedPatient.currentVisit.doctorNotes || '');
-        setPrescriptions(selectedPatient.currentVisit.prescriptions || []);
-        setAttachments(selectedPatient.currentVisit.attachments || []);
+        const v = selectedPatient.currentVisit;
+        // SOAP fields
+        setChiefComplaint(v.chiefComplaint || '');
+        setPresentIllness(v.presentIllness || '');
+        setPastMedicalHistory(v.pastMedicalHistory || '');
+        setSurgicalHistory(v.surgicalHistory || '');
+        setCurrentMedications(v.currentMedications || '');
+        setAllergiesText(v.allergies || '');
+        setFamilyHistory(v.familyHistory || '');
+        setSocialHistory(v.socialHistory || '');
+        setGeneralExamination(v.generalExamination || '');
+        setSystemicExamination(v.systemicExamination || '');
+        setVitalSigns(v.vitalSigns || {});
+        setPreliminaryDiagnosis(v.preliminaryDiagnosis || '');
+        setDifferentialDiagnosis(v.differentialDiagnosis || '');
+        setLabOrders(v.labOrders || []);
+        setImagingOrders(v.imagingOrders || []);
+
+        // Legacy
+        setDiagnosis(v.diagnosis || '');
+        setNotes(v.doctorNotes || '');
+        setPrescriptions(v.prescriptions || []);
+        setAttachments(v.attachments || []);
         
         // Initialize billing with a default consultation if empty
-        if (!selectedPatient.currentVisit.invoiceItems || selectedPatient.currentVisit.invoiceItems.length === 0) {
+        if (!v.invoiceItems || v.invoiceItems.length === 0) {
             setInvoiceItems([{ id: Date.now().toString(), description: 'Consultation', price: 50 }]);
         } else {
-            setInvoiceItems(selectedPatient.currentVisit.invoiceItems);
+            setInvoiceItems(v.invoiceItems);
         }
         
+        setActiveTab('chief');
         if (window.innerWidth < 1024) setMobileTab('emr');
     }
   }, [selectedPatient?.id]); // Only re-run when a different patient is selected
@@ -177,7 +234,28 @@ const DoctorView: React.FC = () => {
         
         // استدعاء API - هذا رح يحدث database
         await PatientService.updateStatus(user, selectedPatient, status, {
-            diagnosis, doctorNotes: notes, prescriptions, attachments, invoiceItems
+            // SOAP data
+            chiefComplaint,
+            presentIllness,
+            pastMedicalHistory,
+            surgicalHistory,
+            currentMedications,
+            allergies: allergiesText,
+            familyHistory,
+            socialHistory,
+            generalExamination,
+            systemicExamination,
+            vitalSigns,
+            preliminaryDiagnosis,
+            differentialDiagnosis,
+            labOrders,
+            imagingOrders,
+            // Legacy + Billing
+            diagnosis: preliminaryDiagnosis || diagnosis,
+            doctorNotes: notes,
+            prescriptions,
+            attachments,
+            invoiceItems
         });
         
         // CRITICAL: Force immediate refresh from database
@@ -188,7 +266,7 @@ const DoctorView: React.FC = () => {
         if(status === 'completed') {
             setSelectedPatient(null);
             setMobileTab('queue');
-            setDiagnosis(''); setNotes(''); setPrescriptions([]); setAttachments([]); setInvoiceItems([]);
+            resetForm();
         } else if (status === 'in-progress') {
             setSelectedPatient({
                 ...selectedPatient,
@@ -338,11 +416,85 @@ const DoctorView: React.FC = () => {
       }
   };
 
+  // ===================== RESET FORM =====================
+  const resetForm = () => {
+    setChiefComplaint(''); setPresentIllness(''); setPastMedicalHistory('');
+    setSurgicalHistory(''); setCurrentMedications(''); setAllergiesText('');
+    setFamilyHistory(''); setSocialHistory(''); setGeneralExamination('');
+    setSystemicExamination(''); setVitalSigns({}); setPreliminaryDiagnosis('');
+    setDifferentialDiagnosis(''); setLabOrders([]); setImagingOrders([]);
+    setDiagnosis(''); setNotes(''); setPrescriptions([]); setAttachments([]); setInvoiceItems([]);
+  };
+
+  // ===================== LAB ORDERS =====================
+  const addLabOrder = () => {
+    if (!newLab.testName) return;
+    setLabOrders([...labOrders, {
+      id: Date.now().toString(), testName: newLab.testName,
+      notes: newLab.notes || undefined, status: 'Pending', createdAt: Date.now()
+    }]);
+    setNewLab({ testName: '', notes: '' });
+  };
+  const removeLabOrder = (id: string) => setLabOrders(labOrders.filter(l => l.id !== id));
+  const toggleLabStatus = (id: string) => setLabOrders(labOrders.map(l => l.id === id ? { ...l, status: l.status === 'Pending' ? 'Completed' : 'Pending' } : l));
+
+  const handleLabFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && attachingLabId) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (ev.target?.result) {
+          setLabOrders(labOrders.map(l => l.id === attachingLabId ? { ...l, resultFileUrl: ev.target!.result as string, status: 'Completed' } : l));
+          setAttachingLabId(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // ===================== IMAGING ORDERS =====================
+  const addImagingOrder = () => {
+    if (!newImaging.bodyPart) return;
+    setImagingOrders([...imagingOrders, {
+      id: Date.now().toString(), imagingType: newImaging.imagingType,
+      bodyPart: newImaging.bodyPart, notes: newImaging.notes || undefined,
+      status: 'Pending', createdAt: Date.now()
+    }]);
+    setNewImaging({ imagingType: 'X-ray', bodyPart: '', notes: '' });
+  };
+  const removeImagingOrder = (id: string) => setImagingOrders(imagingOrders.filter(i => i.id !== id));
+  const toggleImagingStatus = (id: string) => setImagingOrders(imagingOrders.map(i => i.id === id ? { ...i, status: i.status === 'Pending' ? 'Completed' : 'Pending' } : i));
+
+  const handleImagingFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && attachingImagingId) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (ev.target?.result) {
+          setImagingOrders(imagingOrders.map(i => i.id === attachingImagingId ? { ...i, reportFileUrl: ev.target!.result as string, status: 'Completed' } : i));
+          setAttachingImagingId(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const waitingList = patients.filter(p => 
     p.currentVisit.visitId && 
     p.currentVisit.visitId.trim() !== '' && 
     (p.currentVisit.status === 'waiting' || p.currentVisit.status === 'in-progress')
   );
+
+  // ===================== TAB CONFIG =====================
+  const tabs: { key: SoapTab; label: string; icon: string; color: string }[] = [
+    { key: 'chief', label: 'Chief Complaint', icon: 'fa-comment-medical', color: 'bg-slate-800' },
+    { key: 'history', label: 'History', icon: 'fa-clock-rotate-left', color: 'bg-indigo-600' },
+    { key: 'exam', label: 'Examination', icon: 'fa-stethoscope', color: 'bg-teal-600' },
+    { key: 'assessment', label: 'Assessment', icon: 'fa-diagnoses', color: 'bg-purple-600' },
+    { key: 'plan', label: 'Plan & Orders', icon: 'fa-clipboard-list', color: 'bg-blue-600' },
+    { key: 'billing', label: 'Billing', icon: 'fa-file-invoice-dollar', color: 'bg-emerald-600' },
+    { key: 'devices', label: 'Devices', icon: 'fa-microchip', color: 'bg-violet-600' },
+  ];
 
   return (
     <Layout title={t('doctor_console')}>
@@ -453,7 +605,7 @@ const DoctorView: React.FC = () => {
           {selectedPatient ? (
             <>
               {/* Patient Header */}
-              <div className="p-6 border-b border-slate-50 bg-slate-50/20 flex justify-between items-center gap-4">
+              <div className="p-5 border-b border-slate-50 bg-slate-50/20 flex justify-between items-center gap-4">
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${selectedPatient.gender === 'male' ? 'bg-blue-100 text-blue-600' : 'bg-pink-100 text-pink-600'}`}>
                     <i className="fa-solid fa-hospital-user"></i>
@@ -463,17 +615,39 @@ const DoctorView: React.FC = () => {
                     <div className="flex items-center gap-3 mt-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                       <span>{selectedPatient.age} Yrs</span>
                       <span>•</span>
+                      <span>{selectedPatient.gender}</span>
+                      <span>•</span>
                       <span>{selectedPatient.currentVisit.reasonForVisit}</span>
                     </div>
                   </div>
                 </div>
                 
-                {/* Allergy Alert */}
                 {(selectedPatient.medicalProfile.allergies.exists || selectedPatient.medicalProfile.chronicConditions.exists) && (
                     <div className="bg-rose-50 text-rose-600 px-3 py-1 rounded-lg text-xs font-bold border border-rose-100 animate-pulse">
                         <i className="fa-solid fa-triangle-exclamation mr-1"></i> Medical Alert
                     </div>
                 )}
+              </div>
+
+              {/* SOAP Tabs Navigation */}
+              <div className="border-b border-slate-100 bg-slate-50/30 px-2 overflow-x-auto flex gap-1 py-2">
+                {tabs.map((tab, idx) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                      activeTab === tab.key
+                        ? `${tab.color} text-white shadow-lg scale-105`
+                        : 'text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] ${
+                      activeTab === tab.key ? 'bg-white/20' : 'bg-slate-200 text-slate-600'
+                    }`}>{idx + 1}</span>
+                    <i className={`fa-solid ${tab.icon} text-[10px]`}></i>
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </button>
+                ))}
               </div>
 
               {/* Workspace */}
@@ -496,135 +670,395 @@ const DoctorView: React.FC = () => {
                      </div>
                  )}
 
-                 <div className={`max-w-5xl mx-auto space-y-8 transition-opacity duration-300 ${selectedPatient.currentVisit.status === 'waiting' ? 'opacity-20 blur-sm overflow-hidden h-[500px]' : 'opacity-100'}`}>
+                 <div className={`max-w-4xl mx-auto transition-opacity duration-300 ${selectedPatient.currentVisit.status === 'waiting' ? 'opacity-20 blur-sm overflow-hidden h-[500px]' : 'opacity-100'}`}>
                     
-                    {/* 1. Diagnosis */}
-                    <section>
-                        <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-md bg-slate-800 text-white flex items-center justify-center text-xs">1</span> Diagnosis
+                    {/* ============ TAB 1: CHIEF COMPLAINT ============ */}
+                    {activeTab === 'chief' && (
+                      <div className="space-y-4 animate-fadeIn">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-comment-medical text-slate-500"></i> Chief Complaint
                         </h3>
-                        <textarea className="w-full h-24 p-4 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-primary transition-all font-medium text-slate-800" placeholder="Clinical diagnosis..." value={diagnosis} onChange={e => setDiagnosis(e.target.value)}></textarea>
-                    </section>
+                        <input
+                          type="text"
+                          maxLength={255}
+                          className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-primary transition-all font-medium text-slate-800 text-lg"
+                          placeholder="What brings the patient in today? (e.g. Chest pain for 3 days)"
+                          value={chiefComplaint}
+                          onChange={e => setChiefComplaint(e.target.value)}
+                        />
+                        <p className="text-[10px] text-slate-400 text-right">{chiefComplaint.length}/255</p>
 
-                    {/* 2. Services & Billing (Moved up) */}
-                    <section>
-                        <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs">2</span> Services & Billing
-                        </h3>
-                        <div className="bg-emerald-50/50 rounded-xl border border-emerald-100 p-4">
-                            <div className="flex gap-2 mb-3">
-                                <select className="flex-1 p-2 rounded-lg border text-sm bg-white" value={selectedService} onChange={e => setSelectedService(e.target.value)}>
-                                    <option value="Consultation">General Consultation (50 د.أ)</option>
-                                    <option value="Follow-up">Follow-up Visit (25 د.أ)</option>
-                                    <option value="Ultrasound">Ultrasound (80 د.أ)</option>
-                                    <option value="Lab Test (Basic)">Lab Test - Basic (40 د.أ)</option>
-                                    <option value="X-Ray">X-Ray (60 د.أ)</option>
-                                    <option value="Minor Surgery">Minor Surgery (150 د.أ)</option>
-                                </select>
-                                <button onClick={addService} className="bg-emerald-600 text-white px-4 rounded-lg font-bold text-sm hover:bg-emerald-700">Add Service</button>
+                        {/* Quick medical profile preview */}
+                        <div className="mt-6 bg-amber-50 rounded-xl border border-amber-100 p-4">
+                          <h4 className="text-xs font-bold text-amber-800 mb-3 uppercase"><i className="fa-solid fa-notes-medical mr-1"></i> Patient Medical Profile (from Registration)</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div className="bg-white p-2 rounded-lg">
+                              <span className="font-bold text-slate-600">Allergies: </span>
+                              <span className={selectedPatient.medicalProfile.allergies.exists ? 'text-red-600 font-bold' : 'text-slate-400'}>
+                                {selectedPatient.medicalProfile.allergies.exists ? selectedPatient.medicalProfile.allergies.details : 'NKDA'}
+                              </span>
                             </div>
-                            
-                            {invoiceItems.length > 0 ? (
-                                <div className="space-y-2 bg-white p-3 rounded-lg border border-gray-100">
-                                    {invoiceItems.map(item => (
-                                        <div key={item.id} className="flex justify-between items-center text-sm border-b border-gray-50 last:border-0 pb-1 last:pb-0">
-                                            <span className="font-medium text-slate-700">{item.description}</span>
-                                            <div className="flex items-center gap-4">
-                                                <span className="font-bold text-emerald-600">{item.price} د.أ</span>
-                                                <button onClick={() => removeService(item.id)} className="text-slate-300 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-100 font-bold text-slate-800">
-                                        <span>Total Estimated</span>
-                                        <span>{invoiceItems.reduce((acc, i) => acc + i.price, 0)} د.أ</span>
-                                    </div>
-                                </div>
-                            ) : <div className="text-xs text-slate-400 italic text-center py-2">No services added. Invoice will be empty.</div>}
+                            <div className="bg-white p-2 rounded-lg">
+                              <span className="font-bold text-slate-600">Chronic: </span>
+                              <span className={selectedPatient.medicalProfile.chronicConditions.exists ? 'text-orange-600 font-bold' : 'text-slate-400'}>
+                                {selectedPatient.medicalProfile.chronicConditions.exists ? selectedPatient.medicalProfile.chronicConditions.details : 'None'}
+                              </span>
+                            </div>
+                            <div className="bg-white p-2 rounded-lg">
+                              <span className="font-bold text-slate-600">Medications: </span>
+                              <span className={selectedPatient.medicalProfile.currentMedications.exists ? 'text-blue-600' : 'text-slate-400'}>
+                                {selectedPatient.medicalProfile.currentMedications.exists ? selectedPatient.medicalProfile.currentMedications.details : 'None'}
+                              </span>
+                            </div>
+                            <div className="bg-white p-2 rounded-lg">
+                              <span className="font-bold text-slate-600">Surgeries: </span>
+                              <span className="text-slate-400">
+                                {selectedPatient.medicalProfile.previousSurgeries?.exists ? selectedPatient.medicalProfile.previousSurgeries.details : 'None'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                    </section>
+                      </div>
+                    )}
 
-                    {/* 3. E-Prescription */}
-                    <section>
-                        <div className="flex justify-between items-center mb-2">
-                             <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs">3</span> Prescription (Rx)
-                             </h3>
-                             {prescriptions.length > 0 && (
-                                 <button onClick={handlePrintRx} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg font-bold hover:bg-blue-200 transition-colors">
-                                     <i className="fa-solid fa-print mr-1"></i> Print Rx
-                                 </button>
-                             )}
-                        </div>
-                        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-                             {/* Rx Builder */}
-                             <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-4">
-                                 <div className="md:col-span-4"><input className="w-full p-2 rounded-lg border text-sm" placeholder="Drug Name (e.g. Panadol)" value={newRx.name} onChange={e => setNewRx({...newRx, name: e.target.value})} /></div>
-                                 <div className="md:col-span-3"><input className="w-full p-2 rounded-lg border text-sm" placeholder="Dose (e.g. 500mg)" value={newRx.dose} onChange={e => setNewRx({...newRx, dose: e.target.value})} /></div>
-                                 <div className="md:col-span-3"><select className="w-full p-2 rounded-lg border text-sm bg-white" value={newRx.freq} onChange={e => setNewRx({...newRx, freq: e.target.value})}><option value="">Freq</option><option value="1x1">1 x 1</option><option value="1x2">1 x 2</option><option value="1x3">1 x 3</option><option value="SOS">SOS</option></select></div>
-                                 <div className="md:col-span-2"><button onClick={addPrescription} className="w-full bg-slate-800 text-white rounded-lg h-full font-bold text-xs hover:bg-slate-700">ADD</button></div>
-                             </div>
-                             
-                             {/* Rx List */}
-                             {prescriptions.length > 0 && (
-                                 <div className="space-y-2">
-                                     {prescriptions.map((p) => (
-                                         <div key={p.id} className="flex justify-between items-center bg-white p-2 rounded border border-gray-200 shadow-sm">
-                                             <div className="flex gap-2 text-sm font-bold text-slate-700">
-                                                 <span className="text-primary">{p.drugName}</span>
-                                                 <span className="text-slate-400">|</span>
-                                                 <span>{p.dosage}</span>
-                                                 <span className="bg-gray-100 px-1 rounded text-xs py-0.5">{p.frequency}</span>
-                                             </div>
-                                             <button onClick={() => removePrescription(p.id)} className="text-rose-400 hover:text-rose-600"><i className="fa-solid fa-trash"></i></button>
-                                         </div>
-                                     ))}
-                                 </div>
-                             )}
-                        </div>
-                    </section>
-
-                    {/* 4. Attachments & Labs */}
-                    <section>
-                         <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-md bg-amber-500 text-white flex items-center justify-center text-xs">4</span> Labs & Attachments
+                    {/* ============ TAB 2: HISTORY ============ */}
+                    {activeTab === 'history' && (
+                      <div className="space-y-5 animate-fadeIn">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-clock-rotate-left text-indigo-500"></i> Medical History
                         </h3>
-                        <div className="flex flex-wrap gap-4">
-                            {/* Upload Button */}
+                        
+                        {[
+                          { label: 'History of Present Illness (HPI)', value: presentIllness, setter: setPresentIllness, placeholder: 'Describe onset, duration, severity, associated symptoms...' },
+                          { label: 'Past Medical History', value: pastMedicalHistory, setter: setPastMedicalHistory, placeholder: 'Previous medical conditions, hospitalizations...' },
+                          { label: 'Surgical History', value: surgicalHistory, setter: setSurgicalHistory, placeholder: 'Previous surgeries with dates...' },
+                          { label: 'Current Medications', value: currentMedications, setter: setCurrentMedications, placeholder: 'List current medications with doses...' },
+                          { label: 'Allergies', value: allergiesText, setter: setAllergiesText, placeholder: 'Drug allergies, food allergies, environmental...' },
+                          { label: 'Family History', value: familyHistory, setter: setFamilyHistory, placeholder: 'Relevant family medical history...' },
+                          { label: 'Social History', value: socialHistory, setter: setSocialHistory, placeholder: 'Smoking, alcohol, occupation, living situation...' },
+                        ].map(field => (
+                          <div key={field.label}>
+                            <label className="text-xs font-bold text-slate-600 mb-1 block">{field.label}</label>
+                            <textarea
+                              className="w-full h-20 p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-indigo-400 transition-all text-sm text-slate-800 resize-none"
+                              placeholder={field.placeholder}
+                              value={field.value}
+                              onChange={e => field.setter(e.target.value)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* ============ TAB 3: EXAMINATION ============ */}
+                    {activeTab === 'exam' && (
+                      <div className="space-y-5 animate-fadeIn">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-stethoscope text-teal-500"></i> Examination
+                        </h3>
+
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">General Examination</label>
+                          <textarea className="w-full h-20 p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-teal-400 transition-all text-sm resize-none" placeholder="General appearance, consciousness, orientation..." value={generalExamination} onChange={e => setGeneralExamination(e.target.value)} />
+                        </div>
+
+                        {/* Vital Signs */}
+                        <div className="bg-teal-50 rounded-xl border border-teal-100 p-4">
+                          <h4 className="text-xs font-bold text-teal-800 mb-3 uppercase"><i className="fa-solid fa-heart-pulse mr-1"></i> Vital Signs</h4>
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">Blood Pressure</label>
+                              <input type="text" className="w-full p-2 rounded-lg border text-sm bg-white text-center font-bold" placeholder="120/80" value={vitalSigns.bloodPressure || ''} onChange={e => setVitalSigns({...vitalSigns, bloodPressure: e.target.value})} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">Pulse (bpm)</label>
+                              <input type="number" className="w-full p-2 rounded-lg border text-sm bg-white text-center font-bold" placeholder="72" value={vitalSigns.pulse || ''} onChange={e => setVitalSigns({...vitalSigns, pulse: parseInt(e.target.value) || undefined})} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">Temp (°C)</label>
+                              <input type="number" step="0.1" className="w-full p-2 rounded-lg border text-sm bg-white text-center font-bold" placeholder="37.0" value={vitalSigns.temperature || ''} onChange={e => setVitalSigns({...vitalSigns, temperature: parseFloat(e.target.value) || undefined})} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">RR (/min)</label>
+                              <input type="number" className="w-full p-2 rounded-lg border text-sm bg-white text-center font-bold" placeholder="16" value={vitalSigns.respiratoryRate || ''} onChange={e => setVitalSigns({...vitalSigns, respiratoryRate: parseInt(e.target.value) || undefined})} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-500 block mb-1">SpO2 (%)</label>
+                              <input type="number" className="w-full p-2 rounded-lg border text-sm bg-white text-center font-bold" placeholder="98" value={vitalSigns.oxygenSaturation || ''} onChange={e => setVitalSigns({...vitalSigns, oxygenSaturation: parseInt(e.target.value) || undefined})} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">Systemic Examination</label>
+                          <textarea className="w-full h-24 p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-teal-400 transition-all text-sm resize-none" placeholder="Cardiovascular, Respiratory, Abdominal, Neurological..." value={systemicExamination} onChange={e => setSystemicExamination(e.target.value)} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ============ TAB 4: ASSESSMENT ============ */}
+                    {activeTab === 'assessment' && (
+                      <div className="space-y-5 animate-fadeIn">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-diagnoses text-purple-500"></i> Assessment
+                        </h3>
+
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">Preliminary Diagnosis *</label>
+                          <textarea className="w-full h-24 p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-purple-400 transition-all text-sm resize-none" placeholder="Primary diagnosis based on findings..." value={preliminaryDiagnosis} onChange={e => setPreliminaryDiagnosis(e.target.value)} />
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">Differential Diagnosis <span className="text-slate-400 font-normal">(optional)</span></label>
+                          <textarea className="w-full h-20 p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-purple-400 transition-all text-sm resize-none" placeholder="Other possible diagnoses to consider..." value={differentialDiagnosis} onChange={e => setDifferentialDiagnosis(e.target.value)} />
+                        </div>
+
+                        {/* Doctor Notes (legacy) */}
+                        <div>
+                          <label className="text-xs font-bold text-slate-600 mb-1 block">Additional Notes</label>
+                          <textarea className="w-full h-16 p-3 bg-slate-50 rounded-xl border border-slate-200 outline-none focus:border-purple-400 transition-all text-sm resize-none" placeholder="Any additional clinical notes..." value={notes} onChange={e => setNotes(e.target.value)} />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ============ TAB 5: PLAN & ORDERS ============ */}
+                    {activeTab === 'plan' && (
+                      <div className="space-y-8 animate-fadeIn">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-clipboard-list text-blue-500"></i> Plan & Orders
+                        </h3>
+
+                        {/* A) Lab Orders */}
+                        <div className="bg-blue-50/50 rounded-xl border border-blue-100 p-4">
+                          <h4 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                            <i className="fa-solid fa-flask"></i> Lab Orders
+                          </h4>
+                          <div className="flex gap-2 mb-3">
+                            <input className="flex-1 p-2 rounded-lg border text-sm bg-white" placeholder="Test Name (e.g. CBC, HbA1c)" value={newLab.testName} onChange={e => setNewLab({...newLab, testName: e.target.value})} />
+                            <input className="w-40 p-2 rounded-lg border text-sm bg-white" placeholder="Notes" value={newLab.notes} onChange={e => setNewLab({...newLab, notes: e.target.value})} />
+                            <button onClick={addLabOrder} className="bg-blue-600 text-white px-4 rounded-lg font-bold text-sm hover:bg-blue-700">
+                              <i className="fa-solid fa-plus mr-1"></i> Add
+                            </button>
+                          </div>
+                          
+                          <input type="file" ref={labFileInputRef} className="hidden" accept="image/*,.pdf" onChange={handleLabFileAttach} />
+
+                          {labOrders.length > 0 && (
+                            <div className="space-y-2">
+                              {labOrders.map(lab => (
+                                <div key={lab.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-blue-100 shadow-sm">
+                                  <div className="flex items-center gap-3">
+                                    <button onClick={() => toggleLabStatus(lab.id)} className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${lab.status === 'Completed' ? 'bg-green-500 text-white' : 'bg-amber-100 text-amber-600 border border-amber-300'}`}>
+                                      {lab.status === 'Completed' ? <i className="fa-solid fa-check"></i> : <i className="fa-regular fa-clock"></i>}
+                                    </button>
+                                    <div>
+                                      <span className="font-bold text-sm text-slate-800">{lab.testName}</span>
+                                      {lab.notes && <span className="text-xs text-slate-400 ml-2">— {lab.notes}</span>}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {lab.resultFileUrl && <i className="fa-solid fa-paperclip text-green-500 text-xs"></i>}
+                                    <button onClick={() => { setAttachingLabId(lab.id); labFileInputRef.current?.click(); }} className="text-blue-400 hover:text-blue-600 text-xs" title="Attach result">
+                                      <i className="fa-solid fa-cloud-arrow-up"></i>
+                                    </button>
+                                    <button onClick={() => removeLabOrder(lab.id)} className="text-slate-300 hover:text-red-500">
+                                      <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* B) Imaging Orders */}
+                        <div className="bg-indigo-50/50 rounded-xl border border-indigo-100 p-4">
+                          <h4 className="text-sm font-bold text-indigo-800 mb-3 flex items-center gap-2">
+                            <i className="fa-solid fa-x-ray"></i> Imaging Orders
+                          </h4>
+                          <div className="flex gap-2 mb-3 flex-wrap">
+                            <select className="p-2 rounded-lg border text-sm bg-white" value={newImaging.imagingType} onChange={e => setNewImaging({...newImaging, imagingType: e.target.value as ImagingOrder['imagingType']})}>
+                              <option value="X-ray">X-ray</option>
+                              <option value="CT">CT Scan</option>
+                              <option value="MRI">MRI</option>
+                              <option value="Ultrasound">Ultrasound</option>
+                              <option value="Other">Other</option>
+                            </select>
+                            <input className="flex-1 p-2 rounded-lg border text-sm bg-white" placeholder="Body Part (e.g. Chest, Abdomen)" value={newImaging.bodyPart} onChange={e => setNewImaging({...newImaging, bodyPart: e.target.value})} />
+                            <input className="w-32 p-2 rounded-lg border text-sm bg-white" placeholder="Notes" value={newImaging.notes} onChange={e => setNewImaging({...newImaging, notes: e.target.value})} />
+                            <button onClick={addImagingOrder} className="bg-indigo-600 text-white px-4 rounded-lg font-bold text-sm hover:bg-indigo-700">
+                              <i className="fa-solid fa-plus mr-1"></i> Add
+                            </button>
+                          </div>
+
+                          <input type="file" ref={imagingFileInputRef} className="hidden" accept="image/*,.pdf" onChange={handleImagingFileAttach} />
+
+                          {imagingOrders.length > 0 && (
+                            <div className="space-y-2">
+                              {imagingOrders.map(img => (
+                                <div key={img.id} className="flex justify-between items-center bg-white p-3 rounded-lg border border-indigo-100 shadow-sm">
+                                  <div className="flex items-center gap-3">
+                                    <button onClick={() => toggleImagingStatus(img.id)} className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${img.status === 'Completed' ? 'bg-green-500 text-white' : 'bg-amber-100 text-amber-600 border border-amber-300'}`}>
+                                      {img.status === 'Completed' ? <i className="fa-solid fa-check"></i> : <i className="fa-regular fa-clock"></i>}
+                                    </button>
+                                    <div>
+                                      <span className="font-bold text-sm text-slate-800">{img.imagingType} — {img.bodyPart}</span>
+                                      {img.notes && <span className="text-xs text-slate-400 ml-2">— {img.notes}</span>}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {img.reportFileUrl && <i className="fa-solid fa-paperclip text-green-500 text-xs"></i>}
+                                    <button onClick={() => { setAttachingImagingId(img.id); imagingFileInputRef.current?.click(); }} className="text-indigo-400 hover:text-indigo-600 text-xs" title="Attach report">
+                                      <i className="fa-solid fa-cloud-arrow-up"></i>
+                                    </button>
+                                    <button onClick={() => removeImagingOrder(img.id)} className="text-slate-300 hover:text-red-500">
+                                      <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* C) Prescription */}
+                        <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                          <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                              <i className="fa-solid fa-prescription"></i> Prescription (Rx)
+                            </h4>
+                            {prescriptions.length > 0 && (
+                              <button onClick={handlePrintRx} className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-lg font-bold hover:bg-blue-200 transition-colors">
+                                <i className="fa-solid fa-print mr-1"></i> Print Rx
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-4">
+                            <div className="md:col-span-4"><input className="w-full p-2 rounded-lg border text-sm" placeholder="Drug Name" value={newRx.name} onChange={e => setNewRx({...newRx, name: e.target.value})} /></div>
+                            <div className="md:col-span-3"><input className="w-full p-2 rounded-lg border text-sm" placeholder="Dose (500mg)" value={newRx.dose} onChange={e => setNewRx({...newRx, dose: e.target.value})} /></div>
+                            <div className="md:col-span-3"><select className="w-full p-2 rounded-lg border text-sm bg-white" value={newRx.freq} onChange={e => setNewRx({...newRx, freq: e.target.value})}><option value="">Freq</option><option value="1x1">1 x 1</option><option value="1x2">1 x 2</option><option value="1x3">1 x 3</option><option value="SOS">SOS</option></select></div>
+                            <div className="md:col-span-2"><button onClick={addPrescription} className="w-full bg-slate-800 text-white rounded-lg h-full font-bold text-xs hover:bg-slate-700">ADD</button></div>
+                          </div>
+                          {prescriptions.length > 0 && (
+                            <div className="space-y-2">
+                              {prescriptions.map(p => (
+                                <div key={p.id} className="flex justify-between items-center bg-white p-2 rounded border border-gray-200 shadow-sm">
+                                  <div className="flex gap-2 text-sm font-bold text-slate-700">
+                                    <span className="text-primary">{p.drugName}</span>
+                                    <span className="text-slate-400">|</span>
+                                    <span>{p.dosage}</span>
+                                    <span className="bg-gray-100 px-1 rounded text-xs py-0.5">{p.frequency}</span>
+                                  </div>
+                                  <button onClick={() => removePrescription(p.id)} className="text-rose-400 hover:text-rose-600"><i className="fa-solid fa-trash"></i></button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* D) Attachments */}
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                            <i className="fa-solid fa-paperclip"></i> General Attachments
+                          </h4>
+                          <div className="flex flex-wrap gap-4">
                             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
                             <button onClick={() => fileInputRef.current?.click()} className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-primary hover:text-primary transition-all">
-                                <i className="fa-solid fa-cloud-arrow-up text-2xl mb-1"></i>
-                                <span className="text-[10px] font-bold uppercase">Upload</span>
+                              <i className="fa-solid fa-cloud-arrow-up text-2xl mb-1"></i>
+                              <span className="text-[10px] font-bold uppercase">Upload</span>
                             </button>
-
-                            {/* Previews */}
                             {attachments.map(att => (
-                                <div key={att.id} className="w-24 h-24 rounded-xl border border-slate-200 overflow-hidden relative group">
-                                    <img src={att.url} className="w-full h-full object-cover" alt="attachment" />
-                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))} className="text-white hover:text-rose-400"><i className="fa-solid fa-trash"></i></button>
-                                    </div>
+                              <div key={att.id} className="w-24 h-24 rounded-xl border border-slate-200 overflow-hidden relative group">
+                                <img src={att.url} className="w-full h-full object-cover" alt="attachment" />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button onClick={() => setAttachments(attachments.filter(a => a.id !== att.id))} className="text-white hover:text-rose-400"><i className="fa-solid fa-trash"></i></button>
                                 </div>
+                              </div>
                             ))}
+                          </div>
                         </div>
-                    </section>
+                      </div>
+                    )}
 
-                    {/* 5. Device Results (نتائج الأجهزة) */}
-                    <section>
-                         <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-md bg-violet-600 text-white flex items-center justify-center text-xs">5</span> نتائج الأجهزة (Device Results)
+                    {/* ============ TAB 6: BILLING ============ */}
+                    {activeTab === 'billing' && (
+                      <div className="space-y-5 animate-fadeIn">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-file-invoice-dollar text-emerald-500"></i> Services & Billing
+                        </h3>
+                        <div className="bg-emerald-50/50 rounded-xl border border-emerald-100 p-4">
+                          <div className="flex gap-2 mb-3">
+                            <select className="flex-1 p-2 rounded-lg border text-sm bg-white" value={selectedService} onChange={e => setSelectedService(e.target.value)}>
+                              <option value="Consultation">General Consultation (50 د.أ)</option>
+                              <option value="Follow-up">Follow-up Visit (25 د.أ)</option>
+                              <option value="Ultrasound">Ultrasound (80 د.أ)</option>
+                              <option value="Lab Test (Basic)">Lab Test - Basic (40 د.أ)</option>
+                              <option value="X-Ray">X-Ray (60 د.أ)</option>
+                              <option value="Minor Surgery">Minor Surgery (150 د.أ)</option>
+                            </select>
+                            <button onClick={addService} className="bg-emerald-600 text-white px-4 rounded-lg font-bold text-sm hover:bg-emerald-700">Add Service</button>
+                          </div>
+                          
+                          {invoiceItems.length > 0 ? (
+                            <div className="space-y-2 bg-white p-3 rounded-lg border border-gray-100">
+                              {invoiceItems.map(item => (
+                                <div key={item.id} className="flex justify-between items-center text-sm border-b border-gray-50 last:border-0 pb-1 last:pb-0">
+                                  <span className="font-medium text-slate-700">{item.description}</span>
+                                  <div className="flex items-center gap-4">
+                                    <span className="font-bold text-emerald-600">{item.price} د.أ</span>
+                                    <button onClick={() => removeService(item.id)} className="text-slate-300 hover:text-red-500"><i className="fa-solid fa-xmark"></i></button>
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="flex justify-between items-center pt-2 mt-2 border-t border-gray-100 font-bold text-slate-800">
+                                <span>Total Estimated</span>
+                                <span>{invoiceItems.reduce((acc, i) => acc + i.price, 0)} د.أ</span>
+                              </div>
+                            </div>
+                          ) : <div className="text-xs text-slate-400 italic text-center py-2">No services added.</div>}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ============ TAB 7: DEVICES ============ */}
+                    {activeTab === 'devices' && (
+                      <div className="space-y-5 animate-fadeIn">
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                          <i className="fa-solid fa-microchip text-violet-500"></i> نتائج الأجهزة (Device Results)
                         </h3>
                         <div className="bg-violet-50/30 rounded-xl border border-violet-100 p-4">
                             <DeviceResultsTimeline patientId={selectedPatient.id} />
                         </div>
-                    </section>
+                      </div>
+                    )}
 
                  </div>
               </div>
 
               {/* Footer Actions */}
               <div className="p-4 border-t border-slate-100 bg-white flex justify-between items-center shadow-2xl z-10">
-                 <div className="text-xs font-bold text-slate-400 uppercase hidden md:block">Session Time: <span className="text-slate-800">12:05</span></div>
+                 <div className="flex items-center gap-4">
+                   <div className="text-xs font-bold text-slate-400 uppercase hidden md:block">
+                     <i className="fa-solid fa-cloud-check text-green-400 mr-1"></i> Auto-saving
+                   </div>
+                   {/* Tab navigation shortcuts */}
+                   <div className="hidden md:flex gap-1">
+                     <button 
+                       onClick={() => { const idx = tabs.findIndex(tb => tb.key === activeTab); if (idx > 0) setActiveTab(tabs[idx - 1].key); }}
+                       disabled={activeTab === tabs[0].key}
+                       className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-lg disabled:opacity-30"
+                     >
+                       <i className="fa-solid fa-chevron-left"></i> Prev
+                     </button>
+                     <button 
+                       onClick={() => { const idx = tabs.findIndex(tb => tb.key === activeTab); if (idx < tabs.length - 1) setActiveTab(tabs[idx + 1].key); }}
+                       disabled={activeTab === tabs[tabs.length - 1].key}
+                       className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded-lg disabled:opacity-30"
+                     >
+                       Next <i className="fa-solid fa-chevron-right"></i>
+                     </button>
+                   </div>
+                 </div>
                  <div className="flex gap-3 w-full md:w-auto">
                     {/* Only show 'Complete' if In Progress */}
                     {selectedPatient?.currentVisit.status === 'in-progress' && (
@@ -651,6 +1085,13 @@ const DoctorView: React.FC = () => {
         }
         .animate-pulse-slow {
           animation: pulse-slow 2s ease-in-out infinite;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
         }
       `}</style>
     </Layout>

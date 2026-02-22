@@ -119,6 +119,35 @@ export interface InvoiceItem {
   price: number;
 }
 
+// --- SOAP-like Structured Visit ---
+
+export interface VitalSigns {
+  bloodPressure?: string;    // e.g. "120/80"
+  pulse?: number;
+  temperature?: number;
+  respiratoryRate?: number;
+  oxygenSaturation?: number;
+}
+
+export interface LabOrder {
+  id: string;
+  testName: string;
+  notes?: string;
+  status: 'Pending' | 'Completed';
+  resultFileUrl?: string;    // Base64 or URL
+  createdAt: number;
+}
+
+export interface ImagingOrder {
+  id: string;
+  imagingType: 'X-ray' | 'CT' | 'MRI' | 'Ultrasound' | 'Other';
+  bodyPart: string;
+  notes?: string;
+  status: 'Pending' | 'Completed';
+  reportFileUrl?: string;    // Base64 or URL
+  createdAt: number;
+}
+
 export interface VisitData {
   visitId: string;
   clinicId: string;
@@ -129,12 +158,39 @@ export interface VisitData {
   source?: string; // e.g. "Referral", "Walk-in", "Appointment"
   reasonForVisit: string;
   
-  // Doctor Output
+  // === SOAP STRUCTURED SECTIONS ===
+
+  // 1️⃣ Chief Complaint
+  chiefComplaint?: string;
+
+  // 2️⃣ History
+  presentIllness?: string;
+  pastMedicalHistory?: string;
+  surgicalHistory?: string;
+  currentMedications?: string;
+  allergies?: string;
+  familyHistory?: string;
+  socialHistory?: string;
+
+  // 3️⃣ Examination
+  generalExamination?: string;
+  vitalSigns?: VitalSigns;
+  systemicExamination?: string;
+
+  // 4️⃣ Assessment
+  preliminaryDiagnosis?: string;
+  differentialDiagnosis?: string;
+
+  // 5️⃣ Plan — Orders
+  labOrders?: LabOrder[];
+  imagingOrders?: ImagingOrder[];
+
+  // Legacy fields (backward compat)
   diagnosis?: string;
   treatment?: string; 
   prescriptions?: PrescriptionItem[]; 
   attachments?: Attachment[];
-  invoiceItems?: InvoiceItem[]; // NEW: Doctor selects these
+  invoiceItems?: InvoiceItem[];
   doctorNotes?: string;
 }
 
