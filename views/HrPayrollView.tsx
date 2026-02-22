@@ -195,8 +195,8 @@ const HrPayrollView: React.FC = () => {
                 <h2 className="text-2xl font-extrabold text-slate-800">{selectedPayslip.employeeName || `Employee #${selectedPayslip.employeeId}`}</h2>
                 <p className="text-slate-400 text-sm">{isAr ? 'قسيمة راتب — ' : 'Payslip — '}{month}</p>
               </div>
-              <span className={`px-4 py-1.5 rounded-full text-xs font-bold border ${STATUS_COLORS[selectedPayslip.status]}`}>
-                {isAr ? STATUS_AR[selectedPayslip.status] : selectedPayslip.status.toUpperCase()}
+              <span className={`px-4 py-1.5 rounded-full text-xs font-bold border ${STATUS_COLORS[selectedPayslip.status || 'draft']}`}>
+                {isAr ? STATUS_AR[selectedPayslip.status || 'draft'] : (selectedPayslip.status || 'draft').toUpperCase()}
               </span>
             </div>
 
@@ -409,8 +409,8 @@ const HrPayrollView: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="bg-white rounded-2xl shadow-soft border p-4 text-center">
                 <p className="text-xs text-slate-400 mb-1">{isAr ? 'حالة الدورة' : 'Run Status'}</p>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[run.status]}`}>
-                  {isAr ? STATUS_AR[run.status] : run.status.toUpperCase()}
+                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${STATUS_COLORS[run.status || 'draft']}`}>
+                  {isAr ? STATUS_AR[run.status || 'draft'] : (run.status || 'draft').toUpperCase()}
                 </span>
               </div>
               <div className="bg-white rounded-2xl shadow-soft border p-4 text-center">
