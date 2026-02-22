@@ -296,7 +296,7 @@ export const hrPayrollService = {
   },
 
   getPayslip: async (id: number): Promise<HrPayslip> => {
-    return await api.get(`/hr/payroll/payslip/${id}`);
+    return await api.get(`/hr/payslips/${id}`);
   },
 
   updatePayslip: async (id: number, data: {
@@ -305,15 +305,15 @@ export const hrPayrollService = {
     final_overtime_amount?: number;
     overtime_multiplier?: number;
   }): Promise<HrPayslip> => {
-    return await apiPatch(`/hr/payroll/payslip/${id}`, data);
+    return await apiPatch(`/hr/payslips/${id}`, data);
   },
 
   approvePayslip: async (id: number): Promise<HrPayslip> => {
-    return await api.post(`/hr/payroll/payslip/${id}/approve`, {});
+    return await api.post(`/hr/payslips/${id}/approve`, {});
   },
 
   rejectPayslip: async (id: number, reason: string): Promise<HrPayslip> => {
-    return await api.post(`/hr/payroll/payslip/${id}/reject`, { reason });
+    return await api.post(`/hr/payslips/${id}/reject`, { reason });
   },
 
   closeMonth: async (month: string): Promise<HrPayrollRun> => {
@@ -322,7 +322,7 @@ export const hrPayrollService = {
 
   downloadPdf: (id: number): string => {
     const token = localStorage.getItem('token');
-    return `https://medloop-api.onrender.com/hr/payroll/payslip/${id}/pdf?token=${token}`;
+    return `https://medloop-api.onrender.com/hr/payslips/${id}/pdf?token=${token}`;
   },
 };
 
