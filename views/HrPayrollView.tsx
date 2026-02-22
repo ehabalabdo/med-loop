@@ -169,7 +169,31 @@ const HrPayrollView: React.FC = () => {
   const handleDownloadPdf = async (id: number, name: string) => {
     try {
       setActionLoading(true);
-      await hrPayrollService.downloadPdf(id, name);
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      const el = document.getElementById('payslip-print-area');
+      if (!el) throw new Error('Payslip content not found');
+
+      // Hide action buttons during capture
+      const buttons = el.querySelectorAll('[data-no-print]');
+      buttons.forEach(b => (b as HTMLElement).style.display = 'none');
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+      });
+
+      // Restore buttons
+      buttons.forEach(b => (b as HTMLElement).style.display = '');
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${name}.pdf`);
       setMsg({ text: isAr ? 'تم تحميل الملف' : 'PDF downloaded', type: 'ok' });
     } catch (e: any) {
       setMsg({ text: e?.message || 'PDF download failed', type: 'err' });
@@ -204,7 +228,7 @@ const HrPayrollView: React.FC = () => {
             <i className="fa-solid fa-arrow-left"></i> {isAr ? 'العودة للقائمة' : 'Back to list'}
           </button>
 
-          <div className="bg-white rounded-2xl shadow-soft border border-gray-100 p-6">
+          <div id="payslip-print-area" className="bg-white rounded-2xl shadow-soft border border-gray-100 p-6">
             {/* Header */}
             <div className="flex items-start justify-between mb-6">
               <div>
@@ -350,7 +374,7 @@ const HrPayrollView: React.FC = () => {
 
             {/* Action Buttons */}
             {selectedPayslip.status === 'draft' && run?.status === 'draft' && (
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3" data-no-print>
                 {editMode ? (
                   <>
                     <button onClick={handleSaveEdit} disabled={actionLoading}
@@ -383,7 +407,7 @@ const HrPayrollView: React.FC = () => {
 
             {/* PDF Download (only if approved) */}
             {selectedPayslip.status === 'approved' && (
-              <div className="mt-4">
+              <div className="mt-4" data-no-print>
                 <button onClick={() => handleDownloadPdf(selectedPayslip.id, selectedPayslip.employeeName || `payslip-${selectedPayslip.id}`)}
                   className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm transition">
                   <i className="fa-solid fa-file-pdf"></i> {isAr ? 'تحميل PDF' : 'Download PDF'}
