@@ -547,20 +547,20 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                          SYS.TIME.SYNC
                      </div>
                      
-                     <div className="flex items-baseline gap-2 text-cyan-100 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)]">
-                         <span className="text-7xl md:text-[8rem] tracking-tighter leading-none relative" style={{ fontFamily: "'Share Tech Mono', monospace", textShadow: '0 0 20px rgba(34,211,238,0.8), 0 0 40px rgba(34,211,238,0.4)' }}>
-                             {hh}
-                             {/* Glitch Effect Layer */}
-                             <span className="absolute top-0 left-[2px] -z-10 text-cyan-500 opacity-70 animate-[glitch_3s_infinite]">{hh}</span>
-                             <span className="absolute top-0 -left-[2px] -z-10 text-blue-500 opacity-70 animate-[glitch_3s_infinite_reverse]">{hh}</span>
-                         </span>
-                         <span className="text-5xl md:text-7xl font-light text-cyan-400 animate-pulse leading-none mb-4 md:mb-8" style={{ textShadow: '0 0 15px rgba(34,211,238,0.8)' }}>:</span>
-                         <span className="text-7xl md:text-[8rem] tracking-tighter leading-none relative" style={{ fontFamily: "'Share Tech Mono', monospace", textShadow: '0 0 20px rgba(34,211,238,0.8), 0 0 40px rgba(34,211,238,0.4)' }}>
-                             {mm}
-                             {/* Glitch Effect Layer */}
-                             <span className="absolute top-0 left-[2px] -z-10 text-cyan-500 opacity-70 animate-[glitch_3s_infinite]">{mm}</span>
-                             <span className="absolute top-0 -left-[2px] -z-10 text-blue-500 opacity-70 animate-[glitch_3s_infinite_reverse]">{mm}</span>
-                         </span>
+                     <div className="flex items-baseline gap-2 text-white">
+                         <div className="relative overflow-hidden bg-slate-900/80 border border-cyan-900/50 rounded-2xl px-6 py-4 shadow-inner">
+                             <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
+                             <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                                 {hh}
+                             </span>
+                         </div>
+                         <span className="text-5xl md:text-7xl font-light text-cyan-500 animate-pulse leading-none mb-4 md:mb-8 mx-2">:</span>
+                         <div className="relative overflow-hidden bg-slate-900/80 border border-cyan-900/50 rounded-2xl px-6 py-4 shadow-inner">
+                             <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
+                             <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                                 {mm}
+                             </span>
+                         </div>
                      </div>
                      
                      {/* High-Tech Seconds Progress */}
