@@ -302,12 +302,14 @@ function mapPatientRow(row: any): Patient {
     username: row.username || undefined,
     email: row.email || undefined,
     hasAccess: row.hasAccess !== undefined ? row.hasAccess : (row.has_access || false),
-    medicalProfile: medicalProfile && Object.keys(medicalProfile).length > 0 ? medicalProfile : {
+    medicalProfile: {
       allergies: { exists: false, details: '' },
       chronicConditions: { exists: false, details: '' },
       currentMedications: { exists: false, details: '' },
+      previousSurgeries: { exists: false, details: '' },
       isPregnant: false,
-      notes: row.notes || ''
+      notes: row.notes || '',
+      ...(medicalProfile && typeof medicalProfile === 'object' ? medicalProfile : {}),
     },
     currentVisit: currentVisit && Object.keys(currentVisit).length > 0 ? currentVisit : {
       visitId: '',
