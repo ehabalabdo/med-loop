@@ -512,7 +512,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                      <div className="absolute inset-4 border border-blue-500/50 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
                      <div className="absolute inset-8 border-4 border-t-cyan-400 border-r-transparent border-b-blue-400 border-l-transparent rounded-full animate-[spin_10s_linear_infinite]"></div>
                      <div className="absolute inset-0 flex items-center justify-center">
-                         <i className="fa-solid fa-staff-snake text-6xl text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-pulse"></i>
+                         <img src="/logo.png" alt="MedLoop Logo" className="w-20 h-20 object-contain drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-pulse" />
                      </div>
                  </div>
 
