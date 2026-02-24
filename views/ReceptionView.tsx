@@ -284,97 +284,99 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
       if (!selectedInvoice) return;
       const settings = await SettingsService.getSettings();
       
-      // Build invoice HTML with Arabic support
       const clinicName = settings.clinicName || 'العيادة';
       const address = settings.address || '';
       const invoiceDate = fmtDate(selectedInvoice.createdAt);
       
       const itemsHtml = selectedInvoice.items.map(item => `
         <tr>
-          <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;color:#334155">${item.description}</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:13px;font-weight:700;color:#334155;text-align:left;white-space:nowrap">${item.price.toFixed(2)} د.أ</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;font-size:14px;color:#334155">${item.description}</td>
+          <td style="padding:12px 16px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:700;color:#334155;text-align:left;white-space:nowrap">${item.price.toFixed(2)} د.أ</td>
         </tr>
       `).join('');
 
-      const container = document.createElement('div');
-      container.style.cssText = 'position:fixed;top:-9999px;left:0;width:700px;background:#fff;z-index:-1;font-family:system-ui,-apple-system,Tahoma,Arial,sans-serif';
-      container.innerHTML = `
-        <div style="padding:40px;direction:rtl;text-align:right">
-          <!-- Header -->
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;border-bottom:3px solid #0d9488;padding-bottom:20px">
-            <div>
-              ${settings.logoUrl ? `<img src="${settings.logoUrl}" style="width:60px;height:60px;border-radius:12px;margin-bottom:8px" crossorigin="anonymous"/>` : ''}
-              <div style="font-size:22px;font-weight:800;color:#0d9488">${clinicName}</div>
-              ${address ? `<div style="font-size:12px;color:#94a3b8;margin-top:4px">${address}</div>` : ''}
-            </div>
-            <div style="text-align:left">
-              <div style="font-size:28px;font-weight:900;color:#1e293b;letter-spacing:-1px">فاتورة</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:4px">#${selectedInvoice.id.slice(-8)}</div>
-            </div>
-          </div>
+      const printHtml = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <title>فاتورة - ${selectedInvoice.id.slice(-8)}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Cairo','Segoe UI',Tahoma,Arial,sans-serif; direction:rtl; background:#fff; color:#1e293b; padding:40px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px; border-bottom:3px solid #0d9488; padding-bottom:20px; }
+    .logo-img { width:60px; height:60px; border-radius:12px; margin-bottom:8px; }
+    .clinic-name { font-size:22px; font-weight:800; color:#0d9488; }
+    .clinic-addr { font-size:12px; color:#94a3b8; margin-top:4px; }
+    .invoice-title { font-size:28px; font-weight:900; color:#1e293b; text-align:left; }
+    .invoice-id { font-size:11px; color:#94a3b8; margin-top:4px; text-align:left; }
+    .info-row { display:flex; justify-content:space-between; margin-bottom:24px; background:#f8fafc; padding:16px; border-radius:12px; }
+    .info-label { font-size:11px; color:#94a3b8; margin-bottom:4px; }
+    .info-value { font-size:16px; font-weight:700; }
+    .info-right { text-align:left; }
+    .info-right .info-value { font-size:14px; font-weight:600; }
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    thead tr { background:#f1f5f9; }
+    th { padding:10px 16px; font-size:13px; font-weight:700; color:#64748b; }
+    th:first-child { text-align:right; }
+    th:last-child { text-align:left; width:130px; }
+    .total-bar { display:flex; justify-content:space-between; align-items:center; background:#0d9488; color:#fff; padding:16px 20px; border-radius:12px; margin-top:10px; }
+    .total-label { font-size:16px; font-weight:700; }
+    .total-amount { font-size:24px; font-weight:900; }
+    .footer { text-align:center; margin-top:30px; padding-top:16px; border-top:1px solid #e2e8f0; font-size:11px; color:#94a3b8; }
+    @media print { body { padding:20px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      ${settings.logoUrl ? `<img src="${settings.logoUrl}" class="logo-img"/>` : ''}
+      <div class="clinic-name">${clinicName}</div>
+      ${address ? `<div class="clinic-addr">${address}</div>` : ''}
+    </div>
+    <div>
+      <div class="invoice-title">فاتورة</div>
+      <div class="invoice-id">#${selectedInvoice.id.slice(-8)}</div>
+    </div>
+  </div>
 
-          <!-- Info Row -->
-          <div style="display:flex;justify-content:space-between;margin-bottom:24px;background:#f8fafc;padding:16px;border-radius:12px">
-            <div>
-              <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">اسم المريض</div>
-              <div style="font-size:16px;font-weight:700;color:#1e293b">${selectedInvoice.patientName}</div>
-            </div>
-            <div style="text-align:left">
-              <div style="font-size:11px;color:#94a3b8;margin-bottom:4px">التاريخ</div>
-              <div style="font-size:14px;font-weight:600;color:#1e293b">${invoiceDate}</div>
-            </div>
-          </div>
+  <div class="info-row">
+    <div>
+      <div class="info-label">اسم المريض</div>
+      <div class="info-value">${selectedInvoice.patientName}</div>
+    </div>
+    <div class="info-right">
+      <div class="info-label">التاريخ</div>
+      <div class="info-value">${invoiceDate}</div>
+    </div>
+  </div>
 
-          <!-- Items Table -->
-          <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
-            <thead>
-              <tr style="background:#f1f5f9">
-                <th style="padding:10px 12px;text-align:right;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase">الوصف</th>
-                <th style="padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;width:120px">المبلغ</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
+  <table>
+    <thead><tr><th>الوصف</th><th>المبلغ</th></tr></thead>
+    <tbody>${itemsHtml}</tbody>
+  </table>
 
-          <!-- Total -->
-          <div style="display:flex;justify-content:space-between;align-items:center;background:#0d9488;color:#fff;padding:16px 20px;border-radius:12px;margin-top:10px">
-            <div style="font-size:16px;font-weight:700">الإجمالي</div>
-            <div style="font-size:24px;font-weight:900">${selectedInvoice.totalAmount.toFixed(2)} د.أ</div>
-          </div>
+  <div class="total-bar">
+    <div class="total-label">الإجمالي</div>
+    <div class="total-amount">${selectedInvoice.totalAmount.toFixed(2)} د.أ</div>
+  </div>
 
-          <!-- Footer -->
-          <div style="text-align:center;margin-top:30px;padding-top:16px;border-top:1px solid #e2e8f0">
-            <div style="font-size:11px;color:#94a3b8">شكراً لاختياركم ${clinicName}</div>
-          </div>
-        </div>
-      `;
+  <div class="footer">شكراً لاختياركم ${clinicName}</div>
 
-      document.body.appendChild(container);
+  <script>
+    window.onload = function() {
+      setTimeout(function() { window.print(); }, 400);
+    };
+  </script>
+</body>
+</html>`;
 
-      try {
-          const html2canvas = (await import('html2canvas')).default;
-          const { jsPDF } = await import('jspdf');
-
-          const canvas = await html2canvas(container, {
-              scale: 2,
-              backgroundColor: '#ffffff',
-              useCORS: true,
-              logging: false,
-          });
-
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF('p', 'mm', 'a4');
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-          pdf.save(`Inv_${selectedInvoice.id}.pdf`);
-      } catch (e) {
-          console.error('PDF generation error:', e);
-          alert('خطأ في إنشاء الفاتورة');
-      } finally {
-          document.body.removeChild(container);
+      const printWindow = window.open('', '_blank', 'width=800,height=900');
+      if (printWindow) {
+          printWindow.document.write(printHtml);
+          printWindow.document.close();
+      } else {
+          alert('يرجى السماح بالنوافذ المنبثقة لطباعة الفاتورة');
       }
   };
 
