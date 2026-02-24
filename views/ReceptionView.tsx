@@ -495,98 +495,117 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
              </div>
         )}
 
-        {/* 1. ELEGANT CLINIC CLOCK WIDGET */}
-        <div dir="ltr" className="relative rounded-[2rem] md:rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/50 h-[220px] md:h-[280px] group select-none flex items-center">
+        {/* 1. FUTURISTIC MEDICAL HOLOGRAPHIC CLOCK WIDGET */}
+        <div dir="ltr" className="relative rounded-[2rem] md:rounded-3xl overflow-hidden shadow-[0_20px_50px_rgba(8,145,178,0.2)] bg-[#0a0f16] border border-cyan-900/50 h-[220px] md:h-[280px] group select-none flex items-center">
              
-             {/* Elegant Background Glows & Medical Animations */}
-             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[150%] bg-teal-500/10 blur-[100px] rounded-full mix-blend-screen"></div>
-                 <div className="absolute top-[20%] -right-[10%] w-[40%] h-[100%] bg-blue-500/10 blur-[80px] rounded-full mix-blend-screen"></div>
-                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50"></div>
+             {/* Holographic Background & Grid */}
+             <div className="absolute inset-0 pointer-events-none">
+                 {/* Deep Space Glow */}
+                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[150%] bg-cyan-500/10 blur-[120px] rounded-full"></div>
                  
-                 {/* EKG Heartbeat Line Animation */}
-                 <div className="absolute bottom-0 left-0 w-full h-32 opacity-30">
-                     <svg viewBox="0 0 1000 100" className="w-full h-full" preserveAspectRatio="none">
-                         <path 
-                             d="M0,50 L200,50 L230,20 L260,80 L290,50 L500,50 L530,20 L560,80 L590,50 L800,50 L830,20 L860,80 L890,50 L1000,50" 
-                             fill="none" 
-                             stroke="url(#ekg-gradient)" 
-                             strokeWidth="3" 
-                             strokeLinecap="round" 
-                             strokeLinejoin="round"
-                             className="animate-[dash_3s_linear_infinite]"
-                             style={{ strokeDasharray: 1000, strokeDashoffset: 1000 }}
-                         />
-                         <defs>
-                             <linearGradient id="ekg-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                 <stop offset="0%" stopColor="rgba(45,212,191,0)" />
-                                 <stop offset="50%" stopColor="rgba(45,212,191,1)" />
-                                 <stop offset="100%" stopColor="rgba(45,212,191,0)" />
-                             </linearGradient>
-                         </defs>
+                 {/* Hex Grid Overlay */}
+                 <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='103.92304845413263' viewBox='0 0 60 103.92304845413263' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 103.92304845413263L0 86.60254037844386L0 51.96152422706631L30 34.64101615137755L60 51.96152422706631L60 86.60254037844386Z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3Cpath d='M30 51.96152422706631L0 34.64101615137755L0 0L30 -17.32050807568877L60 0L60 34.64101615137755Z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3C/svg%3E")`, backgroundSize: '60px 103.9px' }}></div>
+                 
+                 {/* Animated Medical Rings (Right Side Background) */}
+                 <div className="absolute top-1/2 right-[10%] -translate-y-1/2 w-64 h-64 opacity-20">
+                     <div className="absolute inset-0 border-2 border-dashed border-cyan-500 rounded-full animate-[spin_20s_linear_infinite]"></div>
+                     <div className="absolute inset-4 border border-blue-500/50 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
+                     <div className="absolute inset-8 border-4 border-t-cyan-400 border-r-transparent border-b-blue-400 border-l-transparent rounded-full animate-[spin_10s_linear_infinite]"></div>
+                     <div className="absolute inset-0 flex items-center justify-center">
+                         <i className="fa-solid fa-staff-snake text-6xl text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.8)] animate-pulse"></i>
+                     </div>
+                 </div>
+
+                 {/* Multi-layered Sine Waves (Bottom) */}
+                 <div className="absolute bottom-0 left-0 w-full h-24 opacity-40 flex flex-col justify-end">
+                     <svg viewBox="0 0 1000 100" className="w-full h-full absolute bottom-0" preserveAspectRatio="none">
+                         <path d="M0,50 Q125,0 250,50 T500,50 T750,50 T1000,50" fill="none" stroke="#06b6d4" strokeWidth="1" className="animate-[wave_4s_linear_infinite]" />
+                     </svg>
+                     <svg viewBox="0 0 1000 100" className="w-full h-full absolute bottom-0 opacity-50" preserveAspectRatio="none">
+                         <path d="M0,50 Q125,100 250,50 T500,50 T750,50 T1000,50" fill="none" stroke="#3b82f6" strokeWidth="2" className="animate-[wave_3s_linear_infinite_reverse]" />
                      </svg>
                      <style>{`
-                         @keyframes dash {
-                             0% { stroke-dashoffset: 1000; }
-                             100% { stroke-dashoffset: 0; }
+                         @keyframes wave {
+                             0% { transform: translateX(0); }
+                             100% { transform: translateX(-50%); }
                          }
                      `}</style>
                  </div>
-                 
-                 {/* Floating Medical Crosses */}
-                 <div className="absolute top-10 right-[30%] text-teal-500/20 animate-[bounce_4s_ease-in-out_infinite]"><i className="fa-solid fa-plus text-4xl drop-shadow-[0_0_10px_rgba(45,212,191,0.5)]"></i></div>
-                 <div className="absolute bottom-10 left-[40%] text-blue-500/20 animate-[bounce_5s_ease-in-out_infinite_reverse]"><i className="fa-solid fa-plus text-2xl drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]"></i></div>
-                 <div className="absolute top-20 left-[20%] text-emerald-500/10 animate-[pulse_3s_ease-in-out_infinite]"><i className="fa-solid fa-heart-pulse text-3xl"></i></div>
              </div>
              
-             {/* Main Flex Container */}
+             {/* Main Content Container */}
              <div className="relative z-10 w-full px-8 md:px-16 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
                  
-                 {/* Left Side: The Time */}
-                 <div className="flex flex-col items-center md:items-start">
-                     <div className="flex items-baseline gap-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-300 drop-shadow-lg">
-                         <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none">{hh}</span>
-                         <span className="text-5xl md:text-7xl font-light text-teal-400 animate-pulse leading-none mb-4 md:mb-8 drop-shadow-[0_0_15px_rgba(45,212,191,0.8)]">:</span>
-                         <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none">{mm}</span>
+                 {/* Left Side: Holographic Time Display */}
+                 <div className="flex flex-col items-center md:items-start relative">
+                     {/* Decorative Tech Accents */}
+                     <div className="absolute -top-6 -left-4 w-8 h-8 border-t-2 border-l-2 border-cyan-500/50"></div>
+                     <div className="absolute -bottom-6 -right-4 w-8 h-8 border-b-2 border-r-2 border-cyan-500/50"></div>
+                     
+                     <div className="text-cyan-500 text-xs font-mono tracking-[0.3em] mb-2 flex items-center gap-2">
+                         <span className="w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>
+                         SYS.TIME.SYNC
                      </div>
-                     <div className="flex items-center gap-4 mt-2 md:mt-4 w-full max-w-[280px]">
-                         <div className="text-teal-400 font-mono text-lg md:text-xl font-bold w-8 drop-shadow-[0_0_5px_rgba(45,212,191,0.5)]">{String(ss).padStart(2, '0')}</div>
-                         <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden relative">
-                             <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-teal-500 to-cyan-400 rounded-full shadow-[0_0_10px_rgba(45,212,191,0.5)]" style={{width: `${(ss / 60) * 100}%`, transition: 'width 1s linear'}}></div>
-                             {/* Pulse dot at the end of the progress bar */}
-                             <div className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-[0_0_12px_white] animate-ping" style={{left: `calc(${(ss / 60) * 100}% - 6px)`, transition: 'left 1s linear'}}></div>
+                     
+                     <div className="flex items-baseline gap-2 text-transparent bg-clip-text bg-gradient-to-b from-white via-cyan-100 to-cyan-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+                         <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>{hh}</span>
+                         <span className="text-5xl md:text-7xl font-light text-cyan-400 animate-pulse leading-none mb-4 md:mb-8">:</span>
+                         <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none" style={{ fontFamily: "'Orbitron', sans-serif" }}>{mm}</span>
+                     </div>
+                     
+                     {/* High-Tech Seconds Progress */}
+                     <div className="flex items-center gap-4 mt-2 md:mt-4 w-full max-w-[320px]">
+                         <div className="text-cyan-400 font-mono text-xl md:text-2xl font-bold w-10 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">{String(ss).padStart(2, '0')}</div>
+                         <div className="flex-1 flex gap-1 h-2">
+                             {/* Segmented Progress Bar */}
+                             {[...Array(30)].map((_, i) => (
+                                 <div 
+                                     key={i} 
+                                     className={`flex-1 h-full rounded-sm transition-all duration-300 ${i < (ss / 2) ? 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)]' : 'bg-cyan-950/50'}`}
+                                 ></div>
+                             ))}
                          </div>
                      </div>
                  </div>
 
-                 {/* Right Side: Date & Status */}
+                 {/* Right Side: Medical HUD Stats */}
                  <div className="hidden md:flex flex-col items-end text-right z-20">
-                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4 md:mb-6 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                        <span className="h-2 w-2 bg-emerald-500 rounded-full animate-ping"></span>
-                        <span className="text-emerald-400 font-bold text-[10px] md:text-xs uppercase tracking-widest">{t('system_name')} ONLINE</span>
+                     {/* Status Badge */}
+                     <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-none border border-cyan-500/30 bg-cyan-950/40 backdrop-blur-sm mb-6 relative overflow-hidden group">
+                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                        <i className="fa-solid fa-satellite-dish text-cyan-400 animate-pulse"></i>
+                        <span className="text-cyan-300 font-mono text-xs uppercase tracking-[0.2em]">{t('system_name')} // ACTIVE</span>
                      </div>
                      
-                     <div className="text-3xl md:text-5xl font-black text-white tracking-tight mb-1 md:mb-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">
+                     {/* Date Display */}
+                     <div className="text-3xl md:text-4xl font-bold text-white tracking-wide mb-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
                          {dayName}
                      </div>
-                     <div className="text-lg md:text-2xl text-slate-400 font-light uppercase tracking-widest flex items-center gap-3 drop-shadow-md">
+                     <div className="text-lg md:text-xl text-cyan-500/80 font-mono uppercase tracking-widest flex items-center gap-3">
                          {fmtDate(currentTime)}
                      </div>
                      
-                     {/* Decorative Stat Pills */}
-                     <div className="flex gap-3 mt-6 md:mt-8">
-                         <div className="bg-slate-800/50 hover:bg-slate-700/50 transition-colors border border-teal-500/30 pl-3 pr-5 py-2 rounded-2xl text-sm text-slate-200 flex items-center gap-3 backdrop-blur-md shadow-[0_0_15px_rgba(45,212,191,0.15)]">
-                            <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400 shadow-[0_0_10px_rgba(45,212,191,0.5)]"><i className="fa-solid fa-users"></i></div>
+                     {/* HUD Data Modules */}
+                     <div className="flex gap-4 mt-8">
+                         {/* Waiting Module */}
+                         <div className="relative bg-[#0f172a]/80 border-l-2 border-cyan-500 pl-4 pr-6 py-3 flex items-center gap-4 backdrop-blur-md">
+                            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-cyan-500/50"></div>
+                            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-cyan-500/50"></div>
+                            <div className="text-cyan-400 text-2xl"><i className="fa-solid fa-users-viewfinder"></i></div>
                             <div className="flex flex-col items-start leading-none">
-                                <span className="font-black text-white text-lg drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">{activeQueue.length}</span>
-                                <span className="text-[9px] uppercase tracking-wider text-teal-400/80">Waiting</span>
+                                <span className="font-mono text-white text-2xl font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">{String(activeQueue.length).padStart(2, '0')}</span>
+                                <span className="text-[10px] font-mono text-cyan-500/70 uppercase tracking-widest mt-1">Waiting</span>
                             </div>
                          </div>
-                         <div className="bg-slate-800/50 hover:bg-slate-700/50 transition-colors border border-blue-500/30 pl-3 pr-5 py-2 rounded-2xl text-sm text-slate-200 flex items-center gap-3 backdrop-blur-md shadow-[0_0_15px_rgba(59,130,246,0.15)]">
-                            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.5)]"><i className="fa-solid fa-user-doctor"></i></div>
+                         
+                         {/* Clinics Module */}
+                         <div className="relative bg-[#0f172a]/80 border-l-2 border-blue-500 pl-4 pr-6 py-3 flex items-center gap-4 backdrop-blur-md">
+                            <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-blue-500/50"></div>
+                            <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-blue-500/50"></div>
+                            <div className="text-blue-400 text-2xl"><i className="fa-solid fa-network-wired"></i></div>
                             <div className="flex flex-col items-start leading-none">
-                                <span className="font-black text-white text-lg drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">{clinics.length}</span>
-                                <span className="text-[9px] uppercase tracking-wider text-blue-400/80">Clinics</span>
+                                <span className="font-mono text-white text-2xl font-bold drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">{String(clinics.length).padStart(2, '0')}</span>
+                                <span className="text-[10px] font-mono text-blue-500/70 uppercase tracking-widest mt-1">Clinics</span>
                             </div>
                          </div>
                      </div>
@@ -594,16 +613,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
              </div>
              
-             {/* Scanning Laser Effect */}
-             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-teal-400/50 to-transparent animate-[scan_4s_ease-in-out_infinite] shadow-[0_0_15px_rgba(45,212,191,0.8)] pointer-events-none"></div>
-             <style>{`
-                 @keyframes scan {
-                     0%, 100% { top: 0; opacity: 0; }
-                     10% { opacity: 1; }
-                     90% { opacity: 1; }
-                     50% { top: 100%; }
-                 }
-             `}</style>
+             {/* Glitch/Scan Overlay */}
+             <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(transparent_50%,rgba(6,182,212,0.05)_50%)] bg-[length:100%_4px] z-50 opacity-20"></div>
         </div>
 
         {/* ... [Rest of the file remains same] ... */}
