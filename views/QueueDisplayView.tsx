@@ -33,7 +33,7 @@ const QueueDisplayView: React.FC = () => {
 
   // Audio & TTS Logic
   const speak = (text: string, langCode: string = 'en-US') => {
-    if (!soundEnabled || !window.speechSynthesis) return;
+    if (!soundEnabled) return;
     
     // Play chime (simple oscillator)
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -48,50 +48,27 @@ const QueueDisplayView: React.FC = () => {
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
     osc.start();
     osc.stop(ctx.currentTime + 0.5);
+    
     // Close AudioContext after sound finishes to prevent memory leak
-    osc.onended = () => ctx.close();
-
-    // Speak after chime
-    setTimeout(() => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = langCode;
-        utterance.rate = 0.8; // Slightly slower for better clarity
+    osc.onended = () => {
+        ctx.close();
         
-        // Try to find a specific voice for the language
-        const voices = window.speechSynthesis.getVoices();
-        let targetVoice = null;
-
-        if (langCode.startsWith('ar')) {
-            // Aggressively search for any Arabic voice (Google, Microsoft, etc.)
-            targetVoice = voices.find(v => v.lang.startsWith('ar') || v.lang.includes('ar-')) || 
-                          voices.find(v => v.name.toLowerCase().includes('arabic'));
-            
-            if (!targetVoice) {
-                console.warn("⚠️ No Arabic TTS voice found on this browser/OS! Falling back to default.");
+        // Use Google Translate TTS API as an audio file (Works on all browsers, no local voice needed)
+        const googleLang = langCode.startsWith('ar') ? 'ar' : 'en';
+        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(text)}`;
+        
+        const audio = new Audio(audioUrl);
+        audio.play().catch(e => {
+            console.warn("Google TTS Audio failed, falling back to browser TTS", e);
+            if (window.speechSynthesis) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = langCode;
+                utterance.rate = 0.8;
+                window.speechSynthesis.speak(utterance);
             }
-        } else {
-            targetVoice = voices.find(v => v.lang.startsWith('en'));
-        }
-
-        if (targetVoice) {
-            utterance.voice = targetVoice;
-        }
-        
-        window.speechSynthesis.speak(utterance);
-    }, 600);
+        });
+    };
   };
-
-  // Ensure voices are loaded (some browsers load them asynchronously)
-  useEffect(() => {
-      if (window.speechSynthesis) {
-          const loadVoices = () => {
-              const voices = window.speechSynthesis.getVoices();
-              console.log("TTS Voices loaded:", voices.map(v => `${v.name} (${v.lang})`));
-          };
-          loadVoices();
-          window.speechSynthesis.onvoiceschanged = loadVoices;
-      }
-  }, []);
 
   // Load clinic names once (separate from subscription to avoid infinite loop)
   useEffect(() => {
