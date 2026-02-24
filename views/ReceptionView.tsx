@@ -517,12 +517,12 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                  </div>
 
                  {/* Multi-layered Sine Waves (Bottom) */}
-                 <div className="absolute bottom-0 left-0 w-full h-24 opacity-40 flex flex-col justify-end">
-                     <svg viewBox="0 0 1000 100" className="w-full h-full absolute bottom-0" preserveAspectRatio="none">
-                         <path d="M0,50 Q125,0 250,50 T500,50 T750,50 T1000,50" fill="none" stroke="#06b6d4" strokeWidth="1" className="animate-[wave_4s_linear_infinite]" />
+                 <div className="absolute bottom-0 left-0 w-full h-24 opacity-40 flex flex-col justify-end overflow-hidden">
+                     <svg viewBox="0 0 2000 100" className="w-[200%] h-full absolute bottom-0 left-0 animate-[wave_8s_linear_infinite]" preserveAspectRatio="none">
+                         <path d="M0,50 Q250,0 500,50 T1000,50 T1500,50 T2000,50" fill="none" stroke="#06b6d4" strokeWidth="2" className="opacity-50" />
                      </svg>
-                     <svg viewBox="0 0 1000 100" className="w-full h-full absolute bottom-0 opacity-50" preserveAspectRatio="none">
-                         <path d="M0,50 Q125,100 250,50 T500,50 T750,50 T1000,50" fill="none" stroke="#3b82f6" strokeWidth="2" className="animate-[wave_3s_linear_infinite_reverse]" />
+                     <svg viewBox="0 0 2000 100" className="w-[200%] h-full absolute bottom-0 left-0 animate-[wave_6s_linear_infinite_reverse]" preserveAspectRatio="none">
+                         <path d="M0,50 Q250,100 500,50 T1000,50 T1500,50 T2000,50" fill="none" stroke="#3b82f6" strokeWidth="2" className="opacity-30" />
                      </svg>
                      <style>{`
                          @keyframes wave {
@@ -542,9 +542,20 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                      <div className="absolute -top-6 -left-4 w-8 h-8 border-t-2 border-l-2 border-cyan-500/50"></div>
                      <div className="absolute -bottom-6 -right-4 w-8 h-8 border-b-2 border-r-2 border-cyan-500/50"></div>
                      
-                     <div className="text-cyan-500 text-xs font-mono tracking-[0.3em] mb-2 flex items-center gap-2">
-                         <span className="w-2 h-2 bg-cyan-400 rounded-full animate-ping"></span>
-                         SYS.TIME.SYNC
+                     {/* Client Name & System Status */}
+                     <div className="flex items-center gap-3 mb-3">
+                         <div className="relative flex items-center justify-center w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/50">
+                             <span className="w-2 h-2 bg-cyan-400 rounded-full animate-ping absolute"></span>
+                             <span className="w-2 h-2 bg-cyan-400 rounded-full relative"></span>
+                         </div>
+                         <div className="flex flex-col">
+                             <span className="text-white font-bold text-sm md:text-base tracking-widest uppercase drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+                                 {client?.name || 'MEDLOOP CLINIC'}
+                             </span>
+                             <span className="text-cyan-500/70 text-[10px] font-mono tracking-[0.3em] uppercase">
+                                 Reception System // Active
+                             </span>
+                         </div>
                      </div>
                      
                      <div className="flex items-baseline gap-2 text-white">
@@ -577,8 +588,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                      {/* Status Badge */}
                      <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-none border border-cyan-500/30 bg-cyan-950/40 backdrop-blur-sm mb-6 relative overflow-hidden group">
                         <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                        <i className="fa-solid fa-satellite-dish text-cyan-400 animate-pulse"></i>
-                        <span className="text-cyan-300 font-mono text-xs uppercase tracking-[0.2em]">{t('system_name')} // ACTIVE</span>
+                        <i className="fa-solid fa-shield-halved text-cyan-400 animate-pulse"></i>
+                        <span className="text-cyan-300 font-mono text-xs uppercase tracking-[0.2em]">SECURE CONNECTION</span>
                      </div>
                      
                      {/* Date Display */}
