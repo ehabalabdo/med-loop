@@ -506,8 +506,8 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                  {/* Hex Grid Overlay */}
                  <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='103.92304845413263' viewBox='0 0 60 103.92304845413263' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 103.92304845413263L0 86.60254037844386L0 51.96152422706631L30 34.64101615137755L60 51.96152422706631L60 86.60254037844386Z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3Cpath d='M30 51.96152422706631L0 34.64101615137755L0 0L30 -17.32050807568877L60 0L60 34.64101615137755Z' fill='none' stroke='%2306b6d4' stroke-width='1'/%3E%3C/svg%3E")`, backgroundSize: '60px 103.9px' }}></div>
                  
-                 {/* Animated Medical Rings (Left Side Background - Behind Clock) */}
-                 <div className="absolute top-1/2 left-[15%] -translate-y-1/2 w-64 h-64 opacity-20">
+                 {/* Animated Medical Rings (Center-Right Background) */}
+                 <div className="absolute top-1/2 right-[35%] -translate-y-1/2 w-64 h-64 opacity-20">
                      <div className="absolute inset-0 border-2 border-dashed border-cyan-500 rounded-full animate-[spin_20s_linear_infinite]"></div>
                      <div className="absolute inset-4 border border-blue-500/50 rounded-full animate-[spin_15s_linear_infinite_reverse]"></div>
                      <div className="absolute inset-8 border-4 border-t-cyan-400 border-r-transparent border-b-blue-400 border-l-transparent rounded-full animate-[spin_10s_linear_infinite]"></div>
