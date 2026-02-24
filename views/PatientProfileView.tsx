@@ -439,11 +439,17 @@ const PatientProfileView: React.FC = () => {
            {activeTab === 'timeline' && (
                <div className="animate-fade-in relative pl-8 border-l-2 border-slate-100 space-y-8 py-2">
                    {/* Combined History + Current (skip empty/reset currentVisit) */}
-                   {[...(patient.currentVisit?.visitId ? [patient.currentVisit] : []), ...patient.history].map((visit, idx) => (
+                   {[...(patient.currentVisit?.visitId ? [patient.currentVisit] : []), ...patient.history].map((visit, idx) => {
+                       const hasVitals = visit.vitalSigns && Object.values(visit.vitalSigns).some(v => v);
+                       const hasSOAP = visit.chiefComplaint || visit.presentIllness || visit.pastMedicalHistory || visit.surgicalHistory || visit.currentMedications || visit.allergies || visit.familyHistory || visit.socialHistory || visit.generalExamination || visit.systemicExamination || hasVitals || visit.preliminaryDiagnosis || visit.differentialDiagnosis;
+                       const hasLabs = visit.labOrders && visit.labOrders.length > 0;
+                       const hasImaging = visit.imagingOrders && visit.imagingOrders.length > 0;
+                       
+                       return (
                        <div key={idx} className="relative">
                            <div className={`absolute -left-[41px] top-0 w-5 h-5 rounded-full border-4 border-white shadow-sm ${idx === 0 ? 'bg-primary' : 'bg-slate-300'}`}></div>
                            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                               <div className="flex-1">
+                               <div className="flex-1 w-full">
                                    <div className={`text-sm font-bold ${idx === 0 ? 'text-primary' : 'text-slate-600'}`}>
                                        {new Date(visit.date).toLocaleDateString()}
                                    </div>
@@ -452,35 +458,197 @@ const PatientProfileView: React.FC = () => {
                                    </div>
                                    
                                    {/* Clinical Summary Card */}
-                                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 w-full space-y-2">
-                                       <div className="text-sm font-medium text-slate-800">Reason: {visit.reasonForVisit}</div>
+                                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 w-full space-y-3">
+                                       {visit.reasonForVisit && (
+                                         <div className="text-sm font-medium text-slate-800">
+                                           <i className="fa-solid fa-comment-medical text-primary ml-1"></i> سبب الزيارة: {visit.reasonForVisit}
+                                         </div>
+                                       )}
                                        
                                        {/* Show Medical Details if Authorized */}
                                        {user?.role !== UserRole.SECRETARY && (
-                                           <div className="border-t border-gray-200 pt-2 mt-2 space-y-2">
-                                               {visit.diagnosis && (
-                                                   <div className="text-xs">
-                                                       <span className="font-bold text-slate-500 uppercase">Dx:</span> <span className="text-slate-700">{visit.diagnosis}</span>
-                                                   </div>
-                                               )}
+                                           <div className="border-t border-gray-200 pt-3 mt-2 space-y-4">
+
+                                               {/* === SOAP SECTIONS === */}
                                                
-                                               {visit.prescriptions && visit.prescriptions.length > 0 && (
-                                                   <div className="text-xs">
-                                                       <span className="font-bold text-slate-500 uppercase block mb-1">Rx:</span>
-                                                       <div className="flex flex-wrap gap-1">
-                                                           {visit.prescriptions.map((rx, i) => (
-                                                               <span key={i} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                                                                   {rx.drugName} {rx.dosage}
-                                                               </span>
-                                                           ))}
-                                                       </div>
+                                               {/* 1. Chief Complaint */}
+                                               {visit.chiefComplaint && (
+                                                 <div className="bg-white p-3 rounded-lg border border-slate-100">
+                                                   <div className="text-[11px] font-bold text-primary uppercase mb-1 flex items-center gap-1">
+                                                     <i className="fa-solid fa-bullhorn text-[10px]"></i> الشكوى الرئيسية
                                                    </div>
+                                                   <div className="text-sm text-slate-700">{visit.chiefComplaint}</div>
+                                                 </div>
                                                )}
 
-                                               {/* ATTACHMENTS SECTION */}
+                                               {/* 2. History Section */}
+                                               {(visit.presentIllness || visit.pastMedicalHistory || visit.surgicalHistory || visit.currentMedications || visit.allergies || visit.familyHistory || visit.socialHistory) && (
+                                                 <div className="bg-white p-3 rounded-lg border border-slate-100">
+                                                   <div className="text-[11px] font-bold text-indigo-600 uppercase mb-2 flex items-center gap-1">
+                                                     <i className="fa-solid fa-book-medical text-[10px]"></i> التاريخ المرضي
+                                                   </div>
+                                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                     {visit.presentIllness && (
+                                                       <div className="text-xs"><span className="font-bold text-slate-500">المرض الحالي:</span> <span className="text-slate-700">{visit.presentIllness}</span></div>
+                                                     )}
+                                                     {visit.pastMedicalHistory && (
+                                                       <div className="text-xs"><span className="font-bold text-slate-500">التاريخ الطبي:</span> <span className="text-slate-700">{visit.pastMedicalHistory}</span></div>
+                                                     )}
+                                                     {visit.surgicalHistory && (
+                                                       <div className="text-xs"><span className="font-bold text-slate-500">التاريخ الجراحي:</span> <span className="text-slate-700">{visit.surgicalHistory}</span></div>
+                                                     )}
+                                                     {visit.currentMedications && (
+                                                       <div className="text-xs"><span className="font-bold text-slate-500">الأدوية الحالية:</span> <span className="text-slate-700">{visit.currentMedications}</span></div>
+                                                     )}
+                                                     {visit.allergies && (
+                                                       <div className="text-xs"><span className="font-bold text-red-500">الحساسية:</span> <span className="text-red-700">{visit.allergies}</span></div>
+                                                     )}
+                                                     {visit.familyHistory && (
+                                                       <div className="text-xs"><span className="font-bold text-slate-500">تاريخ العائلة:</span> <span className="text-slate-700">{visit.familyHistory}</span></div>
+                                                     )}
+                                                     {visit.socialHistory && (
+                                                       <div className="text-xs"><span className="font-bold text-slate-500">التاريخ الاجتماعي:</span> <span className="text-slate-700">{visit.socialHistory}</span></div>
+                                                     )}
+                                                   </div>
+                                                 </div>
+                                               )}
+
+                                               {/* 3. Examination */}
+                                               {(visit.generalExamination || visit.systemicExamination || hasVitals) && (
+                                                 <div className="bg-white p-3 rounded-lg border border-slate-100">
+                                                   <div className="text-[11px] font-bold text-teal-600 uppercase mb-2 flex items-center gap-1">
+                                                     <i className="fa-solid fa-stethoscope text-[10px]"></i> الفحص السريري
+                                                   </div>
+                                                   {visit.generalExamination && (
+                                                     <div className="text-xs mb-2"><span className="font-bold text-slate-500">الفحص العام:</span> <span className="text-slate-700">{visit.generalExamination}</span></div>
+                                                   )}
+                                                   {visit.systemicExamination && (
+                                                     <div className="text-xs mb-2"><span className="font-bold text-slate-500">فحص الأجهزة:</span> <span className="text-slate-700">{visit.systemicExamination}</span></div>
+                                                   )}
+                                                   {hasVitals && (
+                                                     <div className="mt-2">
+                                                       <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">العلامات الحيوية</div>
+                                                       <div className="flex flex-wrap gap-2">
+                                                         {visit.vitalSigns?.bloodPressure && (
+                                                           <span className="bg-red-50 text-red-700 px-2 py-1 rounded text-[11px] font-medium flex items-center gap-1">
+                                                             <i className="fa-solid fa-heart-pulse text-[9px]"></i> {visit.vitalSigns.bloodPressure}
+                                                           </span>
+                                                         )}
+                                                         {visit.vitalSigns?.pulse && (
+                                                           <span className="bg-pink-50 text-pink-700 px-2 py-1 rounded text-[11px] font-medium">
+                                                             ❤️ {visit.vitalSigns.pulse} bpm
+                                                           </span>
+                                                         )}
+                                                         {visit.vitalSigns?.temperature && (
+                                                           <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded text-[11px] font-medium">
+                                                             🌡️ {visit.vitalSigns.temperature}°C
+                                                           </span>
+                                                         )}
+                                                         {visit.vitalSigns?.respiratoryRate && (
+                                                           <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[11px] font-medium">
+                                                             🫁 {visit.vitalSigns.respiratoryRate}/min
+                                                           </span>
+                                                         )}
+                                                         {visit.vitalSigns?.oxygenSaturation && (
+                                                           <span className="bg-green-50 text-green-700 px-2 py-1 rounded text-[11px] font-medium">
+                                                             O₂ {visit.vitalSigns.oxygenSaturation}%
+                                                           </span>
+                                                         )}
+                                                       </div>
+                                                     </div>
+                                                   )}
+                                                 </div>
+                                               )}
+
+                                               {/* 4. Assessment / Diagnosis */}
+                                               {(visit.preliminaryDiagnosis || visit.differentialDiagnosis || visit.diagnosis) && (
+                                                 <div className="bg-white p-3 rounded-lg border border-emerald-100">
+                                                   <div className="text-[11px] font-bold text-emerald-600 uppercase mb-2 flex items-center gap-1">
+                                                     <i className="fa-solid fa-clipboard-check text-[10px]"></i> التشخيص
+                                                   </div>
+                                                   {(visit.preliminaryDiagnosis || visit.diagnosis) && (
+                                                     <div className="text-sm font-medium text-slate-800 mb-1">
+                                                       {visit.preliminaryDiagnosis || visit.diagnosis}
+                                                     </div>
+                                                   )}
+                                                   {visit.differentialDiagnosis && (
+                                                     <div className="text-xs text-slate-500">
+                                                       <span className="font-bold">تشخيص تفريقي:</span> {visit.differentialDiagnosis}
+                                                     </div>
+                                                   )}
+                                                 </div>
+                                               )}
+
+                                               {/* 5. Prescriptions */}
+                                               {visit.prescriptions && visit.prescriptions.length > 0 && (
+                                                 <div className="bg-white p-3 rounded-lg border border-blue-100">
+                                                   <div className="text-[11px] font-bold text-blue-600 uppercase mb-2 flex items-center gap-1">
+                                                     <i className="fa-solid fa-prescription text-[10px]"></i> الوصفة الطبية
+                                                   </div>
+                                                   <div className="flex flex-wrap gap-1.5">
+                                                     {visit.prescriptions.map((rx, i) => (
+                                                       <span key={i} className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg text-[11px] font-bold border border-blue-100">
+                                                         💊 {rx.drugName} {rx.dosage} {rx.frequency ? `• ${rx.frequency}` : ''} {rx.duration ? `• ${rx.duration}` : ''}
+                                                       </span>
+                                                     ))}
+                                                   </div>
+                                                 </div>
+                                               )}
+
+                                               {/* 6. Lab Orders */}
+                                               {hasLabs && (
+                                                 <div className="bg-white p-3 rounded-lg border border-purple-100">
+                                                   <div className="text-[11px] font-bold text-purple-600 uppercase mb-2 flex items-center gap-1">
+                                                     <i className="fa-solid fa-flask text-[10px]"></i> طلبات المختبر
+                                                   </div>
+                                                   <div className="space-y-1.5">
+                                                     {visit.labOrders!.map((lab, i) => (
+                                                       <div key={i} className="flex items-center justify-between bg-purple-50 px-3 py-1.5 rounded-lg text-xs">
+                                                         <span className="font-medium text-purple-800">🧪 {lab.testName}</span>
+                                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${lab.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                           {lab.status === 'Completed' ? '✓ مكتمل' : '⏳ معلق'}
+                                                         </span>
+                                                       </div>
+                                                     ))}
+                                                   </div>
+                                                 </div>
+                                               )}
+
+                                               {/* 7. Imaging Orders */}
+                                               {hasImaging && (
+                                                 <div className="bg-white p-3 rounded-lg border border-cyan-100">
+                                                   <div className="text-[11px] font-bold text-cyan-600 uppercase mb-2 flex items-center gap-1">
+                                                     <i className="fa-solid fa-x-ray text-[10px]"></i> طلبات الأشعة
+                                                   </div>
+                                                   <div className="space-y-1.5">
+                                                     {visit.imagingOrders!.map((img, i) => (
+                                                       <div key={i} className="flex items-center justify-between bg-cyan-50 px-3 py-1.5 rounded-lg text-xs">
+                                                         <span className="font-medium text-cyan-800">📷 {img.imagingType} - {img.bodyPart}</span>
+                                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${img.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                           {img.status === 'Completed' ? '✓ مكتمل' : '⏳ معلق'}
+                                                         </span>
+                                                       </div>
+                                                     ))}
+                                                   </div>
+                                                 </div>
+                                               )}
+
+                                               {/* 8. Doctor Notes */}
+                                               {visit.doctorNotes && (
+                                                 <div className="bg-white p-3 rounded-lg border border-amber-100">
+                                                   <div className="text-[11px] font-bold text-amber-600 uppercase mb-1 flex items-center gap-1">
+                                                     <i className="fa-solid fa-note-sticky text-[10px]"></i> ملاحظات الطبيب
+                                                   </div>
+                                                   <div className="text-sm text-slate-700 italic">"{visit.doctorNotes}"</div>
+                                                 </div>
+                                               )}
+
+                                               {/* 9. Attachments */}
                                                {visit.attachments && visit.attachments.length > 0 && (
-                                                   <div className="text-xs mt-3 bg-white p-2 rounded border border-slate-100">
-                                                       <span className="font-bold text-slate-500 uppercase block mb-1.5 flex items-center gap-1"><i className="fa-solid fa-paperclip"></i> Attachments:</span>
+                                                   <div className="bg-white p-3 rounded-lg border border-slate-100">
+                                                       <div className="text-[11px] font-bold text-slate-500 uppercase mb-2 flex items-center gap-1">
+                                                         <i className="fa-solid fa-paperclip text-[10px]"></i> المرفقات
+                                                       </div>
                                                        <div className="flex flex-wrap gap-2">
                                                            {visit.attachments.map((att, i) => (
                                                                <a 
@@ -508,6 +676,14 @@ const PatientProfileView: React.FC = () => {
                                                    </div>
                                                )}
 
+                                               {/* No data message */}
+                                               {!hasSOAP && !visit.diagnosis && (!visit.prescriptions || visit.prescriptions.length === 0) && !hasLabs && !hasImaging && !visit.doctorNotes && (!visit.attachments || visit.attachments.length === 0) && (
+                                                 <div className="text-center py-4 text-slate-400 text-xs">
+                                                   <i className="fa-solid fa-inbox text-lg mb-1"></i>
+                                                   <p>لا توجد بيانات سريرية مسجلة لهذه الزيارة</p>
+                                                 </div>
+                                               )}
+
                                            </div>
                                        )}
                                    </div>
@@ -521,7 +697,8 @@ const PatientProfileView: React.FC = () => {
                                </div>
                            </div>
                        </div>
-                   ))}
+                       );
+                   })}
                </div>
            )}
 

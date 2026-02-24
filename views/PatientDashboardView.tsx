@@ -378,15 +378,63 @@ const PatientDashboardView: React.FC = () => {
             </div>
             {patient.history && patient.history.length > 0 ? (
               <div className="space-y-4">
-                {patient.history.slice(0, 3).map((visit, idx) => (
-                  <div key={idx} className="border-l-4 border-primary pl-4 py-2">
-                    <div className="text-sm font-bold text-slate-800">
-                      {new Date(visit.date).toLocaleDateString('ar-EG')}
+                {patient.history.slice(0, 5).map((visit, idx) => (
+                  <div key={idx} className="border-l-4 border-primary pl-4 py-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-bold text-slate-800">
+                        {new Date(visit.date).toLocaleDateString('ar-EG')}
+                      </div>
+                      <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                        <i className="fa-solid fa-check-circle"></i> مكتمل
+                      </span>
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">{visit.reasonForVisit}</div>
-                    <div className="text-xs text-green-600 font-medium mt-1">
-                      <i className="fa-solid fa-check-circle"></i> مكتمل
-                    </div>
+                    {visit.reasonForVisit && (
+                      <div className="text-xs text-slate-500">
+                        <i className="fa-solid fa-comment-medical ml-1 text-primary"></i> {visit.reasonForVisit}
+                      </div>
+                    )}
+                    {visit.chiefComplaint && (
+                      <div className="text-xs text-slate-600">
+                        <span className="font-bold text-slate-500">الشكوى:</span> {visit.chiefComplaint}
+                      </div>
+                    )}
+                    {(visit.preliminaryDiagnosis || visit.diagnosis) && (
+                      <div className="text-xs bg-emerald-50 text-emerald-700 p-2 rounded-lg font-medium">
+                        <i className="fa-solid fa-clipboard-check ml-1"></i> التشخيص: {visit.preliminaryDiagnosis || visit.diagnosis}
+                      </div>
+                    )}
+                    {visit.prescriptions && visit.prescriptions.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {visit.prescriptions.map((rx, i) => (
+                          <span key={i} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100">
+                            💊 {rx.drugName} {rx.dosage}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {visit.labOrders && visit.labOrders.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {visit.labOrders.map((lab, i) => (
+                          <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-bold border ${lab.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                            🧪 {lab.testName}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {visit.imagingOrders && visit.imagingOrders.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {visit.imagingOrders.map((img, i) => (
+                          <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-bold border ${img.status === 'Completed' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-amber-50 text-amber-700 border-amber-100'}`}>
+                            📷 {img.imagingType} - {img.bodyPart}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {visit.doctorNotes && (
+                      <div className="text-xs text-amber-700 bg-amber-50 p-2 rounded-lg italic">
+                        <i className="fa-solid fa-note-sticky ml-1"></i> {visit.doctorNotes}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
