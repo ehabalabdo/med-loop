@@ -59,7 +59,20 @@ const QueueDisplayView: React.FC = () => {
         
         // Try to find a specific voice for the language
         const voices = window.speechSynthesis.getVoices();
-        const targetVoice = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
+        let targetVoice = null;
+
+        if (langCode.startsWith('ar')) {
+            // Aggressively search for any Arabic voice (Google, Microsoft, etc.)
+            targetVoice = voices.find(v => v.lang.startsWith('ar') || v.lang.includes('ar-')) || 
+                          voices.find(v => v.name.toLowerCase().includes('arabic'));
+            
+            if (!targetVoice) {
+                console.warn("⚠️ No Arabic TTS voice found on this browser/OS! Falling back to default.");
+            }
+        } else {
+            targetVoice = voices.find(v => v.lang.startsWith('en'));
+        }
+
         if (targetVoice) {
             utterance.voice = targetVoice;
         }
@@ -71,9 +84,12 @@ const QueueDisplayView: React.FC = () => {
   // Ensure voices are loaded (some browsers load them asynchronously)
   useEffect(() => {
       if (window.speechSynthesis) {
-          window.speechSynthesis.onvoiceschanged = () => {
-              console.log("TTS Voices loaded");
+          const loadVoices = () => {
+              const voices = window.speechSynthesis.getVoices();
+              console.log("TTS Voices loaded:", voices.map(v => `${v.name} (${v.lang})`));
           };
+          loadVoices();
+          window.speechSynthesis.onvoiceschanged = loadVoices;
       }
   }, []);
 
