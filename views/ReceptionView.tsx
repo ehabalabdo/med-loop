@@ -572,6 +572,22 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
                          </div>
                          <div className="bg-white p-5 md:p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                              <select className="input-modern" value={formData.clinicId} onChange={e => setFormData({...formData, clinicId: e.target.value})}>{clinics.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                             
+                             {/* Priority Toggle */}
+                             <div>
+                                <label className="text-[10px] font-bold uppercase text-slate-400 mb-2 block">{t('priority')}</label>
+                                <div className="flex gap-2">
+                                   <button type="button" onClick={() => setFormData({...formData, priority: 'normal' as Priority})}
+                                      className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${formData.priority === 'normal' ? 'bg-green-100 text-green-800 border-2 border-green-400 shadow-sm' : 'bg-gray-50 text-gray-400 border border-gray-200 hover:bg-gray-100'}`}>
+                                      <i className="fa-solid fa-user"></i> {t('normal')}
+                                   </button>
+                                   <button type="button" onClick={() => setFormData({...formData, priority: 'urgent' as Priority})}
+                                      className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${formData.priority === 'urgent' ? 'bg-red-100 text-red-800 border-2 border-red-400 shadow-sm animate-pulse' : 'bg-gray-50 text-gray-400 border border-gray-200 hover:bg-gray-100'}`}>
+                                      <i className="fa-solid fa-bolt"></i> {t('urgent')}
+                                   </button>
+                                </div>
+                             </div>
+
                              <input type="text" placeholder={t('reason_visit')} className="input-modern" value={formData.reasonForVisit} onChange={e => setFormData({...formData, reasonForVisit: e.target.value})} />
                          </div>
                       </div>
