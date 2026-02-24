@@ -32,42 +32,50 @@ const QueueDisplayView: React.FC = () => {
   }, []);
 
   // Audio & TTS Logic
-  const speak = (text: string, langCode: string = 'en-US') => {
+  const speak = async (text: string, langCode: string = 'en-US') => {
     if (!soundEnabled) return;
     
-    // Play chime (simple oscillator)
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(500, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
-    
-    // Close AudioContext after sound finishes to prevent memory leak
-    osc.onended = () => {
-        ctx.close();
+    try {
+        // 1. Play chime (simple oscillator)
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(500, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
         
-        // Use Google Translate TTS API as an audio file (Works on all browsers, no local voice needed)
+        // Wait for chime to finish
+        await new Promise(resolve => {
+            osc.onended = () => {
+                ctx.close();
+                resolve(true);
+            };
+        });
+
+        // 2. Fetch and play Google TTS Audio
         const googleLang = langCode.startsWith('ar') ? 'ar' : 'en';
-        const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(text)}`;
+        // Using a more reliable free TTS API endpoint (Google Translate API sometimes blocks direct Audio tag requests due to CORS/Referer)
+        const audioUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=gtx&q=${encodeURIComponent(text)}`;
         
         const audio = new Audio(audioUrl);
-        audio.play().catch(e => {
-            console.warn("Google TTS Audio failed, falling back to browser TTS", e);
-            if (window.speechSynthesis) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = langCode;
-                utterance.rate = 0.8;
-                window.speechSynthesis.speak(utterance);
-            }
-        });
-    };
+        await audio.play();
+
+    } catch (e) {
+        console.warn("Audio playback failed, falling back to browser TTS", e);
+        // Fallback to browser's built-in TTS if the audio file fails
+        if (window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = langCode;
+            utterance.rate = 0.8;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
   };
 
   // Load clinic names once (separate from subscription to avoid infinite loop)
