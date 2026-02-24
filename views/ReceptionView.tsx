@@ -495,75 +495,68 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
              </div>
         )}
 
-        {/* 1. THE "MESMERIZING" QUANTUM CLOCK WIDGET */}
-        <div dir="ltr" className="relative rounded-[2rem] md:rounded-3xl overflow-hidden shadow-2xl bg-[#0b1120] border border-slate-800 h-[220px] md:h-[280px] group select-none">
+        {/* 1. ELEGANT CLINIC CLOCK WIDGET */}
+        <div dir="ltr" className="relative rounded-[2rem] md:rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700/50 h-[220px] md:h-[280px] group select-none flex items-center">
              
-             {/* Background Effects */}
-             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-[#0b1120] to-black opacity-80"></div>
-             <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(#0d9488 1px, transparent 1px)', backgroundSize: '20px 20px'}}></div>
+             {/* Elegant Background Glows */}
+             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[150%] bg-teal-500/10 blur-[100px] rounded-full mix-blend-screen"></div>
+                 <div className="absolute top-[20%] -right-[10%] w-[40%] h-[100%] bg-blue-500/10 blur-[80px] rounded-full mix-blend-screen"></div>
+                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNSkiLz48L3N2Zz4=')] opacity-50"></div>
+             </div>
              
              {/* Main Flex Container */}
-             <div className="relative z-10 w-full h-full flex items-center justify-between px-8 md:px-16 overflow-hidden">
+             <div className="relative z-10 w-full px-8 md:px-16 flex flex-col md:flex-row items-center justify-between gap-6 md:gap-0">
                  
-                 {/* Left Side: The "Reactor" Time Display */}
-                 <div className="relative flex items-center justify-center">
-                     {/* Outer Rotating Ring (Slow) */}
-                     <div className="absolute w-40 h-40 md:w-56 md:h-56 rounded-full border border-slate-700/50 border-dashed animate-[spin_60s_linear_infinite]"></div>
-                     
-                     {/* Middle Rotating Ring (Medium, Reverse) */}
-                     <div className="absolute w-36 h-36 md:w-48 md:h-48 rounded-full border border-primary/20 border-t-primary/80 animate-[spin_15s_linear_infinite_reverse]"></div>
-                     
-                     {/* Inner Ring (Fast) */}
-                     <div className="absolute w-32 h-32 md:w-44 md:h-44 rounded-full border-2 border-slate-800 border-l-cyan-400/50 animate-[spin_3s_linear_infinite]"></div>
-                     
-                     {/* The Time Itself */}
-                     <div className="flex flex-col items-center justify-center z-20 mix-blend-screen">
-                        <div className="flex items-baseline gap-1 md:gap-2 font-mono tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 drop-shadow-[0_0_10px_rgba(13,148,136,0.5)]">
-                             <span className="text-6xl md:text-8xl font-bold">{hh}</span>
-                             <span className="text-4xl md:text-6xl animate-pulse text-primary">:</span>
-                             <span className="text-6xl md:text-8xl font-bold">{mm}</span>
-                        </div>
-                        {/* Seconds Bar */}
-                        <div className="w-full h-1 bg-slate-800 rounded-full mt-2 overflow-hidden relative">
-                             <div className="absolute top-0 left-0 h-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" style={{width: `${(ss / 60) * 100}%`, transition: 'width 1s linear'}}></div>
-                        </div>
+                 {/* Left Side: The Time */}
+                 <div className="flex flex-col items-center md:items-start">
+                     <div className="flex items-baseline gap-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-300 drop-shadow-lg">
+                         <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none">{hh}</span>
+                         <span className="text-5xl md:text-7xl font-light text-teal-400 animate-pulse leading-none mb-4 md:mb-8">:</span>
+                         <span className="text-7xl md:text-[8rem] font-black tracking-tighter leading-none">{mm}</span>
+                     </div>
+                     <div className="flex items-center gap-4 mt-2 md:mt-4 w-full max-w-[280px]">
+                         <div className="text-teal-400 font-mono text-lg md:text-xl font-bold w-8">{String(ss).padStart(2, '0')}</div>
+                         <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                             <div className="h-full bg-gradient-to-r from-teal-500 to-cyan-400 rounded-full shadow-[0_0_10px_rgba(45,212,191,0.5)]" style={{width: `${(ss / 60) * 100}%`, transition: 'width 1s linear'}}></div>
+                         </div>
                      </div>
                  </div>
 
                  {/* Right Side: Date & Status */}
-                 <div className="hidden md:flex flex-col items-end gap-2 text-right z-20">
-                     <div className="flex items-center gap-3">
+                 <div className="hidden md:flex flex-col items-end text-right z-20">
+                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4 md:mb-6">
                         <span className="h-2 w-2 bg-emerald-500 rounded-full animate-ping"></span>
-                        <span className="text-emerald-500 font-bold text-xs uppercase tracking-[0.2em]">{t('system_name')} ONLINE</span>
-                     </div>
-                     <div className="text-4xl font-black text-white tracking-tight">
-                         {dayName}
-                     </div>
-                     <div className="text-xl text-slate-400 font-light uppercase tracking-widest flex items-center gap-3">
-                         {fmtDate(currentTime)}
-                         <i className="fa-solid fa-calendar-day text-primary"></i>
+                        <span className="text-emerald-400 font-bold text-[10px] md:text-xs uppercase tracking-widest">{t('system_name')} ONLINE</span>
                      </div>
                      
-                     {/* Decorative Stat Pills - NOW WITH ICONS instead of Text */}
-                     <div className="flex gap-3 mt-4">
-                         <div className="bg-slate-800/80 border border-slate-700 pl-2 pr-4 py-1.5 rounded-full text-xs text-slate-300 font-mono flex items-center gap-2 backdrop-blur-sm" title="Patients in Queue">
-                            <div className="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400"><i className="fa-solid fa-users"></i></div>
-                            <span className="font-bold text-white text-lg">{activeQueue.length}</span>
-                            <span className="text-[9px] uppercase opacity-50">Wait</span>
+                     <div className="text-3xl md:text-5xl font-black text-white tracking-tight mb-1 md:mb-2 drop-shadow-md">
+                         {dayName}
+                     </div>
+                     <div className="text-lg md:text-2xl text-slate-400 font-light uppercase tracking-widest flex items-center gap-3">
+                         {fmtDate(currentTime)}
+                     </div>
+                     
+                     {/* Decorative Stat Pills */}
+                     <div className="flex gap-3 mt-6 md:mt-8">
+                         <div className="bg-white/5 hover:bg-white/10 transition-colors border border-white/10 pl-3 pr-5 py-2 rounded-2xl text-sm text-slate-200 flex items-center gap-3 backdrop-blur-md shadow-xl">
+                            <div className="w-8 h-8 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400"><i className="fa-solid fa-users"></i></div>
+                            <div className="flex flex-col items-start leading-none">
+                                <span className="font-black text-white text-lg">{activeQueue.length}</span>
+                                <span className="text-[9px] uppercase tracking-wider opacity-60">Waiting</span>
+                            </div>
                          </div>
-                         <div className="bg-slate-800/80 border border-slate-700 pl-2 pr-4 py-1.5 rounded-full text-xs text-slate-300 font-mono flex items-center gap-2 backdrop-blur-sm" title="Active Clinics">
-                            <div className="w-5 h-5 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400"><i className="fa-solid fa-heart-pulse"></i></div>
-                            <span className="font-bold text-white text-lg">{clinics.length}</span>
-                            <span className="text-[9px] uppercase opacity-50">Docs</span>
+                         <div className="bg-white/5 hover:bg-white/10 transition-colors border border-white/10 pl-3 pr-5 py-2 rounded-2xl text-sm text-slate-200 flex items-center gap-3 backdrop-blur-md shadow-xl">
+                            <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400"><i className="fa-solid fa-user-doctor"></i></div>
+                            <div className="flex flex-col items-start leading-none">
+                                <span className="font-black text-white text-lg">{clinics.length}</span>
+                                <span className="text-[9px] uppercase tracking-wider opacity-60">Clinics</span>
+                            </div>
                          </div>
                      </div>
                  </div>
 
              </div>
-
-             {/* Decorative Corner Accents */}
-             <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-primary/50 rounded-tl-lg"></div>
-             <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-primary/50 rounded-br-lg"></div>
         </div>
 
         {/* ... [Rest of the file remains same] ... */}
