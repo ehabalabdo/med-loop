@@ -496,7 +496,7 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
         )}
 
         {/* 1. THE "MESMERIZING" QUANTUM CLOCK WIDGET */}
-        <div className="relative rounded-[2rem] md:rounded-3xl overflow-hidden shadow-2xl bg-[#0b1120] border border-slate-800 h-[220px] md:h-[280px] group select-none">
+        <div dir="ltr" className="relative rounded-[2rem] md:rounded-3xl overflow-hidden shadow-2xl bg-[#0b1120] border border-slate-800 h-[220px] md:h-[280px] group select-none">
              
              {/* Background Effects */}
              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-[#0b1120] to-black opacity-80"></div>
