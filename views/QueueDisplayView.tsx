@@ -61,7 +61,7 @@ const QueueDisplayView: React.FC = () => {
         // 2. Fetch and play Google TTS Audio
         const googleLang = langCode.startsWith('ar') ? 'ar' : 'en';
         // Using a more reliable free TTS API endpoint (Google Translate API sometimes blocks direct Audio tag requests due to CORS/Referer)
-        const audioUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=gtx&q=${encodeURIComponent(text)}`;
+        const audioUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(text)}`;
         
         const audio = new Audio(audioUrl);
         await audio.play();
@@ -73,9 +73,29 @@ const QueueDisplayView: React.FC = () => {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = langCode;
             utterance.rate = 0.8;
+            
+            // Try to find a specific voice for the language
+            const voices = window.speechSynthesis.getVoices();
+            let targetVoice = null;
+
+            if (langCode.startsWith('ar')) {
+                targetVoice = voices.find(v => v.lang.startsWith('ar') || v.lang.includes('ar-')) || 
+                              voices.find(v => v.name.toLowerCase().includes('arabic'));
+            } else {
+                targetVoice = voices.find(v => v.lang.startsWith('en'));
+            }
+
+            if (targetVoice) {
+                utterance.voice = targetVoice;
+            }
+            
             window.speechSynthesis.speak(utterance);
         }
     }
+  };
+
+  const testAudio = () => {
+      speak("تجربة الصوت، أهلاً بك في العيادة", "ar-SA");
   };
 
   // Load clinic names once (separate from subscription to avoid infinite loop)
@@ -165,13 +185,22 @@ const QueueDisplayView: React.FC = () => {
            </div>
         </div>
         
-        <button 
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`px-6 py-2.5 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center gap-3 ${soundEnabled ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 shadow-[0_0_15px_rgba(8,145,178,0.3)]' : 'bg-slate-800/50 text-slate-500 border border-slate-700 hover:text-white'}`}
-        >
-            <i className={`fa-solid ${soundEnabled ? 'fa-volume-high animate-pulse' : 'fa-volume-xmark'}`}></i>
-            {soundEnabled ? 'Audio ON' : 'Audio OFF'}
-        </button>
+        <div className="flex items-center gap-4">
+            <button 
+                onClick={testAudio}
+                className="px-6 py-2.5 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center gap-3 bg-blue-500/10 text-blue-400 border border-blue-500/50 hover:bg-blue-500/20"
+            >
+                <i className="fa-solid fa-play"></i>
+                Test Audio
+            </button>
+            <button 
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className={`px-6 py-2.5 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center gap-3 ${soundEnabled ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 shadow-[0_0_15px_rgba(8,145,178,0.3)]' : 'bg-slate-800/50 text-slate-500 border border-slate-700 hover:text-white'}`}
+            >
+                <i className={`fa-solid ${soundEnabled ? 'fa-volume-high animate-pulse' : 'fa-volume-xmark'}`}></i>
+                {soundEnabled ? 'Audio ON' : 'Audio OFF'}
+            </button>
+        </div>
 
         <div className="text-right flex flex-col items-end">
            <div className="text-5xl font-light tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
