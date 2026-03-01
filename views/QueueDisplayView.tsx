@@ -24,6 +24,8 @@ const QueueDisplayView: React.FC = () => {
   const prevPatientsRef = useRef<Patient[]>([]);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const callingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voicesLoadedRef = useRef(false);
+  const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
 
   // Clock
   useEffect(() => {
@@ -31,12 +33,26 @@ const QueueDisplayView: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // Preload TTS voices
+  useEffect(() => {
+    const loadVoices = () => {
+      const v = window.speechSynthesis?.getVoices() || [];
+      if (v.length > 0) {
+        voicesRef.current = v;
+        voicesLoadedRef.current = true;
+        console.log('[TTS] Voices loaded:', v.length, v.map(voice => `${voice.name} (${voice.lang})`));
+      }
+    };
+    loadVoices();
+    if (window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+  }, []);
+
   // Audio & TTS Logic
-  const speak = async (text: string, langCode: string = 'en-US') => {
-    if (!soundEnabled) return;
-    
-    try {
-        // 1. Play chime (simple oscillator)
+  const playChime = (): Promise<void> => {
+    return new Promise((resolve) => {
+      try {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -49,48 +65,89 @@ const QueueDisplayView: React.FC = () => {
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
         osc.start();
         osc.stop(ctx.currentTime + 0.5);
-        
-        // Wait for chime to finish
-        await new Promise(resolve => {
-            osc.onended = () => {
-                ctx.close();
-                resolve(true);
-            };
-        });
+        osc.onended = () => { ctx.close(); resolve(); };
+      } catch (e) {
+        console.warn('[TTS] Chime failed:', e);
+        resolve();
+      }
+    });
+  };
 
-        // 2. Fetch and play Google TTS Audio
-        const googleLang = langCode.startsWith('ar') ? 'ar' : 'en';
-        // Using a more reliable free TTS API endpoint (Google Translate API sometimes blocks direct Audio tag requests due to CORS/Referer)
-        const audioUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(text)}`;
-        
-        const audio = new Audio(audioUrl);
-        await audio.play();
+  const speakWithBrowserTTS = (text: string, langCode: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!window.speechSynthesis) {
+        reject(new Error('SpeechSynthesis not available'));
+        return;
+      }
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
 
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = langCode;
+      utterance.rate = 0.85;
+      utterance.volume = 1;
+
+      // Find best voice
+      const voices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
+      let targetVoice: SpeechSynthesisVoice | null = null;
+
+      if (langCode.startsWith('ar')) {
+        targetVoice = voices.find(v => v.lang.startsWith('ar') && v.localService) ||
+                      voices.find(v => v.lang.startsWith('ar')) ||
+                      voices.find(v => v.name.toLowerCase().includes('arabic')) ||
+                      null;
+      } else {
+        targetVoice = voices.find(v => v.lang.startsWith('en') && v.localService) ||
+                      voices.find(v => v.lang.startsWith('en')) ||
+                      null;
+      }
+
+      if (targetVoice) {
+        utterance.voice = targetVoice;
+        console.log('[TTS] Using voice:', targetVoice.name, targetVoice.lang);
+      } else {
+        console.warn('[TTS] No matching voice found for', langCode, '- using default. Available:', voices.map(v => v.lang));
+      }
+
+      utterance.onend = () => resolve();
+      utterance.onerror = (e) => {
+        console.warn('[TTS] SpeechSynthesis error:', e);
+        reject(e);
+      };
+
+      window.speechSynthesis.speak(utterance);
+      console.log('[TTS] Speaking:', text);
+    });
+  };
+
+  const speak = async (text: string, langCode: string = 'en-US') => {
+    if (!soundEnabled) return;
+    console.log('[TTS] speak() called with:', { text, langCode, soundEnabled });
+
+    // 1. Play chime first
+    await playChime();
+
+    // Small delay between chime and speech
+    await new Promise(r => setTimeout(r, 300));
+
+    // 2. Try Browser TTS first (more reliable than Google API)
+    try {
+      await speakWithBrowserTTS(text, langCode);
+      console.log('[TTS] Browser TTS succeeded');
+      return;
     } catch (e) {
-        console.warn("Audio playback failed, falling back to browser TTS", e);
-        // Fallback to browser's built-in TTS if the audio file fails
-        if (window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = langCode;
-            utterance.rate = 0.8;
-            
-            // Try to find a specific voice for the language
-            const voices = window.speechSynthesis.getVoices();
-            let targetVoice = null;
+      console.warn('[TTS] Browser TTS failed, trying Google TTS...', e);
+    }
 
-            if (langCode.startsWith('ar')) {
-                targetVoice = voices.find(v => v.lang.startsWith('ar') || v.lang.includes('ar-')) || 
-                              voices.find(v => v.name.toLowerCase().includes('arabic'));
-            } else {
-                targetVoice = voices.find(v => v.lang.startsWith('en'));
-            }
-
-            if (targetVoice) {
-                utterance.voice = targetVoice;
-            }
-            
-            window.speechSynthesis.speak(utterance);
-        }
+    // 3. Fallback: Google Translate TTS
+    try {
+      const googleLang = langCode.startsWith('ar') ? 'ar' : 'en';
+      const audioUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(text)}`;
+      const audio = new Audio(audioUrl);
+      await audio.play();
+      console.log('[TTS] Google TTS succeeded');
+    } catch (e) {
+      console.error('[TTS] All TTS methods failed!', e);
     }
   };
 
