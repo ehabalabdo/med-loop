@@ -17,7 +17,8 @@ const QueueDisplayView: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [clinics, setClinics] = useState<Record<string, string>>({});
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(false); // Start OFF — user must click to activate (browser policy)
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [currentCalling, setCurrentCalling] = useState<{name: string, clinic: string, patientId?: string} | null>(null);
   
   // Track previous patients to detect changes for TTS
@@ -26,6 +27,10 @@ const QueueDisplayView: React.FC = () => {
   const callingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const voicesLoadedRef = useRef(false);
   const voicesRef = useRef<SpeechSynthesisVoice[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  // Use a ref for soundEnabled so the subscription callback always has the latest value
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
 
   // Clock
   useEffect(() => {
@@ -47,30 +52,86 @@ const QueueDisplayView: React.FC = () => {
     if (window.speechSynthesis) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
+    // Also try after a delay (some browsers delay voice loading)
+    setTimeout(loadVoices, 1000);
+    setTimeout(loadVoices, 3000);
   }, []);
+
+  // Unlock audio on user interaction (required by browser autoplay policy)
+  const unlockAudio = async () => {
+    try {
+      // Create and resume AudioContext (unlocks Web Audio API)
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        await audioCtxRef.current.resume();
+      }
+      // Play a silent buffer to fully unlock
+      const buffer = audioCtxRef.current.createBuffer(1, 1, 22050);
+      const source = audioCtxRef.current.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtxRef.current.destination);
+      source.start(0);
+      
+      // Unlock SpeechSynthesis too
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const silentUtterance = new SpeechSynthesisUtterance('');
+        silentUtterance.volume = 0;
+        window.speechSynthesis.speak(silentUtterance);
+      }
+      
+      setAudioUnlocked(true);
+      console.log('[TTS] Audio unlocked successfully!');
+    } catch (e) {
+      console.warn('[TTS] Audio unlock failed:', e);
+    }
+  };
+
+  // When user toggles sound ON, unlock audio
+  const toggleSound = async () => {
+    const newState = !soundEnabled;
+    if (newState && !audioUnlocked) {
+      await unlockAudio();
+    }
+    setSoundEnabled(newState);
+  };
 
   // Audio & TTS Logic
   const playChime = (): Promise<void> => {
     return new Promise((resolve) => {
       try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(500, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.5);
-        osc.onended = () => { ctx.close(); resolve(); };
+        const ctx = audioCtxRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
+        if (!audioCtxRef.current) audioCtxRef.current = ctx;
+        
+        if (ctx.state === 'suspended') {
+          ctx.resume().then(() => {
+            playChimeSound(ctx, resolve);
+          });
+        } else {
+          playChimeSound(ctx, resolve);
+        }
       } catch (e) {
         console.warn('[TTS] Chime failed:', e);
         resolve();
       }
     });
+  };
+
+  const playChimeSound = (ctx: AudioContext, resolve: () => void) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(500, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+    osc.onended = () => resolve();
   };
 
   const speakWithBrowserTTS = (text: string, langCode: string): Promise<void> => {
@@ -81,14 +142,19 @@ const QueueDisplayView: React.FC = () => {
       }
       // Cancel any ongoing speech
       window.speechSynthesis.cancel();
+      
+      // Chrome bug: speechSynthesis can get stuck. Resume it.
+      window.speechSynthesis.resume();
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = langCode;
       utterance.rate = 0.85;
       utterance.volume = 1;
+      utterance.pitch = 1;
 
       // Find best voice
       const voices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
+      console.log('[TTS] Available voices:', voices.length);
       let targetVoice: SpeechSynthesisVoice | null = null;
 
       if (langCode.startsWith('ar')) {
@@ -106,29 +172,48 @@ const QueueDisplayView: React.FC = () => {
         utterance.voice = targetVoice;
         console.log('[TTS] Using voice:', targetVoice.name, targetVoice.lang);
       } else {
-        console.warn('[TTS] No matching voice found for', langCode, '- using default. Available:', voices.map(v => v.lang));
+        console.warn('[TTS] No matching voice found for', langCode, '- using default. Available:', voices.map(v => `${v.name}(${v.lang})`));
       }
 
-      utterance.onend = () => resolve();
+      // Safety timeout: if onend never fires (Chrome bug), resolve after 15s
+      const safetyTimeout = setTimeout(() => {
+        console.warn('[TTS] Safety timeout — resolving');
+        resolve();
+      }, 15000);
+
+      utterance.onend = () => { clearTimeout(safetyTimeout); resolve(); };
       utterance.onerror = (e) => {
-        console.warn('[TTS] SpeechSynthesis error:', e);
+        clearTimeout(safetyTimeout);
+        console.warn('[TTS] SpeechSynthesis error:', e.error);
         reject(e);
       };
 
       window.speechSynthesis.speak(utterance);
       console.log('[TTS] Speaking:', text);
+      
+      // Chrome bug workaround: keep SpeechSynthesis alive by resuming periodically
+      const keepAlive = setInterval(() => {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.resume();
+        } else {
+          clearInterval(keepAlive);
+        }
+      }, 5000);
     });
   };
 
   const speak = async (text: string, langCode: string = 'en-US') => {
-    if (!soundEnabled) return;
-    console.log('[TTS] speak() called with:', { text, langCode, soundEnabled });
+    if (!soundEnabledRef.current) {
+      console.log('[TTS] Sound is disabled, skipping');
+      return;
+    }
+    console.log('[TTS] speak() called with:', { text, langCode });
 
     // 1. Play chime first
     await playChime();
 
     // Small delay between chime and speech
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 400));
 
     // 2. Try Browser TTS first (more reliable than Google API)
     try {
@@ -151,7 +236,9 @@ const QueueDisplayView: React.FC = () => {
     }
   };
 
-  const testAudio = () => {
+  const testAudio = async () => {
+      if (!audioUnlocked) await unlockAudio();
+      if (!soundEnabled) setSoundEnabled(true);
       speak("تجربة الصوت، أهلاً بك في العيادة", "ar-SA");
   };
 
@@ -217,7 +304,7 @@ const QueueDisplayView: React.FC = () => {
     return () => {
         if(unsubscribeRef.current) unsubscribeRef.current();
     };
-  }, [user, soundEnabled, language]); // clinics removed to prevent infinite loop (use clinicsRef)
+  }, [user, language]); // soundEnabled removed — using soundEnabledRef instead to avoid re-subscribing
 
   return (
     <div className="min-h-screen bg-[#05080f] text-white flex flex-col font-sans relative overflow-hidden">
@@ -251,11 +338,11 @@ const QueueDisplayView: React.FC = () => {
                 Test Audio
             </button>
             <button 
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`px-6 py-2.5 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center gap-3 ${soundEnabled ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 shadow-[0_0_15px_rgba(8,145,178,0.3)]' : 'bg-slate-800/50 text-slate-500 border border-slate-700 hover:text-white'}`}
+                onClick={toggleSound}
+                className={`px-6 py-2.5 rounded-full text-sm font-bold tracking-wider uppercase transition-all duration-300 flex items-center gap-3 ${soundEnabled ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 shadow-[0_0_15px_rgba(8,145,178,0.3)]' : 'bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30'}`}
             >
                 <i className={`fa-solid ${soundEnabled ? 'fa-volume-high animate-pulse' : 'fa-volume-xmark'}`}></i>
-                {soundEnabled ? 'Audio ON' : 'Audio OFF'}
+                {soundEnabled ? '🔊 Audio ON' : '🔇 اضغط لتفعيل الصوت'}
             </button>
         </div>
 
