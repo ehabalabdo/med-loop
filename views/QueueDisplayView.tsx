@@ -32,29 +32,25 @@ const QueueDisplayView: React.FC = () => {
   const soundEnabledRef = useRef(soundEnabled);
   useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
 
+  // Declare responsiveVoice on window
+  const rv = () => (window as any).responsiveVoice;
+
   // Clock
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Preload TTS voices
+  // Check ResponsiveVoice loaded
   useEffect(() => {
-    const loadVoices = () => {
-      const v = window.speechSynthesis?.getVoices() || [];
-      if (v.length > 0) {
-        voicesRef.current = v;
+    const checkRV = setInterval(() => {
+      if (rv()?.voiceSupport()) {
+        console.log('[TTS] ResponsiveVoice loaded and ready!');
         voicesLoadedRef.current = true;
-        console.log('[TTS] Voices loaded:', v.length, v.map(voice => `${voice.name} (${voice.lang})`));
+        clearInterval(checkRV);
       }
-    };
-    loadVoices();
-    if (window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = loadVoices;
-    }
-    // Also try after a delay (some browsers delay voice loading)
-    setTimeout(loadVoices, 1000);
-    setTimeout(loadVoices, 3000);
+    }, 500);
+    return () => clearInterval(checkRV);
   }, []);
 
   // Unlock audio on user interaction (required by browser autoplay policy)
@@ -74,12 +70,9 @@ const QueueDisplayView: React.FC = () => {
       source.connect(audioCtxRef.current.destination);
       source.start(0);
       
-      // Unlock SpeechSynthesis too
-      if (window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const silentUtterance = new SpeechSynthesisUtterance('');
-        silentUtterance.volume = 0;
-        window.speechSynthesis.speak(silentUtterance);
+      // Click-init ResponsiveVoice (needed for autoplay policy)
+      if (rv()) {
+        rv().speak('', 'Arabic Male', { volume: 0 });
       }
       
       setAudioUnlocked(true);
@@ -125,80 +118,44 @@ const QueueDisplayView: React.FC = () => {
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(500, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1000, ctx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    // Two-tone chime (more noticeable)
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.setValueAtTime(800, ctx.currentTime + 0.15);
+    osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.8);
     osc.start();
-    osc.stop(ctx.currentTime + 0.5);
+    osc.stop(ctx.currentTime + 0.8);
     osc.onended = () => resolve();
   };
 
-  const speakWithBrowserTTS = (text: string, langCode: string): Promise<void> => {
+  // Primary TTS using ResponsiveVoice (excellent Arabic support)
+  const speakWithResponsiveVoice = (text: string, isArabic: boolean): Promise<void> => {
     return new Promise((resolve, reject) => {
-      if (!window.speechSynthesis) {
-        reject(new Error('SpeechSynthesis not available'));
+      if (!rv() || !rv().voiceSupport()) {
+        reject(new Error('ResponsiveVoice not available'));
         return;
       }
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      
-      // Chrome bug: speechSynthesis can get stuck. Resume it.
-      window.speechSynthesis.resume();
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = langCode;
-      utterance.rate = 0.85;
-      utterance.volume = 1;
-      utterance.pitch = 1;
+      const voiceName = isArabic ? 'Arabic Male' : 'US English Male';
+      console.log('[TTS] ResponsiveVoice speaking:', text, 'voice:', voiceName);
 
-      // Find best voice
-      const voices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
-      console.log('[TTS] Available voices:', voices.length);
-      let targetVoice: SpeechSynthesisVoice | null = null;
-
-      if (langCode.startsWith('ar')) {
-        targetVoice = voices.find(v => v.lang.startsWith('ar') && v.localService) ||
-                      voices.find(v => v.lang.startsWith('ar')) ||
-                      voices.find(v => v.name.toLowerCase().includes('arabic')) ||
-                      null;
-      } else {
-        targetVoice = voices.find(v => v.lang.startsWith('en') && v.localService) ||
-                      voices.find(v => v.lang.startsWith('en')) ||
-                      null;
-      }
-
-      if (targetVoice) {
-        utterance.voice = targetVoice;
-        console.log('[TTS] Using voice:', targetVoice.name, targetVoice.lang);
-      } else {
-        console.warn('[TTS] No matching voice found for', langCode, '- using default. Available:', voices.map(v => `${v.name}(${v.lang})`));
-      }
-
-      // Safety timeout: if onend never fires (Chrome bug), resolve after 15s
-      const safetyTimeout = setTimeout(() => {
-        console.warn('[TTS] Safety timeout — resolving');
-        resolve();
-      }, 15000);
-
-      utterance.onend = () => { clearTimeout(safetyTimeout); resolve(); };
-      utterance.onerror = (e) => {
-        clearTimeout(safetyTimeout);
-        console.warn('[TTS] SpeechSynthesis error:', e.error);
-        reject(e);
-      };
-
-      window.speechSynthesis.speak(utterance);
-      console.log('[TTS] Speaking:', text);
-      
-      // Chrome bug workaround: keep SpeechSynthesis alive by resuming periodically
-      const keepAlive = setInterval(() => {
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.resume();
-        } else {
-          clearInterval(keepAlive);
+      rv().speak(text, voiceName, {
+        pitch: 1,
+        rate: 0.9,
+        volume: 1,
+        onend: () => {
+          console.log('[TTS] ResponsiveVoice finished');
+          resolve();
+        },
+        onerror: (e: any) => {
+          console.warn('[TTS] ResponsiveVoice error:', e);
+          reject(e);
         }
-      }, 5000);
+      });
+
+      // Safety timeout
+      setTimeout(() => resolve(), 15000);
     });
   };
 
@@ -209,24 +166,42 @@ const QueueDisplayView: React.FC = () => {
     }
     console.log('[TTS] speak() called with:', { text, langCode });
 
+    const isArabic = langCode.startsWith('ar');
+
     // 1. Play chime first
     await playChime();
 
     // Small delay between chime and speech
     await new Promise(r => setTimeout(r, 400));
 
-    // 2. Try Browser TTS first (more reliable than Google API)
+    // 2. Try ResponsiveVoice (best Arabic support)
     try {
-      await speakWithBrowserTTS(text, langCode);
-      console.log('[TTS] Browser TTS succeeded');
+      await speakWithResponsiveVoice(text, isArabic);
+      console.log('[TTS] ResponsiveVoice succeeded');
       return;
+    } catch (e) {
+      console.warn('[TTS] ResponsiveVoice failed, trying browser TTS...', e);
+    }
+
+    // 3. Fallback: Browser SpeechSynthesis
+    try {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = langCode;
+        utterance.rate = 0.85;
+        utterance.volume = 1;
+        window.speechSynthesis.speak(utterance);
+        console.log('[TTS] Browser TTS fallback used');
+        return;
+      }
     } catch (e) {
       console.warn('[TTS] Browser TTS failed, trying Google TTS...', e);
     }
 
-    // 3. Fallback: Google Translate TTS
+    // 4. Last Fallback: Google Translate TTS
     try {
-      const googleLang = langCode.startsWith('ar') ? 'ar' : 'en';
+      const googleLang = isArabic ? 'ar' : 'en';
       const audioUrl = `https://translate.googleapis.com/translate_tts?ie=UTF-8&tl=${googleLang}&client=tw-ob&q=${encodeURIComponent(text)}`;
       const audio = new Audio(audioUrl);
       await audio.play();
@@ -239,7 +214,9 @@ const QueueDisplayView: React.FC = () => {
   const testAudio = async () => {
       if (!audioUnlocked) await unlockAudio();
       if (!soundEnabled) setSoundEnabled(true);
-      speak("تجربة الصوت، أهلاً بك في العيادة", "ar-SA");
+      // Force soundEnabledRef immediately for test
+      soundEnabledRef.current = true;
+      speak("المريض أحمد محمد، يرجى التوجه إلى العيادة", "ar-SA");
   };
 
   // Load clinic names once (separate from subscription to avoid infinite loop)
