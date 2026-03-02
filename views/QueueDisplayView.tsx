@@ -26,8 +26,6 @@ const QueueDisplayView: React.FC = () => {
   const callingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const soundEnabledRef = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const speakQueueRef = useRef<{text: string, isArabic: boolean}[]>([]);
-  const isSpeakingRef = useRef(false);
 
   // Clock
   useEffect(() => {
@@ -43,35 +41,36 @@ const QueueDisplayView: React.FC = () => {
     return () => { audio.pause(); audio.src = ''; };
   }, []);
 
-  // ============ SIMPLE TTS - Google Translate ============
-  const speakGoogle = (text: string, isArabic: boolean): Promise<void> => {
+  // ============ SERVER-SIDE TTS (via Vercel serverless proxy) ============
+  const speakServer = (text: string, isArabic: boolean): Promise<void> => {
     return new Promise((resolve, reject) => {
       const audio = audioRef.current;
       if (!audio) { reject('no audio element'); return; }
       
       const lang = isArabic ? 'ar' : 'en';
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodeURIComponent(text)}`;
+      // This calls our own /api/tts serverless function (same domain, no CORS)
+      const url = `/api/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text)}`;
       
-      console.log('[TTS] Google TTS URL:', url);
-      setTtsStatus('جاري النطق (Google)...');
+      console.log('[TTS] Server TTS URL:', url);
+      setTtsStatus('جاري النطق...');
       
       audio.src = url;
       audio.onended = () => { setTtsStatus('جاهز ✅'); resolve(); };
       audio.onerror = (e) => { 
-        console.warn('[TTS] Google audio error:', e);
-        reject('Google TTS audio error');
+        console.warn('[TTS] Server audio error:', e);
+        reject('Server TTS audio error');
       };
       
       audio.play().then(() => {
-        console.log('[TTS] Google TTS playing!');
+        console.log('[TTS] Server TTS playing!');
       }).catch((e) => {
-        console.warn('[TTS] Google play() failed:', e);
-        reject('Google TTS play failed');
+        console.warn('[TTS] Server play() failed:', e);
+        reject('Server TTS play failed');
       });
     });
   };
 
-  // ============ Browser SpeechSynthesis ============
+  // ============ Browser SpeechSynthesis (fallback) ============
   const speakBrowser = (text: string, isArabic: boolean): Promise<void> => {
     return new Promise((resolve, reject) => {
       if (!window.speechSynthesis) { reject('no speechSynthesis'); return; }
@@ -84,70 +83,22 @@ const QueueDisplayView: React.FC = () => {
       u.volume = 1;
       u.pitch = 1;
       
-      // Find voice
       const voices = window.speechSynthesis.getVoices();
-      console.log('[TTS] Browser voices available:', voices.length, voices.map(v => `${v.name}(${v.lang})`).join(', '));
-      
       if (isArabic) {
-        const arVoice = voices.find(v => v.lang.startsWith('ar')) || 
-                        voices.find(v => v.name.toLowerCase().includes('arabic'));
-        if (arVoice) {
-          u.voice = arVoice;
-          console.log('[TTS] Using Arabic voice:', arVoice.name);
-        }
+        const arVoice = voices.find(v => v.lang.startsWith('ar'));
+        if (arVoice) u.voice = arVoice;
       }
-      
-      setTtsStatus('جاري النطق (متصفح)...');
       
       let done = false;
       u.onend = () => { if (!done) { done = true; setTtsStatus('جاهز ✅'); resolve(); } };
       u.onerror = (e) => { if (!done) { done = true; reject('Browser TTS error: ' + e.error); } };
-      
-      // Safety timeout — if nothing happens in 10 seconds, reject
       setTimeout(() => { if (!done) { done = true; reject('Browser TTS timeout'); } }, 10000);
       
       window.speechSynthesis.speak(u);
-      
-      // Chrome fix
-      const interval = setInterval(() => {
-        if (!done && window.speechSynthesis.speaking) {
-          window.speechSynthesis.resume();
-        } else {
-          clearInterval(interval);
-        }
-      }, 3000);
-      
-      // Check if actually speaking (some browsers silently fail)
-      setTimeout(() => {
-        if (!done && !window.speechSynthesis.speaking && !window.speechSynthesis.pending) {
-          done = true;
-          reject('Browser TTS not speaking');
-        }
-      }, 500);
     });
   };
 
-  // ============ ResponsiveVoice ============
-  const speakRV = (text: string, isArabic: boolean): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      const rv = (window as any).responsiveVoice;
-      if (!rv || !rv.voiceSupport()) { reject('no RV'); return; }
-      
-      const voice = isArabic ? 'Arabic Male' : 'US English Male';
-      console.log('[TTS] ResponsiveVoice speaking:', text);
-      setTtsStatus('جاري النطق (ResponsiveVoice)...');
-      
-      rv.speak(text, voice, {
-        rate: 0.9, volume: 1, pitch: 1,
-        onend: () => { setTtsStatus('جاهز ✅'); resolve(); },
-        onerror: (e: any) => { reject(e); }
-      });
-      
-      setTimeout(() => resolve(), 15000);
-    });
-  };
-
-  // ============ MAIN SPEAK with 3 fallbacks ============
+  // ============ MAIN SPEAK ============
   const speak = async (text: string, isArabic: boolean) => {
     if (!soundEnabledRef.current) {
       console.log('[TTS] Sound disabled, skip');
@@ -173,39 +124,27 @@ const QueueDisplayView: React.FC = () => {
       ctx.close();
     } catch(e) { /* ignore chime errors */ }
 
-    // 2. Try Browser TTS FIRST (most reliable, works offline)
+    // 2. Try our server-side TTS proxy FIRST (most reliable, bypasses CORS)
     try {
-      setTtsStatus('محاولة 1/3: متصفح...');
+      setTtsStatus('جاري النطق...');
+      await speakServer(text, isArabic);
+      console.log('[TTS] ✅ Server TTS worked!');
+      return;
+    } catch(e) {
+      console.log('[TTS] ❌ Server TTS failed:', e);
+    }
+
+    // 3. Fallback to browser SpeechSynthesis
+    try {
+      setTtsStatus('محاولة بالمتصفح...');
       await speakBrowser(text, isArabic);
       console.log('[TTS] ✅ Browser TTS worked!');
       return;
     } catch(e) {
       console.log('[TTS] ❌ Browser TTS failed:', e);
-      setTtsStatus('فشل المتصفح، جاري المحاولة...');
     }
 
-    // 3. Try ResponsiveVoice
-    try {
-      setTtsStatus('محاولة 2/3: ResponsiveVoice...');
-      await speakRV(text, isArabic);
-      console.log('[TTS] ✅ ResponsiveVoice worked!');
-      return;
-    } catch(e) {
-      console.log('[TTS] ❌ ResponsiveVoice failed:', e);
-      setTtsStatus('فشل RV، جاري المحاولة...');
-    }
-
-    // 4. Try Google TTS
-    try {
-      setTtsStatus('محاولة 3/3: Google...');
-      await speakGoogle(text, isArabic);
-      console.log('[TTS] ✅ Google TTS worked!');
-      return;
-    } catch(e) {
-      console.log('[TTS] ❌ Google TTS failed:', e);
-    }
-
-    setTtsStatus('❌ فشل النطق بجميع الطرق');
+    setTtsStatus('❌ فشل النطق');
     console.error('[TTS] ALL methods failed!');
   };
 
@@ -226,29 +165,13 @@ const QueueDisplayView: React.FC = () => {
         ctx.close();
       } catch(e) {}
       
-      // Unlock audio element
+      // Unlock audio element with silent MP3
       try {
         if (audioRef.current) {
-          audioRef.current.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhkVFqMkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhkVFqMkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhkVFqMkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+          audioRef.current.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhkVFqMkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
           await audioRef.current.play().catch(() => {});
           audioRef.current.pause();
           audioRef.current.src = '';
-        }
-      } catch(e) {}
-
-      // Init ResponsiveVoice
-      try {
-        const rv = (window as any).responsiveVoice;
-        if (rv) rv.speak(' ', 'Arabic Male', { volume: 0 });
-      } catch(e) {}
-
-      // Init browser TTS
-      try {
-        if (window.speechSynthesis) {
-          window.speechSynthesis.cancel();
-          const u = new SpeechSynthesisUtterance(' ');
-          u.volume = 0;
-          window.speechSynthesis.speak(u);
         }
       } catch(e) {}
 

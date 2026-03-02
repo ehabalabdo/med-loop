@@ -1,5 +1,6 @@
 {
   "rewrites": [
-    { "source": "/((?!.*\\..*).*)", "destination": "/" }
+    { "source": "/api/tts", "destination": "/api/tts" },
+    { "source": "/((?!api/)(?!.*\\..*).*)", "destination": "/" }
   ]
 }
