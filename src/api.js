@@ -4,7 +4,7 @@
 
 
 
-const BASE_URL = import.meta.env?.VITE_API_URL || "https://medloop-api.onrender.com";
+const BASE_URL = import.meta.env?.VITE_API_URL || "https://okb-zg96.onrender.com";
 
 async function request(method, path, body) {
   const token = localStorage.getItem("token");
