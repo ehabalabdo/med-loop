@@ -439,15 +439,13 @@ function mapAppointmentRow(row: any): Appointment {
     patientName: row.patientName || row.patient_name,
     clinicId: String(row.clinicId || row.clinic_id),
     doctorId: (row.doctorId || row.doctor_id) ? String(row.doctorId || row.doctor_id) : undefined,
-    date: row.date || (row.start_time ? new Date(row.start_time).getTime() : Date.now()),
+    date: typeof row.date === 'number' ? row.date : (Number(row.date) || Date.now()),
     status: row.status,
     reason: row.reason || '',
     notes: row.notes || '',
-    suggestedDate: (row.suggestedDate || row.suggested_date) ? new Date(row.suggestedDate || row.suggested_date).getTime() : undefined,
-    suggestedNotes: row.suggestedNotes || row.suggested_notes || undefined,
-    createdAt: row.createdAt || (row.created_at ? new Date(row.created_at).getTime() : Date.now()),
+    createdAt: typeof row.createdAt === 'number' ? row.createdAt : (typeof row.created_at === 'number' ? row.created_at : Date.now()),
     createdBy: row.createdBy || row.created_by || 'system',
-    updatedAt: row.updatedAt || (row.updated_at ? new Date(row.updated_at).getTime() : Date.now()),
+    updatedAt: typeof row.updatedAt === 'number' ? row.updatedAt : (typeof row.updated_at === 'number' ? row.updated_at : Date.now()),
     updatedBy: row.updatedBy || row.updated_by || 'system',
     isArchived: row.isArchived || row.is_archived || false
   };
@@ -466,26 +464,23 @@ export const pgAppointments = {
 
   create: async (data: Pick<Appointment, 'id' | 'patientId' | 'patientName' | 'clinicId' | 'doctorId' | 'date' | 'reason' | 'status'>): Promise<void> => {
     await api.post('/appointments', {
-      patient_id: parseInt(data.patientId) || 0,
+      patient_id: data.patientId,
       patient_name: data.patientName,
-      clinic_id: parseInt(data.clinicId) || 0,
-      doctor_id: data.doctorId ? parseInt(data.doctorId) : null,
-      start_time: new Date(data.date).toISOString(),
-      end_time: new Date(data.date + 3600000).toISOString(),
+      clinic_id: data.clinicId,
+      doctor_id: data.doctorId || null,
+      date: typeof data.date === 'number' ? data.date : new Date(data.date).getTime(),
       status: data.status || 'scheduled',
       reason: data.reason || ''
     });
   },
 
-  update: async (id: string, data: Partial<Pick<Appointment, 'clinicId' | 'doctorId' | 'date' | 'reason' | 'status' | 'suggestedDate' | 'suggestedNotes'>>): Promise<void> => {
+  update: async (id: string, data: Partial<Pick<Appointment, 'clinicId' | 'doctorId' | 'date' | 'reason' | 'status'>>): Promise<void> => {
     const body: any = {};
-    if (data.clinicId !== undefined) body.clinic_id = parseInt(data.clinicId) || 0;
-    if (data.doctorId !== undefined) body.doctor_id = data.doctorId ? parseInt(data.doctorId) : null;
-    if (data.date !== undefined) body.start_time = new Date(data.date).toISOString();
+    if (data.clinicId !== undefined) body.clinic_id = data.clinicId;
+    if (data.doctorId !== undefined) body.doctor_id = data.doctorId || null;
+    if (data.date !== undefined) body.date = typeof data.date === 'number' ? data.date : new Date(data.date).getTime();
     if (data.reason !== undefined) body.reason = data.reason;
     if (data.status !== undefined) body.status = data.status;
-    if (data.suggestedDate !== undefined) body.suggested_date = new Date(data.suggestedDate).toISOString();
-    if (data.suggestedNotes !== undefined) body.suggested_notes = data.suggestedNotes;
     await api.put(`/appointments/${id}`, body);
   },
 
@@ -695,7 +690,7 @@ export const pgDeviceResults = {
 
   manualMatch: async (resultId: string, patientId: string, matchedBy: string): Promise<void> => {
     await api.put(`/device-results/${resultId}/match`, {
-      patient_id: parseInt(patientId) || 0,
+      patient_id: patientId,
       matched_by: matchedBy
     });
   },
