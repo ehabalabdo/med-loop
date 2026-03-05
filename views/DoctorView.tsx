@@ -531,27 +531,6 @@ const DoctorView: React.FC = () => {
 
   return (
     <Layout title={t('doctor_console')}>
-      {/* Waiting Patients Notification Badge */}
-      {waitingList.filter(p => p.currentVisit.status === 'waiting').length > 0 && (
-        <div className="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 flex items-center justify-between shadow-md animate-pulse-slow">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-lg">
-              {waitingList.filter(p => p.currentVisit.status === 'waiting').length}
-            </div>
-            <div>
-              <p className="font-bold text-amber-900 text-lg">
-                <i className="fa-solid fa-bell-concierge mr-2"></i>
-                {language === 'ar' ? 'مرضى في الانتظار' : 'Patients Waiting'}
-              </p>
-              <p className="text-amber-700 text-sm">
-                {language === 'ar' ? 'انقر على مريض لبدء الفحص' : 'Click on a patient to start examination'}
-              </p>
-            </div>
-          </div>
-          <i className="fa-solid fa-chevron-left text-amber-400 text-2xl"></i>
-        </div>
-      )}
-      
       {/* Mobile Tab Switcher */}
       <div className="lg:hidden flex mb-4 bg-white rounded-2xl p-1 shadow-sm border border-slate-100">
           <button onClick={() => setMobileTab('queue')} className={`flex-1 py-2 text-sm font-bold rounded-xl ${mobileTab === 'queue' ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-500'}`}>
@@ -569,7 +548,20 @@ const DoctorView: React.FC = () => {
             <div className="flex-1 min-h-[300px] lg:min-h-0 bg-white rounded-3xl shadow-soft border border-slate-100 flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
                     <h2 className="font-bold text-slate-800 text-sm">{t('waiting_room')}</h2>
-                    <span className="bg-slate-900 text-white text-xs px-2 py-1 rounded-lg font-bold">{waitingList.length}</span>
+                    <div className="flex items-center gap-2">
+                      {waitingList.filter(p => p.currentVisit.status === 'waiting').length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
+                          <i className="fa-solid fa-user-clock text-amber-500 text-xs"></i>
+                          <span className="text-amber-700 text-xs font-bold">
+                            {waitingList.filter(p => p.currentVisit.status === 'waiting').length}
+                          </span>
+                          <span className="text-amber-600 text-[10px]">
+                            {language === 'ar' ? 'بالانتظار' : 'waiting'}
+                          </span>
+                        </div>
+                      )}
+                      <span className="bg-slate-900 text-white text-xs px-2 py-1 rounded-lg font-bold">{waitingList.length}</span>
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
                     {waitingList.length === 0 ? (
