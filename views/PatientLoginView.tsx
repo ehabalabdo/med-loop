@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 
 const PatientLoginView: React.FC = () => {
   const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
   const { patientLogin } = useAuth();
   const { t, dir } = useLanguage();
 
@@ -20,7 +21,8 @@ const PatientLoginView: React.FC = () => {
 
     try {
       await patientLogin(username, password);
-      navigate('/patient/dashboard');
+      const prefix = slug ? `/${slug}` : '';
+      navigate(`${prefix}/patient/dashboard`);
     } catch (err: any) {
       setError(err.message || 'فشل تسجيل الدخول');
     } finally {
@@ -100,7 +102,7 @@ const PatientLoginView: React.FC = () => {
 
           <div className="mt-6 pt-6 border-t border-gray-100 text-center">
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate(slug ? `/${slug}/login` : '/login')}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2 mx-auto"
             >
               <i className="fa-solid fa-arrow-left"></i>

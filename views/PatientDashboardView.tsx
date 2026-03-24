@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Patient, VisitData, Clinic, Appointment } from '../types';
@@ -10,6 +10,8 @@ import { fmtDate } from '../utils/formatters';
 
 const PatientDashboardView: React.FC = () => {
   const navigate = useNavigate();
+  const { slug } = useParams<{ slug: string }>();
+  const prefix = slug ? `/${slug}` : '';
   const { patientUser, logout } = useAuth();
   const { t, dir } = useLanguage();
 
@@ -33,7 +35,7 @@ const PatientDashboardView: React.FC = () => {
   // Load fresh data from database in background (non-blocking)
   useEffect(() => {
     if (!patientUser) {
-      navigate('/patient/login');
+      navigate(`${prefix}/patient/login`);
       return;
     }
 
@@ -93,7 +95,7 @@ const PatientDashboardView: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/patient/login');
+    navigate(`${prefix}/patient/login`);
   };
 
   const handleBookAppointment = async () => {
@@ -194,7 +196,7 @@ const PatientDashboardView: React.FC = () => {
 
   if (!patient) {
     // Redirect if no patient (not logged in)
-    navigate('/patient/login');
+    navigate(`${prefix}/patient/login`);
     return null;
   }
 
