@@ -79,6 +79,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw new Error('هذا الحساب لا ينتمي لهذا المركز');
         }
 
+        // Clear patient session to prevent wrong redirect
+        localStorage.removeItem('patientUser');
+        setPatientUser(null);
+
         localStorage.setItem('user', JSON.stringify(foundUser));
         setUser(foundUser);
         return;
@@ -93,6 +97,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: result.patient.email,
           hasAccess: true,
         };
+
+        // Clear staff session to prevent wrong redirect
+        localStorage.removeItem('user');
+        setUser(null);
 
         localStorage.setItem('patientUser', JSON.stringify(foundPatient));
         setPatientUser(foundPatient as Patient);
