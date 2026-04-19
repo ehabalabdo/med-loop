@@ -46,7 +46,14 @@ const CONFIG = {
   API_URL: process.env.MEDLOOP_API_URL || 'https://medloop-api.onrender.com',
   
   // API key for authentication (generated from MedLoop admin panel)
+  // Bridge Agent shared key — sent as X-Bridge-Key header to MedLoop API.
+  // Generate one with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+  // Then store SHA-256(this) in clients.bridge_key_hash on the server.
   API_KEY: process.env.MEDLOOP_API_KEY || '',
+
+  // Numeric client_id (tenant) this bridge belongs to. Optional but speeds
+  // up the server-side key lookup; the key still must hash-match.
+  CLIENT_ID: parseInt(process.env.MEDLOOP_CLIENT_ID || '0', 10) || null,
   
   // Bridge agent HTTP server port (devices POST results here)
   BRIDGE_PORT: parseInt(process.env.BRIDGE_PORT || '9090'),
@@ -61,6 +68,10 @@ const CONFIG = {
   HL7_PORT: parseInt(process.env.HL7_PORT || '2575'),
   HL7_ENABLED: (process.env.HL7_ENABLED || 'true').toLowerCase() === 'true',
   HL7_DEVICE_ID: process.env.HL7_DEVICE_ID || process.env.DEFAULT_DEVICE_ID || '',
+
+  // SECURITY: comma-separated CIDR/IPs allowed to connect to MLLP/HTTP listeners.
+  // Example: '10.0.0.0/8,192.168.1.50'. Empty = allow all (LAN-only assumption).
+  ALLOWED_IPS: (process.env.BRIDGE_ALLOWED_IPS || '').split(',').map(s => s.trim()).filter(Boolean),
 
   // Serial port (empty = disabled)
   SERIAL_PORT: process.env.SERIAL_PORT || '',  // e.g. 'COM3' or '/dev/ttyUSB0'
@@ -98,7 +109,7 @@ async function processQueue() {
 
     for (let attempt = 1; attempt <= CONFIG.MAX_RETRIES; attempt++) {
       try {
-        await sendToAPI('/api/device-results', payload);
+        await sendToAPI('/bridge/device-results', payload);
         console.log(`[✓] Result sent: ${payload.testCode} = ${payload.value} ${payload.unit || ''}`);
         success = true;
         break;
@@ -127,12 +138,52 @@ async function processQueue() {
 }
 
 // ============================================================
+// IP allowlist helper
+// ============================================================
+
+function isIpAllowed(ip) {
+  if (!CONFIG.ALLOWED_IPS.length) return true; // not configured = allow all (LAN trust)
+  if (!ip) return false;
+  // Strip IPv6 prefix for IPv4 mapped addresses
+  const clean = ip.replace(/^::ffff:/, '');
+  for (const entry of CONFIG.ALLOWED_IPS) {
+    if (entry === clean) return true;
+    if (entry.includes('/')) {
+      // very lightweight CIDR check (IPv4 only)
+      const [base, bitsStr] = entry.split('/');
+      const bits = parseInt(bitsStr, 10);
+      if (!Number.isFinite(bits)) continue;
+      const toInt = (a) => a.split('.').reduce((n, p) => (n << 8) | (parseInt(p, 10) & 0xff), 0) >>> 0;
+      try {
+        const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+        if ((toInt(clean) & mask) === (toInt(base) & mask)) return true;
+      } catch { /* skip */ }
+    }
+  }
+  return false;
+}
+
+// ============================================================
 // HTTP BRIDGE SERVER (devices POST results here)
 // ============================================================
 
 const server = http.createServer(async (req, res) => {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // SECURITY: enforce IP allowlist if configured (LAN-only)
+  const remoteIp = (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+  if (!isIpAllowed(remoteIp)) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'ip_not_allowed' }));
+    return;
+  }
+
+  // CORS — same-LAN devices only; reflect Origin if it's an internal/private host,
+  // otherwise no CORS headers (so browsers from outside cannot call us).
+  const origin = req.headers.origin || '';
+  const isLanOrigin = !origin || /^https?:\/\/(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(origin);
+  if (isLanOrigin && origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -275,7 +326,7 @@ function startFileWatcher() {
 
   console.log(`[FileWatcher] Watching: ${CONFIG.WATCH_FOLDER}`);
   
-  fs.watch(CONFIG.WATCH_FOLDER, (eventType, filename) => {
+  fs.watch(CONFIG.WATCH_FOLDER, async (eventType, filename) => {
     if (eventType !== 'rename' || !filename) return;
     
     const filePath = path.join(CONFIG.WATCH_FOLDER, filename);
@@ -386,7 +437,10 @@ function sendToAPI(endpoint, data) {
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(body),
-        'X-Device-API-Key': CONFIG.API_KEY
+        // SECURITY: server validates X-Bridge-Key with constant-time hash compare.
+        // X-Client-Id is just a hint to narrow the lookup — server still verifies.
+        'X-Bridge-Key': CONFIG.API_KEY,
+        ...(CONFIG.CLIENT_ID ? { 'X-Client-Id': String(CONFIG.CLIENT_ID) } : {})
       }
     };
 
@@ -460,6 +514,13 @@ function startHL7Listener() {
       console.error('[HL7] Error:', err.message);
     },
     onConnection: ({ connId, remoteAddr }) => {
+      // SECURITY: drop connection from non-allowlisted IPs
+      const ip = (remoteAddr || '').split(':')[0].replace(/^::ffff:/, '');
+      if (!isIpAllowed(ip)) {
+        console.warn(`[HL7] REJECTED connection #${connId} from ${remoteAddr} (not in allowlist)`);
+        try { mllpServer.getConnections?.()?.get?.(connId)?.socket?.destroy(); } catch {}
+        return;
+      }
       console.log(`[HL7] Device connected: #${connId} from ${remoteAddr}`);
     },
     onDisconnect: ({ connId, remoteAddr, messagesReceived }) => {
