@@ -10,6 +10,10 @@ async function request(method, path, body) {
   const token = localStorage.getItem("token");
   const headers = {
     "Content-Type": "application/json",
+    // CSRF defense-in-depth: backend csrfGuard requires a custom header on
+    // mutating requests. Browsers cannot set this cross-origin without a
+    // successful CORS preflight (only granted to allowed origins).
+    "X-Requested-With": "XMLHttpRequest",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
