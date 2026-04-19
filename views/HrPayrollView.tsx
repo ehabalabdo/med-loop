@@ -6,7 +6,14 @@ import { useLanguage } from '../context/LanguageContext';
 import { fmtMinutes } from '../utils/formatters';
 
 function fmtMoney(amount: number) {
-  return amount.toFixed(2) + ' JOD';
+  // SECURITY/CORRECTNESS: round to cents BEFORE formatting to avoid the
+  // classic floating-point accumulation bug (e.g. 0.1 + 0.2 = 0.30000000000004).
+  // For amounts that flow through arithmetic we always round at display.
+  const safe = Number.isFinite(amount) ? Math.round(amount * 100) / 100 : 0;
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(safe) + ' JOD';
 }
 
 const STATUS_COLORS: Record<string, string> = {

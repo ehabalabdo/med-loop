@@ -63,12 +63,36 @@ const HrEmployeesView: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [resettingId, setResettingId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [revealPassword, setRevealPassword] = useState(false);
+  const [pwSecondsLeft, setPwSecondsLeft] = useState(30);
   const [error, setError] = useState('');
 
   // Location config
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationForm, setLocationForm] = useState({ latitude: '', longitude: '', radius: '100', clinic_id: 0 });
   const [clinics, setClinics] = useState<any[]>([]);
+
+  // SECURITY: auto-clear newly issued password from memory after 30 seconds.
+  // Reduces window for screen-sharing / shoulder-surfing leaks.
+  useEffect(() => {
+    if (!newPassword) {
+      setRevealPassword(false);
+      setPwSecondsLeft(30);
+      return;
+    }
+    setPwSecondsLeft(30);
+    const interval = setInterval(() => {
+      setPwSecondsLeft((s) => {
+        if (s <= 1) {
+          setNewPassword(null);
+          setRevealPassword(false);
+          return 30;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [newPassword]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -356,12 +380,27 @@ const HrEmployeesView: React.FC = () => {
               <i className="fa-solid fa-key text-amber-600 text-2xl"></i>
             </div>
             <h3 className="text-lg font-bold text-slate-800 mb-2">{isAr ? 'كلمة المرور الجديدة' : 'New Password'}</h3>
-            <div className="bg-slate-100 rounded-xl p-4 font-mono text-lg tracking-widest mb-4 flex items-center justify-center gap-3">
-              {newPassword}
-              <button onClick={() => copyToClipboard(newPassword)} className="text-slate-400 hover:text-primary">
+            <div className="bg-slate-100 rounded-xl p-4 font-mono text-lg tracking-widest mb-2 flex items-center justify-center gap-3">
+              <span aria-label={isAr ? 'كلمة المرور' : 'password'}>
+                {revealPassword ? newPassword : '•'.repeat(newPassword.length)}
+              </span>
+              <button
+                onClick={() => setRevealPassword(v => !v)}
+                className="text-slate-400 hover:text-primary"
+                title={revealPassword ? (isAr ? 'إخفاء' : 'Hide') : (isAr ? 'إظهار' : 'Reveal')}
+              >
+                <i className={`fa-solid ${revealPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
+              <button onClick={() => copyToClipboard(newPassword)} className="text-slate-400 hover:text-primary" title={isAr ? 'نسخ' : 'Copy'}>
                 <i className="fa-solid fa-copy"></i>
               </button>
             </div>
+            <p className="text-xs text-amber-600 mb-2">
+              <i className="fa-solid fa-clock"></i>{' '}
+              {isAr
+                ? `ستختفي تلقائياً خلال ${pwSecondsLeft} ثانية`
+                : `Auto-clears in ${pwSecondsLeft}s`}
+            </p>
             <p className="text-xs text-slate-400 mb-4">{isAr ? 'شاركها مع الموظف. لن تظهر مرة أخرى.' : 'Share with employee. Will not appear again.'}</p>
             <button onClick={() => setNewPassword(null)} className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold w-full">
               {isAr ? 'تم' : 'Done'}

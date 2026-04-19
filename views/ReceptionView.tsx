@@ -162,47 +162,44 @@ const ReceptionView: React.FC<ReceptionViewProps> = ({ user: propUser }) => {
 
     // WhatsApp Integration - Send login credentials via WhatsApp
     const sendWhatsAppCredentials = (phone: string, name: string, password: string) => {
-        // Clean phone number (remove spaces, dashes, etc.)
-        let cleanPhone = phone.replace(/[^0-9+]/g, '');
-        
-        // Convert local Jordan numbers to international format
-        // Remove leading + if present
-        cleanPhone = cleanPhone.replace(/^\+/, '');
-        // Convert 07x to 9627x (Jordan mobile)
+        // SECURITY: sanitize all inputs before URL composition
+        const safePhone = (phone || '').replace(/[^0-9+]/g, '');
+        let cleanPhone = safePhone.replace(/^\+/, '');
         if (cleanPhone.startsWith('07')) {
             cleanPhone = '962' + cleanPhone.substring(1);
         }
-        // Convert 06x to 9626x (Jordan landline)  
         if (cleanPhone.startsWith('06')) {
             cleanPhone = '962' + cleanPhone.substring(1);
         }
-        
-        // Build client-specific login URL
-        const clientSlug = client?.slug || localStorage.getItem('currentClientSlug') || '';
+        cleanPhone = cleanPhone.replace(/\D/g, '').slice(0, 15);
+
+        const safeName = (name || '').replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 80);
+        const safePassword = (password || '').replace(/[^A-Za-z0-9!@#$%^&*_-]/g, '').slice(0, 64);
+
+        const clientSlug = (client?.slug || localStorage.getItem('currentClientSlug') || '').replace(/[^a-zA-Z0-9-]/g, '');
         const loginUrl = clientSlug ? `https://med.loopjo.com/${clientSlug}` : 'https://med.loopjo.com';
-        const clinicName = client?.name || 'العيادة';
-        
-        // Prepare message in Arabic
+        const clinicName = (client?.name || 'العيادة').replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 80);
+
         const message = [
-          `مرحبا ${name}`,
+          `مرحبا ${safeName}`,
           '',
           `تم تسجيلك في نظام ${clinicName}`,
           '',
           'بيانات الدخول:',
-          `اسم المستخدم: ${phone}`,
-          `كلمة المرور: ${password}`,
+          `اسم المستخدم: ${cleanPhone}`,
+          `كلمة المرور: ${safePassword}`,
           '',
           'رابط الدخول:',
           loginUrl,
           '',
           'احتفظ بهذه المعلومات بشكل آمن'
         ].join('\n');
-        
+
         const encodedMessage = encodeURIComponent(message);
         const whatsappUrl = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`;
-        
+
         // Open WhatsApp in new tab
-        window.open(whatsappUrl, '_blank');
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {

@@ -149,32 +149,38 @@ const AppointmentsView: React.FC = () => {
   };
 
   const sendWhatsAppCredentials = (phone: string, name: string, password: string) => {
-      let cleanPhone = phone.replace(/[^0-9+]/g, '');
-      cleanPhone = cleanPhone.replace(/^\+/, '');
+      // SECURITY: sanitize all user-controlled inputs before injection into URL
+      const safePhone = (phone || '').replace(/[^0-9+]/g, '');
+      let cleanPhone = safePhone.replace(/^\+/, '');
       if (cleanPhone.startsWith('07')) cleanPhone = '962' + cleanPhone.substring(1);
       if (cleanPhone.startsWith('06')) cleanPhone = '962' + cleanPhone.substring(1);
-      
-      const clientSlug = client?.slug || localStorage.getItem('currentClientSlug') || '';
+      cleanPhone = cleanPhone.replace(/\D/g, '').slice(0, 15); // E.164 max length
+
+      // Strip control chars and limit length to prevent message-bombing / phishing
+      const safeName = (name || '').replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 80);
+      const safePassword = (password || '').replace(/[^A-Za-z0-9!@#$%^&*_-]/g, '').slice(0, 64);
+
+      const clientSlug = (client?.slug || localStorage.getItem('currentClientSlug') || '').replace(/[^a-zA-Z0-9-]/g, '');
       const loginUrl = clientSlug ? `https://med.loopjo.com/${clientSlug}` : 'https://med.loopjo.com';
-      const clinicName = client?.name || 'العيادة';
-      
+      const clinicName = (client?.name || 'العيادة').replace(/[\u0000-\u001F\u007F]/g, '').slice(0, 80);
+
       const message = [
-        `مرحبا ${name}`,
+        `مرحبا ${safeName}`,
         '',
         `تم تسجيلك في نظام ${clinicName}`,
         '',
         'بيانات الدخول:',
-        `اسم المستخدم: ${phone}`,
-        `كلمة المرور: ${password}`,
+        `اسم المستخدم: ${cleanPhone}`,
+        `كلمة المرور: ${safePassword}`,
         '',
         'رابط الدخول:',
         loginUrl,
         '',
         'احتفظ بهذه المعلومات بشكل آمن'
       ].join('\n');
-      
+
       const encodedMessage = encodeURIComponent(message);
-      window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`, '_blank');
+      window.open(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMessage}`, '_blank', 'noopener,noreferrer');
   };
 
   const handleSave = async (e: React.FormEvent) => {

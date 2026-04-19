@@ -16,6 +16,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { Pool } from 'pg';
 import { Server as SocketIOServer } from 'socket.io';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 let io: SocketIOServer | null = null;
@@ -68,12 +69,44 @@ async function authenticateBridgeAgent(req: Request, res: Response, next: NextFu
 
 // Internal auth for frontend calls (uses JWT token from existing auth)
 async function authenticateUser(req: Request, res: Response, next: NextFunction) {
-  // Uses existing JWT auth middleware from the main app
-  // The user and clientId should already be set by the main auth middleware
-  if (!(req as any).user || !(req as any).user.clientId) {
-    return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      console.error('[DeviceAuth] JWT_SECRET not set');
+      return res.status(500).json({ error: 'Server misconfigured' });
+    }
+
+    const payload: any = jwt.verify(token, secret);
+    if (!payload || !payload.client_id) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    (req as any).user = payload;
+    (req as any).userClientId = payload.client_id;
+
+    // SECURITY: enforce that any client_id in path/query/body matches the JWT.
+    const provided =
+      req.params?.clientId ??
+      req.query?.clientId ??
+      req.body?.clientId ??
+      null;
+    if (provided != null && String(provided) !== String(payload.client_id)) {
+      return res.status(403).json({ error: 'Tenant mismatch' });
+    }
+
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Invalid token' });
   }
-  next();
+}
+
+// SECURITY: tenant-scoped helper — always trust JWT, never URL params
+function tenantOf(req: Request): number | string {
+  return (req as any).userClientId;
 }
 
 // ============================================================
@@ -239,10 +272,9 @@ router.post('/devices/:id/heartbeat', authenticateBridgeAgent, async (req: Reque
  * GET /api/device-results/pending/:clientId
  * Returns unmatched results for receptionist review.
  */
-router.get('/device-results/pending/:clientId', async (req: Request, res: Response) => {
+router.get('/device-results/pending/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const clientId = parseInt(req.params.clientId);
-    if (!clientId) return res.status(400).json({ error: 'Invalid clientId' });
+    const clientId = tenantOf(req);
 
     const result = await pool.query(`
       SELECT dr.*, d.name as device_name, d.type as device_type
@@ -263,29 +295,20 @@ router.get('/device-results/pending/:clientId', async (req: Request, res: Respon
  * GET /api/device-results/patient/:patientId
  * Returns all matched results for a patient.
  */
-router.get('/device-results/patient/:patientId', async (req: Request, res: Response) => {
+router.get('/device-results/patient/:patientId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const patientId = parseInt(req.params.patientId);
-    const clientId = parseInt(req.query.clientId as string);
+    const clientId = tenantOf(req);
 
     if (!patientId) return res.status(400).json({ error: 'Invalid patientId' });
 
-    let query = `
+    const result = await pool.query(`
       SELECT dr.*, d.name as device_name, d.type as device_type
       FROM device_results dr
       LEFT JOIN devices d ON d.id = dr.device_id
-      WHERE dr.matched_patient_id = $1
-    `;
-    const params: any[] = [patientId];
-
-    if (clientId) {
-      query += ` AND dr.client_id = $2`;
-      params.push(clientId);
-    }
-
-    query += ` ORDER BY dr.created_at DESC`;
-
-    const result = await pool.query(query, params);
+      WHERE dr.matched_patient_id = $1 AND dr.client_id = $2
+      ORDER BY dr.created_at DESC
+    `, [patientId, clientId]);
     return res.json(result.rows.map(mapRow));
   } catch (err: any) {
     console.error('[DeviceResults] GET patient error:', err);
@@ -297,12 +320,10 @@ router.get('/device-results/patient/:patientId', async (req: Request, res: Respo
  * GET /api/device-results/all/:clientId
  * Returns all results for a client with optional status filter.
  */
-router.get('/device-results/all/:clientId', async (req: Request, res: Response) => {
+router.get('/device-results/all/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const clientId = parseInt(req.params.clientId);
+    const clientId = tenantOf(req);
     const status = req.query.status as string;
-
-    if (!clientId) return res.status(400).json({ error: 'Invalid clientId' });
 
     let query = `
       SELECT dr.*, d.name as device_name, d.type as device_type, p.full_name as patient_name
@@ -332,8 +353,9 @@ router.get('/device-results/all/:clientId', async (req: Request, res: Response) 
  * POST /api/device-results/match
  * Manual patient matching by receptionist.
  */
-router.post('/device-results/match', async (req: Request, res: Response) => {
+router.post('/device-results/match', authenticateUser, async (req: Request, res: Response) => {
   try {
+    const userClientId = tenantOf(req);
     const { resultId, patientId, matchedBy } = req.body;
 
     if (!resultId || !patientId) {
@@ -342,10 +364,10 @@ router.post('/device-results/match', async (req: Request, res: Response) => {
 
     const patientIdInt = parseInt(patientId);
 
-    // Verify result exists and is pending
+    // Verify result belongs to caller's tenant and is pending
     const check = await pool.query(
-      'SELECT id, client_id FROM device_results WHERE id = $1 AND status = $2',
-      [resultId, 'pending']
+      'SELECT id, client_id FROM device_results WHERE id = $1 AND status = $2 AND client_id = $3',
+      [resultId, 'pending', userClientId]
     );
     if (check.rows.length === 0) {
       return res.status(404).json({ error: 'Result not found or already matched' });
@@ -389,12 +411,13 @@ router.post('/device-results/match', async (req: Request, res: Response) => {
  * POST /api/device-results/:id/reject
  * Reject a pending result.
  */
-router.post('/device-results/:id/reject', async (req: Request, res: Response) => {
+router.post('/device-results/:id/reject', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const clientId = tenantOf(req);
     await pool.query(
-      "UPDATE device_results SET status = 'rejected' WHERE id = $1 AND status = 'pending'",
-      [id]
+      "UPDATE device_results SET status = 'rejected' WHERE id = $1 AND status = 'pending' AND client_id = $2",
+      [id, clientId]
     );
     return res.json({ ok: true });
   } catch (err: any) {
@@ -407,9 +430,9 @@ router.post('/device-results/:id/reject', async (req: Request, res: Response) =>
  * GET /api/device-results/pending-count/:clientId
  * Returns count of pending results (for badge).
  */
-router.get('/device-results/pending-count/:clientId', async (req: Request, res: Response) => {
+router.get('/device-results/pending-count/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const clientId = parseInt(req.params.clientId);
+    const clientId = tenantOf(req);
     const result = await pool.query(
       "SELECT COUNT(*)::int as count FROM device_results WHERE client_id = $1 AND status = 'pending'",
       [clientId]
@@ -425,9 +448,9 @@ router.get('/device-results/pending-count/:clientId', async (req: Request, res: 
 // ============================================================
 
 /** GET /api/devices/:clientId - List all devices for a client */
-router.get('/devices/:clientId', async (req: Request, res: Response) => {
+router.get('/devices/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const clientId = parseInt(req.params.clientId);
+    const clientId = tenantOf(req);
     const result = await pool.query(
       'SELECT * FROM devices WHERE client_id = $1 ORDER BY created_at DESC',
       [clientId]
@@ -452,10 +475,11 @@ router.get('/devices/:clientId', async (req: Request, res: Response) => {
 });
 
 /** POST /api/devices - Register a new device */
-router.post('/devices', async (req: Request, res: Response) => {
+router.post('/devices', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const { clientId, clinicId, name, type, connectionType, ipAddress, port, comPort } = req.body;
-    if (!clientId || !clinicId || !name || !type || !connectionType) {
+    const userClientId = tenantOf(req);
+    const { clinicId, name, type, connectionType, ipAddress, port, comPort } = req.body;
+    if (!clinicId || !name || !type || !connectionType) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
@@ -463,7 +487,7 @@ router.post('/devices', async (req: Request, res: Response) => {
       INSERT INTO devices (client_id, clinic_id, name, type, connection_type, ip_address, port, com_port, is_active)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
       RETURNING id
-    `, [clientId, parseInt(clinicId), name, type, connectionType, ipAddress || null, port || null, comPort || null]);
+    `, [userClientId, parseInt(clinicId), name, type, connectionType, ipAddress || null, port || null, comPort || null]);
 
     return res.status(201).json({ id: result.rows[0].id });
   } catch (err: any) {
@@ -472,10 +496,18 @@ router.post('/devices', async (req: Request, res: Response) => {
 });
 
 /** PUT /api/devices/:id - Update a device */
-router.put('/devices/:id', async (req: Request, res: Response) => {
+router.put('/devices/:id', authenticateUser, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userClientId = tenantOf(req);
     const { name, type, connectionType, ipAddress, port, comPort, isActive, clinicId } = req.body;
+
+    // SECURITY: ensure device belongs to caller's tenant
+    const own = await pool.query(
+      'SELECT id FROM devices WHERE id = $1 AND client_id = $2 LIMIT 1',
+      [id, userClientId]
+    );
+    if (own.rows.length === 0) return res.status(404).json({ error: 'Device not found' });
 
     await pool.query('UPDATE devices SET updated_at = NOW() WHERE id = $1', [id]);
     if (name !== undefined) await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]);
@@ -494,9 +526,10 @@ router.put('/devices/:id', async (req: Request, res: Response) => {
 });
 
 /** DELETE /api/devices/:id */
-router.delete('/devices/:id', async (req: Request, res: Response) => {
+router.delete('/devices/:id', authenticateUser, async (req: Request, res: Response) => {
   try {
-    await pool.query('DELETE FROM devices WHERE id = $1', [req.params.id]);
+    const userClientId = tenantOf(req);
+    await pool.query('DELETE FROM devices WHERE id = $1 AND client_id = $2', [req.params.id, userClientId]);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
@@ -508,11 +541,12 @@ router.delete('/devices/:id', async (req: Request, res: Response) => {
 // ============================================================
 
 /** POST /api/device-api-keys - Generate a new API key */
-router.post('/device-api-keys', async (req: Request, res: Response) => {
+router.post('/device-api-keys', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const { clientId, label } = req.body;
-    if (!clientId || !label) {
-      return res.status(400).json({ error: 'Missing clientId or label' });
+    const clientId = tenantOf(req);
+    const { label } = req.body;
+    if (!label) {
+      return res.status(400).json({ error: 'Missing label' });
     }
 
     // Generate a random API key
@@ -536,9 +570,9 @@ router.post('/device-api-keys', async (req: Request, res: Response) => {
 });
 
 /** GET /api/device-api-keys/:clientId - List keys (hashed) */
-router.get('/device-api-keys/:clientId', async (req: Request, res: Response) => {
+router.get('/device-api-keys/:clientId', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const clientId = parseInt(req.params.clientId);
+    const clientId = tenantOf(req);
     const result = await pool.query(
       'SELECT id, label, is_active, last_used_at, created_at FROM device_api_keys WHERE client_id = $1 ORDER BY created_at DESC',
       [clientId]
@@ -550,9 +584,10 @@ router.get('/device-api-keys/:clientId', async (req: Request, res: Response) => 
 });
 
 /** DELETE /api/device-api-keys/:id - Revoke a key */
-router.delete('/device-api-keys/:id', async (req: Request, res: Response) => {
+router.delete('/device-api-keys/:id', authenticateUser, async (req: Request, res: Response) => {
   try {
-    await pool.query('UPDATE device_api_keys SET is_active = false WHERE id = $1', [req.params.id]);
+    const userClientId = tenantOf(req);
+    await pool.query('UPDATE device_api_keys SET is_active = false WHERE id = $1 AND client_id = $2', [req.params.id, userClientId]);
     return res.json({ ok: true });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
